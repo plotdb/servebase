@@ -7,6 +7,13 @@
 @view.panel = new ldview do
   root: document.body
   action: click: do
+    pay: ({node, evt}) ->
+      payment.request do
+        gateway: node.getAttribute(\data-name)
+        payload:
+          scope: \demo
+          name: "Generic Goods"
+          amount: "2.99"
     "toggle-block": ~>
       core.ldcvmgr.get JSON.parse(@view.panel.get('block-code').value)
     "toggle-error": ~>

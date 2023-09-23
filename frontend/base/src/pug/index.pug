@@ -61,6 +61,15 @@ block body
           .btn.btn-outline-secondary.d-none(ld="toggle-ldcv signed",data-name="account-info") Account Info
           .btn.btn-outline-secondary.d-none(ld="toggle-ldcv signed",data-name="change-password") Change Password
 
+        .my-5
+          h3.mb-1 Payment
+          .mb-3 Purchase "Generic Goods", Spend 2.99 USD
+          .font-weight-bold.text-underline.mb-1 Payment Gateway
+          .d-flex.g-2
+            .btn.btn-primary(ld="pay", data-name="newebpay") 藍新金流
+            .btn.btn-primary(ld="pay", data-name="dummy") Dummy Gateway
+            .btn.btn-primary(ld="pay", data-name="no") Unsupported Gateway
+
       .col-md.mb-4
 
         div(ld="admin",ld-scope)
