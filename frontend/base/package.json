@@ -18,6 +18,7 @@
     "../../module/base/navtop",
     "../../module/base/pugutil",
     "../../module/base/discuss",
+    "../../module/base/payment",
     "../../module/base/connector"
   ],
   "dependencies": {
@@ -95,6 +96,10 @@
       },
       {
         "name": "@servebase/discuss",
+        "dir": "dist"
+      },
+      {
+        "name": "@servebase/payment",
         "dir": "dist"
       },
       {
