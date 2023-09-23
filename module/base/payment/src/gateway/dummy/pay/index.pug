@@ -1,0 +1,44 @@
+.ldcv.autogap.scroll
+  script(type="@plotdb/block"): include:lsc index.ls
+  .base.w-480.rwd
+    .inner.p-0
+      .px-4.py-3.bg-dark.text-white.border-bottom
+        .d-flex.flex-wrap.justify-content-between.align-items-end
+          h4.mb-0 Dummy Pay
+          .text-sm Powered by Serverbase
+      .px-4.py-2.bg-light.border-bottom
+        .mb-3
+          .text-sm Item
+          .font-weight-bold(ld="name") Not Available
+        .mb-0
+          .text-sm Amount
+          div
+            span.font-weight-bold.mr-1(ld="amount") 0.00
+            span.text-sm USD
+      .py-3.px-4.border-bottom
+        .mb-3.font-weight-bold.text-underline Pay with Credit Card
+        .form-group
+          label.mb-1 Card Holder Name
+          input.form-control(value="Dummy Base", disabled)
+        .form-group
+          label.mb-1 Card Number
+          .d-flex.g-2
+            .input-group
+              input.form-control(value="4242", disabled)
+              input.form-control(value="4242", disabled)
+              input.form-control(value="4242", disabled)
+              input.form-control(value="4242", disabled)
+        .row
+          .col-sm
+            .form-group
+              label.mb-1 Expiry Date
+              .input-group
+                input.form-control(value="01", disabled)
+                input.form-control(value="99", disabled)
+          .col-sm
+            .form-group
+              label.mb-1 CVC
+              input.form-control(value="123", disabled)
+      .p-4
+        .btn.btn-lg.btn-primary.btn-block(ld="pay") Pay #[span(ld="amount") 1.00] #[span.text-sm USD]
+
