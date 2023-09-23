@@ -198,6 +198,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
 
         @route.app = aux.routecatch app
         @route.extapi = aux.routecatch express.Router {mergeParams: true}
+        @route.extapp = aux.routecatch express.Router {mergeParams: true}
         @route.api = aux.routecatch express.Router {mergeParams: true}
         @route.auth = aux.routecatch express.Router {mergeParams: true}
         @route.consent = aux.routecatch express.Router {mergeParams: true}
@@ -206,6 +207,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
         auth @  # Authenticate. must before any router ( e.g., /api )
 
         app.use \/extapi/, @route.extapi
+        app.use \/ext/, @route.extapp
         if exts => exts @ # External API without extapi prefix. should be rarely used.
 
         # CSRF Protection. must after session

@@ -303,6 +303,9 @@
         this$.route.extapi = aux.routecatch(express.Router({
           mergeParams: true
         }));
+        this$.route.extapp = aux.routecatch(express.Router({
+          mergeParams: true
+        }));
         this$.route.api = aux.routecatch(express.Router({
           mergeParams: true
         }));
@@ -314,6 +317,7 @@
         }));
         auth(this$);
         app.use('/extapi/', this$.route.extapi);
+        app.use('/ext/', this$.route.extapp);
         if (exts) {
           exts(this$);
         }
