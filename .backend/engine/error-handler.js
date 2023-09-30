@@ -12,7 +12,11 @@
       if (!/^\/api/.exec(req.originalUrl) && !/^\/err\/490/.exec(req.originalUrl)) {
         res.set({
           "Content-Type": "text/html",
-          "X-Accel-Redirect": err.redirect || '/err/490'
+          "X-Accel-Redirect": err.redirect || '/err/490',
+          "X-Accel-Buffering": "no",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "Expires": 0
         });
       } else {
         delete err.redirect;

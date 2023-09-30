@@ -11,7 +11,17 @@ route490 = (req, res, err) ->
     ## with http header - rely on browsers to redirect. cookie ignored.
     # if err.redirect => return res.redirect 302, err.redirect
     ## with reversed proxy - will need a reversed proxy to take affect
-    res.set {"Content-Type": "text/html", "X-Accel-Redirect": err.redirect or \/err/490}
+    ## NOTE User may access the original URL again after error has been resolved,
+    #       but if the page is cached, user won't be able to reach the original URL.
+    #       so, we explicitly disable cache via header.
+    res.set {
+      "Content-Type": "text/html"
+      "X-Accel-Redirect": err.redirect or \/err/490
+      "X-Accel-Buffering": "no"
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+      "Pragma": "no-cache"
+      "Expires": 0
+    }
   else delete err.redirect
   res.cookie \lderror, JSON.stringify(err), {maxAge: 60000, httpOnly: false, secure: true, sameSite: \Strict}
   return res.status 490 .send err
