@@ -56,6 +56,13 @@
     this.ws = new ews({
       path: this._path
     });
+    this.ws.on('offline', function(){
+      if (this$._ldcv.toggle) {
+        return this$._ldcv.toggle(true);
+      } else {
+        return this$._ldcv(true);
+      }
+    });
     this.ws.on('close', function(){
       return this$.reopen();
     });
