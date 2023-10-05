@@ -49,6 +49,7 @@ module.exports =
           @ldld = new ldloader root: node
 
       handler:
+        "signin-failed-hint": ({node}) ~> node.classList.toggle \d-none, !@_failed-hint
         oauth: ({node}) ~>
           node.classList.toggle \d-none, !(@global.oauth[node.getAttribute \data-name] or {}).enabled
         submit: ({node}) ~>
@@ -99,6 +100,8 @@ module.exports =
 
     submit: ->
       if !@form.ready! => return
+      @_failed-hint = false
+      @view.render \signin-failed-hint
       val = @form.values!
       body = {} <<< val{username, password, displayname}
       @ldld.on!
@@ -124,6 +127,8 @@ module.exports =
         .finally ~> @ldld.off!
         .then (g) ~>
           debounce 350, ~> @info \default
+          @_failed-hint = false
+          @view.render!
           @form.reset!
           @ldcv.authpanel.set g
           ldnotify.send "success", t("login successfully")
@@ -137,6 +142,8 @@ module.exports =
           # we can handle error id 1014 here (apply existed resource)
           if id == 1004 => return @info "login-exceeded"
           @info "#{@_tab}-failed"
+          @_failed-hint = true
+          @view.render!
           @form.fields.password.value = null
           @form.check {n: \password, now: true}
           if !id => throw e
