@@ -1,4 +1,4 @@
-require! <[fs chokidar lderror jsonwebtoken @plotdb/express-session passport passport-local]>
+require! <[lderror jsonwebtoken @plotdb/express-session passport passport-local]>
 require! <[passport-facebook]>
 require! <[passport-google-oauth20]>
 require! <[passport-line-auth]>
@@ -11,7 +11,7 @@ captcha = Object.fromEntries [[k,v] for k,v of config.captcha].map ->
   if it.0 == \enabled => [it.0, it.1] else [it.0, it.1{sitekey, enabled}]
 oauth = Object.fromEntries(
   [[k,v] for k,v of config.auth]
-    .map -> if it.0 == \local => return else [it.0, {enabled: !(it.1.enabled?) or it.1.enabled }]
+    .map -> return if it.0 == \local => null else [it.0, {enabled: !(it.1.enabled?) or it.1.enabled }]
     .filter -> it
 )
 
