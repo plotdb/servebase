@@ -104,7 +104,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         select key from password
         where owner = $1
         order by key desc limit $2
-        """, [user.key, count >?= 1] .then _
+        """, [user.key, count] .then _
         if !(p = r.[]rows[* - 1]) => return
         @db.query "delete from password where owner = $1 and key < $2", [user.key, p.key]
       .then ~>
@@ -112,7 +112,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         @db.query """
         delete from password
         where owner = $1 and createdtime < now() - make_interval(0,0,$2)
-        """, [user.key, day >?= 1]
+        """, [user.key, day]
 
   password-due: ({user}) ->
     # always not due ( within 180 days ) if renew is not enabled.

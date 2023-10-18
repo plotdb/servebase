@@ -5,8 +5,7 @@
   (function(it){
     return module.exports = it;
   })(function(backend){
-    var db, role;
-    db = backend.db;
+    var role;
     role = function(arg$){
       var users, ret;
       users = arg$.users;

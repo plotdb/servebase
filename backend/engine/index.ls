@@ -97,7 +97,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
     else
       # for @plotdb/block in node context
       dom = new jsdom.JSDOM "<DOCTYPE html><html><body></body></html>"
-      [win, doc] = [dom.window, dom.window.document]
+      win = dom.window
       block.env win
       mgr = ({base}) ->
         new block.manager registry: (d) ->

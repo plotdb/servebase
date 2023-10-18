@@ -197,11 +197,7 @@
       }).then(function(){
         var count, ref$;
         count = (ref$ = this$.policy.track.count) > 1 ? ref$ : 1;
-        return this$.db.query("select key from password\nwhere owner = $1\norder by key desc limit $2", [
-          user.key, count >= 1
-            ? count
-            : count = 1
-        ]).then(function(r){
+        return this$.db.query("select key from password\nwhere owner = $1\norder by key desc limit $2", [user.key, count]).then(function(r){
           var p, ref$;
           r == null && (r = {});
           if (!(p = (ref$ = r.rows || (r.rows = []))[ref$.length - 1])) {
@@ -212,11 +208,7 @@
       }).then(function(){
         var day, ref$;
         day = (ref$ = this$.policy.track.day) > 1 ? ref$ : 1;
-        return this$.db.query("delete from password\nwhere owner = $1 and createdtime < now() - make_interval(0,0,$2)", [
-          user.key, day >= 1
-            ? day
-            : day = 1
-        ]);
+        return this$.db.query("delete from password\nwhere owner = $1 and createdtime < now() - make_interval(0,0,$2)", [user.key, day]);
       });
     },
     passwordDue: function(arg$){

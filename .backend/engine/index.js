@@ -149,7 +149,7 @@
       });
     },
     watch: function(arg$){
-      var logger, i18n, ref$, mgr, dom, win, doc, this$ = this;
+      var logger, i18n, ref$, mgr, dom, win, this$ = this;
       logger = arg$.logger, i18n = arg$.i18n;
       this.version = 'na';
       chokidar.watch(['.version']).on('add', function(it){
@@ -164,7 +164,7 @@
         mgr = require(path.join(rootdir, this.config.build.block.manager));
       } else {
         dom = new jsdom.JSDOM("<DOCTYPE html><html><body></body></html>");
-        ref$ = [dom.window, dom.window.document], win = ref$[0], doc = ref$[1];
+        win = dom.window;
         block.env(win);
         mgr = function(arg$){
           var base;
