@@ -1,4 +1,5 @@
 div
+  include @/@servebase/pugutil/index.pug
   script(type="@plotdb/block"): include:lsc block.ls
   .comments(ld="comments"): .comment.media.mb-2.p-2.position-relative(ld-each="comment")
     .mr-3(style="width:3.25em")
@@ -9,7 +10,7 @@ div
         .text-sm.text-muted.ml-1.text-capitalize(ld-each="role") ．#[span(ld="name")]
         .text-sm.text-muted.ml-1 ． #[span(ld="date")]
         .flex-grow-1
-        .text-sm.ml-2.clickable #[i.i-pen.mx-2(ld="edit")]#[i.i-trashcan.text-danger(ld="delete")]
+        .text-sm.ml-2.clickable #[+i.i-pen.mx-2(ld="edit")]#[+i.i-trashcan.text-danger(ld="delete")]
       .content.my-1(ld="content",style="word-break:break-all")
       div(ld="update")
         .position-relative
