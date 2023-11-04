@@ -107,7 +107,7 @@
       }).then(function(){
         return session['delete']({
           db: db,
-          key: key
+          user: key
         });
       }).then(function(){
         return res.send();
@@ -128,7 +128,7 @@
       }).then(function(){
         return session['delete']({
           db: db,
-          key: key
+          user: key
         });
       }).then(function(){
         return res.send();
@@ -137,7 +137,7 @@
     route.post('/user/:key/logout', aux.validateKey, function(req, res){
       return session['delete']({
         db: db,
-        key: +req.params.key
+        user: +req.params.key
       }).then(function(){
         return res.send();
       });

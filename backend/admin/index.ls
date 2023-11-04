@@ -59,7 +59,7 @@ route.post \/user/:key/password, aux.validate-key, (req, res) ->
     .then -> db.user-store.hashing password, true, true
     .then (pw-hashed) ->
       db.query "update users set (method,password) = ('local',$1) where key = $2", [pw-hashed, key]
-    .then -> session.delete {db, key}
+    .then -> session.delete {db, user: key}
     .then -> res.send!
 
 route.post \/user/:key/email, aux.validate-key, (req, res) ->
@@ -69,11 +69,11 @@ route.post \/user/:key/email, aux.validate-key, (req, res) ->
     .then (r={}) ->
       if r.[]rows.length => return lderror.reject 1011
       db.query "update users set username = $1 where key = $2", [email, key]
-    .then -> session.delete {db, key}
+    .then -> session.delete {db, user: key}
     .then -> res.send!
 
 route.post \/user/:key/logout, aux.validate-key, (req, res) ->
-  session.delete {db, key: +req.params.key}
+  session.delete {db, user: +req.params.key}
     .then -> res.send!
 
 route.delete \/user/:key, aux.validate-key, (req, res, next) ->

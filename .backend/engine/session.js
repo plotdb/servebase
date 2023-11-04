@@ -4,9 +4,9 @@
   lderror = require('lderror');
   module.exports = {
     'delete': function(arg$){
-      var db, key;
-      db = arg$.db, key = arg$.key;
-      return db.query("delete from session where owner = $1", [key]);
+      var db, user, key;
+      db = arg$.db, user = arg$.user, key = arg$.key;
+      return db.query("delete from session where owner = $1", [user || key]);
     },
     login: function(arg$){
       var db, key, req;

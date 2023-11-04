@@ -1,9 +1,10 @@
 require! <[lderror]>
 
 module.exports = do
-  delete: ({db, key}) ->
+  delete: ({db, user, key}) ->
+    # key is deprecated because it's ambiguous regarding semantics. use `user` instead.
     # alternatively use session store clear?
-    db.query "delete from session where owner = $1", [key]
+    db.query "delete from session where owner = $1", [user or key]
   # this login should be used only for updating session data.
   # normal login process should be done in backend/auth/index.ls,
   # and go through `get-user` for additional check.

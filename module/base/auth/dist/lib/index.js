@@ -391,7 +391,7 @@
     app.post('/api/auth/clear', aux.signedin, backend.middleware.captcha, function(req, res){
       return session['delete']({
         db: db,
-        key: req.user.key
+        user: req.user.key
       }).then(function(){
         aux.clearCookie(req, res);
         return req.logout(function(){
@@ -402,7 +402,7 @@
     app.post('/api/auth/clear/:uid', aux.isAdmin, function(req, res){
       return session['delete']({
         db: db,
-        key: req.params.uid
+        user: req.params.uid
       }).then(function(){
         return res.send();
       });

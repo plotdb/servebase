@@ -209,13 +209,13 @@ app.get \/auth/reset, (req, res) ->
   res.render "auth/index.pug"
 
 app.post \/api/auth/clear, aux.signedin, backend.middleware.captcha, (req, res) ->
-  <- session.delete {db, key: req.user.key} .then _
+  <- session.delete {db, user: req.user.key} .then _
   aux.clear-cookie req, res
   <-! req.logout _
   res.send!
 
 app.post \/api/auth/clear/:uid, aux.is-admin, (req, res) ->
-  session.delete {db, key: req.params.uid} .then -> res.send!
+  session.delete {db, user: req.params.uid} .then -> res.send!
 
 # this must not be guarded by csrf since it's used to recover csrf token.
 app.post \/api/auth/reset, (req, res) ->
