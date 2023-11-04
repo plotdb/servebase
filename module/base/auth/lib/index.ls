@@ -2,7 +2,7 @@ require! <[lderror jsonwebtoken @plotdb/express-session passport passport-local]
 require! <[passport-facebook]>
 require! <[passport-google-oauth20]>
 require! <[passport-line-auth]>
-require! <[@servebase/backend/aux ./passwd ./mail]>
+require! <[@servebase/backend/aux @servebase/backend/session ./passwd ./mail]>
 
 (backend) <- ((f) -> module.exports = -> f.call {}, it) _
 {db,app,config,route} = backend
@@ -209,14 +209,13 @@ app.get \/auth/reset, (req, res) ->
   res.render "auth/index.pug"
 
 app.post \/api/auth/clear, aux.signedin, backend.middleware.captcha, (req, res) ->
-  db.query "delete from session where owner = $1", [req.user.key]
-    .then ->
-      aux.clear-cookie req, res
-      <-! req.logout _
-      res.send!
+  <- session.delete {db, key: req.user.key} .then _
+  aux.clear-cookie req, res
+  <-! req.logout _
+  res.send!
 
 app.post \/api/auth/clear/:uid, aux.is-admin, (req, res) ->
-  db.query "delete from session where owner = $1", [req.params.uid] .then -> res.send!
+  session.delete {db, key: req.params.uid} .then -> res.send!
 
 # this must not be guarded by csrf since it's used to recover csrf token.
 app.post \/api/auth/reset, (req, res) ->
