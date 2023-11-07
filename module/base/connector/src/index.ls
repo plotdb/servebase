@@ -30,7 +30,10 @@ connector.prototype = Object.create(Object.prototype) <<<
       .then ~> @_running = false
   init: ->
     @ws = new ews {path: @_path}
-    @ws.on \offline, ~> if @_ldcv.toggle => @_ldcv.toggle(true) else @_ldcv(true)
+    @ws.on \offline, ~>
+      # close event from browser may not be reliable, but offline event is from ews itself.
+      # so we also reopen here.
+      @reopen!
     @ws.on \close, ~> @reopen!
     if @_init => @_init!
     @open!
