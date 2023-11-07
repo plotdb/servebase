@@ -57,8 +57,9 @@
       doMD5 == null && (doMD5 = true);
       doBcrypt == null && (doBcrypt = true);
       return new Promise(function(res, rej){
-        var ret;
-        ret = doMD5 ? crypto.createHash('md5').update(password).digest('hex') : password;
+        var pw, ret;
+        pw = (password + "").substring(0, 256);
+        ret = doMD5 ? crypto.createHash('md5').update(pw).digest('hex') : pw;
         if (doBcrypt) {
           return bcrypt.genSalt(12, function(e, salt){
             return bcrypt.hash(ret, salt, function(e, hash){

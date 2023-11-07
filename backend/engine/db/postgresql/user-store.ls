@@ -34,7 +34,9 @@ user-store.prototype = Object.create(Object.prototype) <<< do
   #  - `chaining md5 and bcrypt`, https://security.stackexchange.com/questions/119680/
   #  - `fb also does this`, wbl, https://news.ycombinator.com/item?id=19171957
   hashing: (password, doMD5 = true, doBcrypt = true) -> new Promise (res, rej) ->
-    ret = if doMD5 => crypto.createHash(\md5).update(password).digest(\hex) else password
+    # ensure maximal while unreasonably long password length so no computational DDoS will happen.
+    pw = "#password".substring(0, 256)
+    ret = if doMD5 => crypto.createHash(\md5).update(pw).digest(\hex) else pw
     if doBcrypt => bcrypt.genSalt 12, (e, salt) -> bcrypt.hash ret, salt, (e, hash) -> res hash
     else res ret
 
