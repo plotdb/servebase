@@ -99,9 +99,19 @@
               var node;
               node = arg$.node;
               return core.i18n ? core.i18n.t("@servebase/navtop:" + (node.getAttribute('t') || '')) : '';
+            },
+            version: function(arg$){
+              var node;
+              node = arg$.node;
+              return (this$.global.version + "-") + (this$.global.cachestamp + "").slice(-4);
             }
           },
           handler: {
+            "show-version": function(arg$){
+              var node;
+              node = arg$.node;
+              return node.classList.toggle('d-none', false);
+            },
             "@": function(arg$){
               var node;
               node = arg$.node;

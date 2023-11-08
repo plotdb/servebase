@@ -45,7 +45,9 @@ core.init!then ->
           .0 or lng
       t: ({node}) ->
         return if core.i18n => core.i18n.t("@servebase/navtop:#{node.getAttribute(\t) or ''}") else ''
+      version: ({node}) ~> "#{@global.version}-" + "#{@global.cachestamp}".slice(-4)
     handler:
+      "show-version": ({node}) ~> node.classList.toggle \d-none, false
       "@": ({node}) ~> node.style.display = if @toggled => \block else \none
       admin: ({node}) ~> node.classList.toggle \d-none, !@user.staff
       unauthed: ({node}) ~> node.classList.toggle \d-none, !!@user.key
