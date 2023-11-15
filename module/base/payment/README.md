@@ -64,3 +64,20 @@ where `opt` is an object with following fields:
    - `done(req, res, next)`: for redirection from a completed payment.
  - `perm`: permission check middlewares before different actions:
    - `sign(req, res, next)`: verify if a given signing attempt should be allowed.
+
+
+## Configuration
+
+You will have to configure server config file to enable payment, in `payment` field.
+
+    payment:
+      gateway: " ... " /* used gateway name, one of the fields below (dummy, newebpay, etc) */
+      gateways:
+        dummy: {}
+        newebpay: /* following fields are defined by the gateway used */
+          MerchantID: "..."
+          hashkey: "..."
+          hashiv: "..."
+          ReturnURL: 'https://serve.base/payment-complete/'
+          NotifyURL: 'https://serve.base/extapi/payment-notification'
+          Email: "..."
