@@ -81,3 +81,5 @@ You will have to configure server config file to enable payment, in `payment` fi
           ReturnURL: 'https://serve.base/payment-complete/'
           NotifyURL: 'https://serve.base/extapi/payment-notification'
           Email: "..."
+
+When `payment.gateway` is `dummy`, a dummy gateway will be automatically created in this server.
