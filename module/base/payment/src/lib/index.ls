@@ -56,6 +56,12 @@ backend.route.api.post \/pay/sign, aux.signedin, ((perm or {}).sign or ((q,s,n)-
       mods[gateway].sign {cfg: gwinfo, payload}
     .then ({payload}) -> res.send(ret <<< {payload})
 
+backend.route.api.post \/pay/check, aux.signedin, (req, res, next) ->
+  if !(payload = req.body.payload) => return lderror.reject 400
+  # TODO permission control
+  db.query "select state,createdtime,paidtime from payment where slug = $1", [payload.slug]
+    .then (r={}) -> res.send(r.[]rows.0 or {})
+
 if cfg.gateway == \dummy =>
   gw = mods.dummy.gateway
   # we consider these endpoints as 3rd parties and thus CSRF token is not needed.

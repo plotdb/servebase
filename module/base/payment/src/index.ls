@@ -1,5 +1,7 @@
 # used to fetch required info for making payment from our backend
 payment =
+  check: ({scope, slug}) ->
+    ld$.fetch \/api/pay/check, {method: \POST}, {type: \json, json: {payload: {slug}}}
   request: ({gateway, url, payload, method}) ->
     ({core}) <~ servebase.corectx _
     # need a way to retrieve gateway info from configuration.

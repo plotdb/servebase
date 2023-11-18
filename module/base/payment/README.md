@@ -29,7 +29,9 @@ payment object provides following methods:
        - `name`: generic name for this payment
        - `amount`: payment amount, in string.
    - `method`: HTTP request method. optional, `POST` if omitted.
- - `query(opt)`: check the state of a payment record. (TBD)
+ - `check(opt)`: check the state of a payment record. options:
+   - `scope`: TBD
+   - `slug`: payment slug to check
 
 
 ## Routes: Generic
@@ -37,7 +39,8 @@ payment object provides following methods:
  - `/extpi/pay/notify`: api accepting notification about a finished payment. (TBD)
  - `/ext/pay/done`: redirect page after a finished payment. (TBD)
  - `/pay/sign`: signing a payload before posting to 3rd party gateway.
-
+ - POST `/pay/check`: check the state of a given payment. option:
+   - `payload`: an object with `slug` field indicating the payment row to query
 
 ## Routes: Gateway Specific 
 

@@ -89,6 +89,16 @@
         return res.send((ret.payload = payload, ret));
       });
     });
+    backend.route.api.post('/pay/check', aux.signedin, function(req, res, next){
+      var payload;
+      if (!(payload = req.body.payload)) {
+        return lderror.reject(400);
+      }
+      return db.query("select state,createdtime,paidtime from payment where slug = $1", [payload.slug]).then(function(r){
+        r == null && (r = {});
+        return res.send((r.rows || (r.rows = []))[0] || {});
+      });
+    });
     if (cfg.gateway === 'dummy') {
       gw = mods.dummy.gateway;
       backend.route.extapi.post('/pay/gw/dummy/pay', gw.pay);

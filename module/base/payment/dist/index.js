@@ -2,6 +2,20 @@
 (function(){
   var payment;
   payment = {
+    check: function(arg$){
+      var scope, slug;
+      scope = arg$.scope, slug = arg$.slug;
+      return ld$.fetch('/api/pay/check', {
+        method: 'POST'
+      }, {
+        type: 'json',
+        json: {
+          payload: {
+            slug: slug
+          }
+        }
+      });
+    },
     request: function(arg$){
       var gateway, url, payload, method, this$ = this;
       gateway = arg$.gateway, url = arg$.url, payload = arg$.payload, method = arg$.method;
