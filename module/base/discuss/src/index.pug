@@ -20,15 +20,16 @@ div
           .flex-grow-1.d-flex.align-items-center
             .d-flex.align-items-center.text-sm.text-muted.mr-4.clickable.no-select(ld="use-markdown")
               input.mr-1.clickable(type="checkbox",ld="check")
-              div(ld="label") 啟用 Markdown 語法
+              div(ld="label", t) 啟用 Markdown 語法
               //-div ( #[a(href="#") 語法說明] )
             .d-none(ld="if-markdown")
               .d-flex.align-items-center.text-sm.text-muted.mr-4.clickable(ld="toggle-preview")
                 input.mr-1(type="checkbox",ld="check")
-                div(ld="label") 預覽
+                div(ld="label", t) 預覽
           div
-            .btn.btn-sm.btn-outline-secondary.ld.ld-ext-right.mr-2(ld="cancel") 取消 #[.ld.ld-spinner.ld-spin]
-            .btn.btn-sm.btn-outline-secondary.ld.ld-ext-right(ld="submit") 更新 #[.ld.ld-spinner.ld-spin]
+            .btn.btn-sm.btn-outline-secondary.ld.ld-ext-right.mr-2(
+             ld="cancel") #[span(t) 取消] #[.ld.ld-spinner.ld-spin]
+            .btn.btn-sm.btn-outline-secondary.ld.ld-ext-right(ld="submit") #[span(t) 更新] #[.ld.ld-spinner.ld-spin]
 
   .media.p-2.position-relative(ld="edit")
     .mr-2(style="width:3.25em"): .aspect-ratio.ratio-1by1.rounded.bg-dark.w-100.bg-cover(ld="avatar")
@@ -40,10 +41,10 @@ div
         .flex-grow-1.d-flex.align-items-center
           .d-flex.align-items-center.text-sm.text-muted.mr-4.clickable.no-select(ld="use-markdown")
             input.mr-1.clickable(type="checkbox",ld="check")
-            div(ld="label") 啟用 Markdown 語法
+            div(ld="label", t) 啟用 Markdown 語法
             //-div ( #[a(href="#") 語法說明] )
           .d-none(ld="if-markdown")
             .d-flex.align-items-center.text-sm.text-muted.mr-4.clickable(ld="toggle-preview")
               input.mr-1(type="checkbox",ld="check")
-              div(ld="label") 預覽
-        div: .btn.btn-outline-secondary.ld.ld-ext-right(ld="submit") 送出留言 #[.ld.ld-spinner.ld-spin]
+              div(ld="label", t) 預覽
+        div: .btn.btn-outline-secondary.ld.ld-ext-right(ld="submit") #[span(t) 送出留言] #[.ld.ld-spinner.ld-spin]

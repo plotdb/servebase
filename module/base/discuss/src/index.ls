@@ -209,7 +209,7 @@ discuss.prototype = Object.create(Object.prototype) <<<
                 ret = @roles[ctx.owner] or []
                 (if Array.isArray(ret) => ret else [ret]).filter(->it)
               key: -> it
-              view: text: name: ({ctx}) -> ctx
+              view: text: name: ({ctx}) ~> if @_core.i18n => @_core.i18n.t(ctx) else ctx
             content: (o) ~> @content-render o{node, ctx}
 
     return new ldview do

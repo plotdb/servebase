@@ -466,7 +466,11 @@
                     name: function(arg$){
                       var ctx;
                       ctx = arg$.ctx;
-                      return ctx;
+                      if (this$._core.i18n) {
+                        return this$._core.i18n.t(ctx);
+                      } else {
+                        return ctx;
+                      }
                     }
                   }
                 }
