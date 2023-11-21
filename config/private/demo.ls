@@ -51,6 +51,9 @@ module.exports = do
     # when true, all errors handled in `@servebase/backend/error-handler` will be logged with `debug` level
     all-error: false
   policy:
+    # login policy
+    login:
+      logging: false # log logging failure attempt in server log if true.
     # password renew policy
     password:
       check-unused: '' # either empty (don't check), `renew` (check only for renewal), `all` ( always check )
