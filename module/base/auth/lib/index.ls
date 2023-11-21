@@ -26,6 +26,8 @@ get-user = ({username, password, method, detail, create, cb, req}) ->
           if limit-session-amount and ((r.[]rows.0 or {}).count or 1) > 1 => cb lderror(1004), null, {message: ''}
           else cb null, (user <<< {ip: aux.ip(req)})
     .catch (e) ->
+      if e and config.{}policy.{}login.logging =>
+        backend.log-security.info "login fail #method method #username eid #{e.id}/#{e.message}"
       # 1012: permission denied;  1004: quota exceeded(won't hit here?)
       # 1000: user not login; 1034: user not found; 1015: bad param
       # TODO we may need to pass error code to frontend for better error message.

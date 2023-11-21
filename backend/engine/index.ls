@@ -121,6 +121,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
   start: ->
     Promise.resolve!
       .then ~>
+        @log-security = @log.child {module: \security}
         @log-error = @log.child {module: \error}
         @log-server = @log.child {module: \server}
         @log-build = @log.child {module: \build}

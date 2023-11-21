@@ -195,6 +195,9 @@
       var this$ = this;
       return Promise.resolve().then(function(){
         var i18nEnabled, ref$;
+        this$.logSecurity = this$.log.child({
+          module: 'security'
+        });
         this$.logError = this$.log.child({
           module: 'error'
         });
