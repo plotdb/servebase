@@ -49,6 +49,8 @@ module.exports =
           @ldld = new ldloader root: node
 
       handler:
+        oauths: ({node}) ~>
+          node.classList.toggle \d-none, ![v for k,v of @global.oauth].filter(->it.enabled).length
         "signin-failed-hint": ({node}) ~> node.classList.toggle \d-none, !@_failed-hint
         oauth: ({node}) ~>
           node.classList.toggle \d-none, !(@global.oauth[node.getAttribute \data-name] or {}).enabled
