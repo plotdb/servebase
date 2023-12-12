@@ -9,7 +9,7 @@ payment =
       {url,method} = {
         dummy: {url: \/ext/pay/gw/dummy/, method: \POST}
       }[gateway] or {}
-    if !(url and gateway) => return lderror.reject 1200
+    if !(url and gateway) => return lderror.reject 1020
     core.loader.on!
     @prepare {payload, gateway}
       .finally -> core.loader.off!

@@ -31,7 +31,7 @@
           }[gateway] || {}, url = ref$.url, method = ref$.method;
         }
         if (!(url && gateway)) {
-          return lderror.reject(1200);
+          return lderror.reject(1020);
         }
         core.loader.on();
         return this$.prepare({
