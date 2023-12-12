@@ -13,7 +13,7 @@
         payload:
           scope: \demo
           name: "Generic Goods"
-          amount: "2.99"
+          amount: "13"
     "toggle-block": ~>
       core.ldcvmgr.get JSON.parse(@view.panel.get('block-code').value)
     "toggle-error": ~>
