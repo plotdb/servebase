@@ -2,6 +2,8 @@ require! <[lderror @servebase/backend/aux https path node-fetch]>
 
 module.exports =
   sign: ({cfg, payload}) -> Promise.resolve({payload})
+  notified: ({body}) -> return {slug: body.slug, payload: {slug: body.slug}}
+  endpoint: ({cfg}) -> {url: \/ext/pay/gw/dummy/, method: \POST}
   # dummy 3rd party payment gateway emulator
   gateway:
     # POST /pay/gateway/dummy/pay

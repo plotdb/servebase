@@ -18,15 +18,22 @@ catch err
   return
 
 notify-handler = (req, res, next) ->
-  if !(slug = req.body.slug) => return lderror.reject 400
-  db.query """
-  update payment set (state, paidtime) = ('complete', now()) where slug = $1
-  returning key
-  """, [req.body.slug]
+  Promise.resolve!
+    .then ->
+      if !mods[cfg.gateway].notified => req.body
+      else mods[cfg.gateway].notified {body: req.body or {}}
+    .then (ret = {}) ->
+      if !(slug = ret.slug) => return lderror.reject 400
+      obj = name: cfg.gateway, payload: (ret.payload or {})
+      db.query """
+      update payment set (state, gateway, paidtime) = ('complete', $2, now()) where slug = $1
+      returning key
+      """, [slug, obj]
     .then (r={}) ->
       if r.[]rows.length < 1 => return lderror.reject 400
       res.send!
-done-handler = (req, res, next) -> res.send \done.
+
+backend.route.extapi.post \/pay/notify, (req, res, next) -> notify-handler req, res, next
 
 # generic route for accepting 3rd payment gateway redirection or notification
 done-handler = (route or {}).done or (req, res) ->
@@ -35,15 +42,14 @@ done-handler = (route or {}).done or (req, res) ->
 
 backend.route.extapp.post \/pay/done, done-handler
 
-# TODO encryption / decryption (gateway-based)
-backend.route.extapi.post \/pay/notify, (req, res, next) -> notify-handler req, res, next
-
 # this should return a prepared data for passing to 3rd party payment gateway,
 # based on the given gateway name.
 backend.route.api.post \/pay/sign, aux.signedin, ((perm or {}).sign or ((q,s,n)->n!)), (req, res, next) ->
   {payload, gateway} = (req.body or {})
   payload.slug = suuid!
-  ret = {state: \pending, slug: payload.slug}
+  endpoint = mods[gateway].endpoint or (->{})
+  endpoint = endpoint({cfg: gwinfo}) or {}
+  ret = { state: \pending, slug: payload.slug } <<< endpoint{url, method}
   Promise.resolve!
     .then ->
       if !(payload and gateway and mods[gateway] and mods[gateway].sign) => return lderror.reject 1020

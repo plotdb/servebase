@@ -14,6 +14,24 @@
         payload: payload
       });
     },
+    notified: function(arg$){
+      var body;
+      body = arg$.body;
+      return {
+        slug: body.slug,
+        payload: {
+          slug: body.slug
+        }
+      };
+    },
+    endpoint: function(arg$){
+      var cfg;
+      cfg = arg$.cfg;
+      return {
+        url: '/ext/pay/gw/dummy/',
+        method: 'POST'
+      };
+    },
     gateway: {
       pay: function(req, res, next){
         var host, slug, agent, url, cfg;

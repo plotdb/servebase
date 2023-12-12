@@ -20,19 +20,8 @@
       var gateway, url, payload, method, this$ = this;
       gateway = arg$.gateway, url = arg$.url, payload = arg$.payload, method = arg$.method;
       return servebase.corectx(function(arg$){
-        var core, ref$, url, method;
+        var core;
         core = arg$.core;
-        if (!url) {
-          ref$ = {
-            dummy: {
-              url: '/ext/pay/gw/dummy/',
-              method: 'POST'
-            }
-          }[gateway] || {}, url = ref$.url, method = ref$.method;
-        }
-        if (!(url && gateway)) {
-          return lderror.reject(1020);
-        }
         core.loader.on();
         return this$.prepare({
           payload: payload,
@@ -41,9 +30,12 @@
           return core.loader.off();
         }).then(function(ret){
           ret == null && (ret = {});
+          if (!url || ret.url) {
+            return lderror.reject(1020);
+          }
           this$.open({
-            url: url,
-            method: method || 'POST',
+            url: url || ret.url,
+            method: method || ret.method || 'POST',
             data: ret.payload
           });
           return {
@@ -71,7 +63,9 @@
           payload: ret.payload,
           slug: ret.slug,
           state: ret.state,
-          key: ret.key
+          key: ret.key,
+          url: ret.url,
+          method: ret.method
         };
       });
     },
@@ -84,17 +78,19 @@
         action: url,
         target: '_blank'
       };
-      for (k in attrs) {
-        v = attrs[k];
-        form.setAttribute(k, v);
-      }
-      for (k in data) {
-        v = data[k];
-        input = document.createElement('input');
-        input.setAttribute('type', 'hidden');
-        input.setAttribute('name', k);
-        input.value = v;
-        form.appendChild(input);
+      if (!method || method.toLowerCase() === 'post') {
+        for (k in attrs) {
+          v = attrs[k];
+          form.setAttribute(k, v);
+        }
+        for (k in data) {
+          v = data[k];
+          input = document.createElement('input');
+          input.setAttribute('type', 'hidden');
+          input.setAttribute('name', k);
+          input.value = v;
+          form.appendChild(input);
+        }
       }
       document.body.appendChild(form);
       return form.submit();

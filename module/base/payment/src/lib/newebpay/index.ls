@@ -1,15 +1,15 @@
 require! <[crypto @plotdb/suuid]>
 
-prepare = ({cfg, info}) ->
+prepare = ({cfg, payload}) ->
   TradeInfo =
     MerchantID: cfg.MerchantID
     RespondType: \JSON
     TimeStamp: Date.now!
     Version: \2.0
-    LangType: info.lng or \zh-tw
+    LangType: payload.lng or \zh-tw
     MerchantOrderNo: suuid!replace(/\./g,'0')
-    Amt: info.amount
-    ItemDesc: info.desc
+    Amt: payload.amount
+    ItemDesc: payload.desc or 'no description'
     ReturnURL: cfg.ReturnURL
     NotifyURL: cfg.NotifyURL
     Email: cfg.Email
@@ -27,13 +27,27 @@ prepare = ({cfg, info}) ->
   hash = crypto.createHash \sha256
   TradeSha = (hash.update(recode).digest \hex).toUpperCase!
 
-  return do
+  return
     MerchantID: cfg.MerchantID
     TradeInfo: code
     TradeSha: TradeSha
     Version: \2.0
 
 module.exports = do
-  #opt = url: \https://ccore.newebpay.com/MPG/mpg_gateway, form: prepare!
-  #request.post opt, (e, r, b) -> res.send!
-  sign: ({cfg, info}) -> return {data: prepare({cfg, info})}
+  sign: ({cfg, payload}) -> return {payload: prepare({cfg, payload})}
+  notified: ({body}) ->
+    try
+      code = body.TradeInfo
+      decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv)
+      decipher.setAutoPadding false
+      code = decipher.update(code, \hex, \utf-8) + decipher.final(\utf-8)
+      code = code.split(\&)
+        .map -> it.split(\=)
+        .map -> [it.0, decodeURIComponent(it.1)]
+      obj = Object.fromEntries(code)
+      return {slug: obj.TradeNo, payload: obj}
+    catch e
+      return null
+  endpoint: ({cfg}) ->
+    return if cfg.testing => url: \https://ccore.newebpay.com/MPG/mpg_gateway, method: \POST
+    else url: \https://core.newebpay.com/MPG/mpg_gateway, method: \POST

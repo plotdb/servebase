@@ -33,11 +33,26 @@
       return;
     }
     notifyHandler = function(req, res, next){
-      var slug;
-      if (!(slug = req.body.slug)) {
-        return lderror.reject(400);
-      }
-      return db.query("update payment set (state, paidtime) = ('complete', now()) where slug = $1\nreturning key", [req.body.slug]).then(function(r){
+      return Promise.resolve().then(function(){
+        if (!mods[cfg.gateway].notified) {
+          return req.body;
+        } else {
+          return mods[cfg.gateway].notified({
+            body: req.body || {}
+          });
+        }
+      }).then(function(ret){
+        var slug, obj;
+        ret == null && (ret = {});
+        if (!(slug = ret.slug)) {
+          return lderror.reject(400);
+        }
+        obj = {
+          name: cfg.gateway,
+          payload: ret.payload || {}
+        };
+        return db.query("update payment set (state, gateway, paidtime) = ('complete', $2, now()) where slug = $1\nreturning key", [slug, obj]);
+      }).then(function(r){
         r == null && (r = {});
         if ((r.rows || (r.rows = [])).length < 1) {
           return lderror.reject(400);
@@ -45,28 +60,31 @@
         return res.send();
       });
     };
-    doneHandler = function(req, res, next){
-      return res.send('done.');
-    };
+    backend.route.extapi.post('/pay/notify', function(req, res, next){
+      return notifyHandler(req, res, next);
+    });
     doneHandler = (route || {}).done || function(req, res){
       var fn;
       fn = path.join(path.dirname(__filename), '..', 'view/paid/index.pug');
       return res.render(fn, {});
     };
     backend.route.extapp.post('/pay/done', doneHandler);
-    backend.route.extapi.post('/pay/notify', function(req, res, next){
-      return notifyHandler(req, res, next);
-    });
     backend.route.api.post('/pay/sign', aux.signedin, (perm || {}).sign || function(q, s, n){
       return n();
     }, function(req, res, next){
-      var ref$, payload, gateway, ret;
+      var ref$, payload, gateway, endpoint, ret;
       ref$ = req.body || {}, payload = ref$.payload, gateway = ref$.gateway;
       payload.slug = suuid();
-      ret = {
+      endpoint = mods[gateway].endpoint || function(){
+        return {};
+      };
+      endpoint = endpoint({
+        cfg: gwinfo
+      }) || {};
+      ret = (ref$ = {
         state: 'pending',
         slug: payload.slug
-      };
+      }, ref$.url = endpoint.url, ref$.method = endpoint.method, ref$);
       return Promise.resolve().then(function(){
         if (!(payload && gateway && mods[gateway] && mods[gateway].sign)) {
           return lderror.reject(1020);

@@ -4,17 +4,17 @@
   crypto = require('crypto');
   suuid = require('@plotdb/suuid');
   prepare = function(arg$){
-    var cfg, info, TradeInfo, code, k, v, cipher, recode, hash, TradeSha;
-    cfg = arg$.cfg, info = arg$.info;
+    var cfg, payload, TradeInfo, code, k, v, cipher, recode, hash, TradeSha;
+    cfg = arg$.cfg, payload = arg$.payload;
     TradeInfo = {
       MerchantID: cfg.MerchantID,
       RespondType: 'JSON',
       TimeStamp: Date.now(),
       Version: '2.0',
-      LangType: info.lng || 'zh-tw',
+      LangType: payload.lng || 'zh-tw',
       MerchantOrderNo: suuid().replace(/\./g, '0'),
-      Amt: info.amount,
-      ItemDesc: info.desc,
+      Amt: payload.amount,
+      ItemDesc: payload.desc || 'no description',
       ReturnURL: cfg.ReturnURL,
       NotifyURL: cfg.NotifyURL,
       Email: cfg.Email,
@@ -41,14 +41,50 @@
   };
   module.exports = {
     sign: function(arg$){
-      var cfg, info;
-      cfg = arg$.cfg, info = arg$.info;
+      var cfg, payload;
+      cfg = arg$.cfg, payload = arg$.payload;
       return {
-        data: prepare({
+        payload: prepare({
           cfg: cfg,
-          info: info
+          payload: payload
         })
       };
+    },
+    notified: function(arg$){
+      var body, code, decipher, obj, e;
+      body = arg$.body;
+      try {
+        code = body.TradeInfo;
+        decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv);
+        decipher.setAutoPadding(false);
+        code = decipher.update(code, 'hex', 'utf-8') + decipher.final('utf-8');
+        code = code.split('&').map(function(it){
+          return it.split('=');
+        }).map(function(it){
+          return [it[0], decodeURIComponent(it[1])];
+        });
+        obj = Object.fromEntries(code);
+        return {
+          slug: obj.TradeNo,
+          payload: obj
+        };
+      } catch (e$) {
+        e = e$;
+        return null;
+      }
+    },
+    endpoint: function(arg$){
+      var cfg;
+      cfg = arg$.cfg;
+      return cfg.testing
+        ? {
+          url: 'https://ccore.newebpay.com/MPG/mpg_gateway',
+          method: 'POST'
+        }
+        : {
+          url: 'https://core.newebpay.com/MPG/mpg_gateway',
+          method: 'POST'
+        };
     }
   };
 }).call(this);
