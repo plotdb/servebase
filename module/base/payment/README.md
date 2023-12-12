@@ -11,8 +11,9 @@ Common flow of a payment:
  - 3rd party gateway tracks and confirm the payment, post result to `/extapi/pay/gw/:name/notify`
    - State of the corresponding internal payment record is marked as complete.
      (or, marked according to the reported result)
- - 3rd party gateway redirects user to `/ext/pay/gw/:name/done` if the payment is confirmed immediately.
+ - 3rd party gateway redirects user back if the payment is confirmed immediately.
    - e.g., payment with credit card.
+   - Returned URL is defined in config and payment gateway. e.g., `/ext/pay/done`.
 
 
 ## Frontend APIs
@@ -36,21 +37,22 @@ payment object provides following methods:
 
 ## Routes: Generic
 
- - `/extpi/pay/notify`: api accepting notification about a finished payment. (TBD)
- - `/ext/pay/done`: redirect page after a finished payment. (TBD)
+ - `/extpi/pay/notify`: api accepting notification about a finished payment.
+ - `/ext/pay/done`: generic redirect page after a finished payment.
  - `/pay/sign`: signing a payload before posting to 3rd party gateway.
  - POST `/pay/check`: check the state of a given payment. option:
    - `payload`: an object with `slug` field indicating the payment row to query
 
+
 ## Routes: Gateway Specific 
 
- - `/ext/pay/gw/:name`: payment page, showind payment detail and options / fields for users.
+ - `/ext/pay/gw/:name`: payment page, showing payment detail and options / fields for users.
    - only applicable for dummy gateway, or any gateway supporting customized payment page.
  - `/extapi/pay/gw/:name/pay`:api for taking care of the payment request.
    - only applicable for dummy gateway, or any gateway supporting customized payment page.
- - `/ext/pay/gw/:name/done`: redirect page after a finished payment. (TBD)
- - `/extapi/pay/gw/:name/notify: api accepting notification about a finished payment. (TBD)
-
+ - Following APIs will be needed when we support multiple gateways in the same site.
+ - `/ext/pay/gw/:name/done`: gateway specific redirect page after a finished payment.
+ - `/extapi/pay/gw/:name/notify: api accepting notification about a finished payment.
 
 
 ## Backend
@@ -81,8 +83,8 @@ You will have to configure server config file to enable payment, in `payment` fi
           MerchantID: "..."
           hashkey: "..."
           hashiv: "..."
-          ReturnURL: 'https://serve.base/ext/pay/gw/<gateway-name>/done'
-          NotifyURL: 'https://serve.base/extapi/pay/gw/<gateway-name>/notoify'
+          ReturnURL: 'https://serve.base/ext/pay/done'
+          NotifyURL: 'https://serve.base/extapi/pay/gw/<gateway-name>/notify'
           Email: "..."
 
 When `payment.gateway` is `dummy`, a dummy gateway will be automatically created in this server.
