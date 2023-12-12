@@ -84,7 +84,7 @@ You will have to configure server config file to enable payment, in `payment` fi
           hashkey: "..."
           hashiv: "..."
           ReturnURL: 'https://serve.base/ext/pay/done'
-          NotifyURL: 'https://serve.base/extapi/pay/gw/<gateway-name>/notify'
+          NotifyURL: 'https://serve.base/extapi/pay/notify'
           Email: "..."
 
 When `payment.gateway` is `dummy`, a dummy gateway will be automatically created in this server.
