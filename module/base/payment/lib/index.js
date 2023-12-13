@@ -38,7 +38,7 @@
           return req.body;
         } else {
           return mods[cfg.gateway].notified({
-            cfg: cfg,
+            cfg: gwinfo,
             body: req.body || {}
           });
         }

@@ -21,7 +21,7 @@ notify-handler = (req, res, next) ->
   Promise.resolve!
     .then ->
       if !mods[cfg.gateway].notified => req.body
-      else mods[cfg.gateway].notified {cfg, body: req.body or {}}
+      else mods[cfg.gateway].notified {cfg: gwinfo, body: req.body or {}}
     .then (ret = {}) ->
       if !(slug = ret.slug) => return lderror.reject 400
       obj = name: cfg.gateway, payload: (ret.payload or {})
