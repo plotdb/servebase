@@ -72,10 +72,14 @@
     backend.route.api.post('/pay/sign', aux.signedin, (perm || {}).sign || function(q, s, n){
       return n();
     }, function(req, res, next){
-      var ref$, payload, gateway, endpoint, ret;
-      ref$ = req.body || {}, payload = ref$.payload, gateway = ref$.gateway;
+      var payload, gateway, mod, endpoint, ret, ref$;
+      payload = (req.body || {}).payload;
+      gateway = (req.body || {}).gateway || cfg.gateway;
+      if (!(payload && gateway && (mod = mods[gateway]) && mod.sign)) {
+        return lderror.reject(1020);
+      }
       payload.slug = suuid();
-      endpoint = mods[gateway].endpoint || function(){
+      endpoint = mod.endpoint || function(){
         return {};
       };
       endpoint = endpoint({
@@ -86,9 +90,6 @@
         slug: payload.slug
       }, ref$.url = endpoint.url, ref$.method = endpoint.method, ref$);
       return Promise.resolve().then(function(){
-        if (!(payload && gateway && mods[gateway] && mods[gateway].sign)) {
-          return lderror.reject(1020);
-        }
         return db.query("insert into payment (owner, scope, slug, gateway, state) values ($1,$2,$3,$4,$5)\nreturning key", [
           req.user.key, payload.scope, payload.slug, {
             gateway: gateway
@@ -97,7 +98,7 @@
       }).then(function(r){
         r == null && (r = {});
         ret.key = (r.rows || (r.rows = []))[0].key;
-        return mods[gateway].sign({
+        return mod.sign({
           cfg: gwinfo,
           payload: payload
         });

@@ -45,21 +45,22 @@ backend.route.extapp.post \/pay/done, done-handler
 # this should return a prepared data for passing to 3rd party payment gateway,
 # based on the given gateway name.
 backend.route.api.post \/pay/sign, aux.signedin, ((perm or {}).sign or ((q,s,n)->n!)), (req, res, next) ->
-  {payload, gateway} = (req.body or {})
+  payload = (req.body or {}).payload
+  gateway = (req.body or {}).gateway or cfg.gateway
+  if !(payload and gateway and (mod = mods[gateway]) and mod.sign) => return lderror.reject 1020
   payload.slug = suuid!
-  endpoint = mods[gateway].endpoint or (->{})
+  endpoint = mod.endpoint or (->{})
   endpoint = endpoint({cfg: gwinfo}) or {}
   ret = { state: \pending, slug: payload.slug } <<< endpoint{url, method}
   Promise.resolve!
     .then ->
-      if !(payload and gateway and mods[gateway] and mods[gateway].sign) => return lderror.reject 1020
       db.query """
       insert into payment (owner, scope, slug, gateway, state) values ($1,$2,$3,$4,$5)
       returning key
       """, [req.user.key, payload.scope, payload.slug, {gateway}, \pending]
     .then (r={}) ->
       ret.key = r.[]rows.0.key
-      mods[gateway].sign {cfg: gwinfo, payload}
+      mod.sign {cfg: gwinfo, payload}
     .then ({payload}) -> res.send(ret <<< {payload})
 
 backend.route.api.post \/pay/check, aux.signedin, (req, res, next) ->
