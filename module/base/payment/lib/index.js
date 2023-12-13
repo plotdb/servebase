@@ -38,6 +38,7 @@
           return req.body;
         } else {
           return mods[cfg.gateway].notified({
+            cfg: cfg,
             body: req.body || {}
           });
         }

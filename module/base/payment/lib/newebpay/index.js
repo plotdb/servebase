@@ -58,27 +58,22 @@
       };
     },
     notified: function(arg$){
-      var body, code, decipher, obj, e;
-      body = arg$.body;
-      try {
-        code = body.TradeInfo;
-        decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv);
-        decipher.setAutoPadding(false);
-        code = decipher.update(code, 'hex', 'utf-8') + decipher.final('utf-8');
-        code = code.split('&').map(function(it){
-          return it.split('=');
-        }).map(function(it){
-          return [it[0], decodeURIComponent(it[1])];
-        });
-        obj = Object.fromEntries(code);
-        return {
-          slug: obj.TradeNo,
-          payload: obj
-        };
-      } catch (e$) {
-        e = e$;
-        return null;
-      }
+      var cfg, body, code, decipher, obj;
+      cfg = arg$.cfg, body = arg$.body;
+      code = body.TradeInfo;
+      decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv);
+      decipher.setAutoPadding(false);
+      code = decipher.update(code, 'hex', 'utf-8') + decipher.final('utf-8');
+      code = code.split('&').map(function(it){
+        return it.split('=');
+      }).map(function(it){
+        return [it[0], decodeURIComponent(it[1])];
+      });
+      obj = Object.fromEntries(code);
+      return {
+        slug: obj.TradeNo,
+        payload: obj
+      };
     },
     endpoint: function(arg$){
       var cfg;

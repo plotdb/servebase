@@ -40,19 +40,16 @@ prepare = ({cfg, payload}) ->
 
 module.exports = do
   sign: ({cfg, payload}) -> return {payload: prepare({cfg, payload})}
-  notified: ({body}) ->
-    try
-      code = body.TradeInfo
-      decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv)
-      decipher.setAutoPadding false
-      code = decipher.update(code, \hex, \utf-8) + decipher.final(\utf-8)
-      code = code.split(\&)
-        .map -> it.split(\=)
-        .map -> [it.0, decodeURIComponent(it.1)]
-      obj = Object.fromEntries(code)
-      return {slug: obj.TradeNo, payload: obj}
-    catch e
-      return null
+  notified: ({cfg, body}) ->
+    code = body.TradeInfo
+    decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv)
+    decipher.setAutoPadding false
+    code = decipher.update(code, \hex, \utf-8) + decipher.final(\utf-8)
+    code = code.split(\&)
+      .map -> it.split(\=)
+      .map -> [it.0, decodeURIComponent(it.1)]
+    obj = Object.fromEntries(code)
+    return {slug: obj.TradeNo, payload: obj}
   endpoint: ({cfg}) ->
     return if cfg.testing => url: \https://ccore.newebpay.com/MPG/mpg_gateway, method: \POST
     else url: \https://core.newebpay.com/MPG/mpg_gateway, method: \POST
