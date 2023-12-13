@@ -22,7 +22,9 @@ payment object provides following methods:
 
  - `request(opt)`: request a payment to 3rd party payment gateway.
    - opt is an object with following fields:
-     - `gateway`: payment gateway name. Corresponding config in server config must exist.
+     - `gateway`: optional payment gateway name. Corresponding config in server config must exist.
+       - this can be used to hint a preferrable gateway,
+         but for now only one gateway is supported so this is not required.
      - `url`: optional. Alternative URL to payment gateway.
      - `payload`: payment information. Passed to server for signing, and then sent to payment gateway.
        - common fields as follows. Gateways may require additional fields.
