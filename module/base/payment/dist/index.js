@@ -30,11 +30,12 @@
           return core.loader.off();
         }).then(function(ret){
           ret == null && (ret = {});
-          if (!url || ret.url) {
+          url = url || ret.url;
+          if (!url) {
             return lderror.reject(1020);
           }
           this$.open({
-            url: url || ret.url,
+            url: url,
             method: method || ret.method || 'POST',
             data: ret.payload
           });

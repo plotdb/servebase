@@ -8,8 +8,9 @@ payment =
     @prepare {payload, gateway}
       .finally -> core.loader.off!
       .then (ret = {}) ~> 
-        if !url or ret.url => return lderror.reject 1020
-        @open {url: url or ret.url, method: (method or ret.method or \POST), data: ret.payload}
+        url := url or ret.url
+        if !url => return lderror.reject 1020
+        @open {url: url, method: (method or ret.method or \POST), data: ret.payload}
         return ret{slug, state, key}
 
   prepare: ({payload, gateway}) ->
