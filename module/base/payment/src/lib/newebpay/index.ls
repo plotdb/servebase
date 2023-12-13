@@ -1,6 +1,11 @@
-require! <[crypto @plotdb/suuid]>
+require! <[crypto @plotdb/suuid lderror]>
 
 prepare = ({cfg, payload}) ->
+  # newebpay only accept integer. so if the result before after rounding is not the same,
+  # we should always throw error.
+  amt = if typeof(payload.amount) != \string => payload.amount
+  else parseFloat(payload.amount)
+  if isNaN(amt) or amt != Math.floor(amt) => throw lderror 1020
   TradeInfo =
     MerchantID: cfg.MerchantID
     RespondType: \JSON
@@ -8,7 +13,7 @@ prepare = ({cfg, payload}) ->
     Version: \2.0
     LangType: payload.lng or \zh-tw
     MerchantOrderNo: suuid!replace(/\./g,'0')
-    Amt: payload.amount
+    Amt: Math.floor(amt).toFixed(0)
     ItemDesc: payload.desc or 'no description'
     ReturnURL: cfg.ReturnURL
     NotifyURL: cfg.NotifyURL
