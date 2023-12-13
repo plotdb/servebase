@@ -30,25 +30,19 @@ notify-handler = (req, res, next) ->
       where #{if slug? => 'slug = $1' else 'key = $1'}
       returning key
       """, [(if slug? => slug else key), obj, (ret.state or \pending)]
-    .then (r={}) ->
-      if r.[]rows.length < 1 => return lderror.reject 400
-      res.send!
+        .then (r={}) ->
+          if r.[]rows.length < 1 => return lderror.reject 400
+          return obj
 
-backend.route.extapi.post \/pay/notify, (req, res, next) -> notify-handler req, res, next
+backend.route.extapi.post \/pay/notify, (req, res, next) ->
+  notify-handler req, res, next .then -> res.send!
 
 # generic route for accepting 3rd payment gateway redirection or notification
-done-handler = (route or {}).done or (req, res) ->
-  Promise.resolve!
-    .then ->
-      if !mods[cfg.gateway].notified => req.body
-      else mods[cfg.gateway].notified {cfg: gwinfo, body: req.body or {}}
-    .then (ret = {}) ->
-      if !((slug = ret.slug) or (key = ret.key)) => return lderror.reject 400
-      obj = name: cfg.gateway, payload: (ret.payload or {})
+backend.route.extapp.post \/pay/done, (req, res, next) ->
+  notify-handler req, res, next
+    .then (obj = {}) ->
       fn = path.join(path.dirname(__filename), '..', 'view/done/index.pug')
       res.render fn, {exports: obj}
-
-backend.route.extapp.post \/pay/done, done-handler
 
 # this should return a prepared data for passing to 3rd party payment gateway,
 # based on the given gateway name.

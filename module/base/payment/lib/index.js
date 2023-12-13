@@ -3,7 +3,7 @@
   (function(it){
     return module.exports = it;
   })(function(arg$){
-    var route, perm, backend, db, cfg, gwinfo, path, lderror, https, aux, suuid, fs, fetch, log, mods, err, notifyHandler, doneHandler, gw;
+    var route, perm, backend, db, cfg, gwinfo, path, lderror, https, aux, suuid, fs, fetch, log, mods, err, notifyHandler, gw;
     route = arg$.route, perm = arg$.perm, backend = arg$.backend;
     db = backend.db;
     if (!(cfg = backend.config.payment)) {
@@ -52,45 +52,30 @@
           name: cfg.gateway,
           payload: ret.payload || {}
         };
-        return db.query("update payment set (state, gateway, paidtime) = ($3, $2, now())\nwhere " + (slug != null ? 'slug = $1' : 'key = $1') + "\nreturning key", [slug != null ? slug : key, obj, ret.state || 'pending']);
-      }).then(function(r){
-        r == null && (r = {});
-        if ((r.rows || (r.rows = [])).length < 1) {
-          return lderror.reject(400);
-        }
-        return res.send();
+        return db.query("update payment set (state, gateway, paidtime) = ($3, $2, now())\nwhere " + (slug != null ? 'slug = $1' : 'key = $1') + "\nreturning key", [slug != null ? slug : key, obj, ret.state || 'pending']).then(function(r){
+          r == null && (r = {});
+          if ((r.rows || (r.rows = [])).length < 1) {
+            return lderror.reject(400);
+          }
+          return obj;
+        });
       });
     };
     backend.route.extapi.post('/pay/notify', function(req, res, next){
-      return notifyHandler(req, res, next);
+      return notifyHandler(req, res, next).then(function(){
+        return res.send();
+      });
     });
-    doneHandler = (route || {}).done || function(req, res){
-      return Promise.resolve().then(function(){
-        if (!mods[cfg.gateway].notified) {
-          return req.body;
-        } else {
-          return mods[cfg.gateway].notified({
-            cfg: gwinfo,
-            body: req.body || {}
-          });
-        }
-      }).then(function(ret){
-        var slug, key, obj, fn;
-        ret == null && (ret = {});
-        if (!((slug = ret.slug) || (key = ret.key))) {
-          return lderror.reject(400);
-        }
-        obj = {
-          name: cfg.gateway,
-          payload: ret.payload || {}
-        };
+    backend.route.extapp.post('/pay/done', function(req, res, next){
+      return notifyHandler(req, res, next).then(function(obj){
+        var fn;
+        obj == null && (obj = {});
         fn = path.join(path.dirname(__filename), '..', 'view/done/index.pug');
         return res.render(fn, {
           exports: obj
         });
       });
-    };
-    backend.route.extapp.post('/pay/done', doneHandler);
+    });
     backend.route.api.post('/pay/sign', aux.signedin, (perm || {}).sign || function(q, s, n){
       return n();
     }, function(req, res, next){
