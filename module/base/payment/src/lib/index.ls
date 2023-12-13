@@ -27,7 +27,7 @@ notify-handler = (req, res, next) ->
       obj = name: cfg.gateway, payload: (ret.payload or {})
       db.query """
       update payment set (state, gateway, paidtime) = ('complete', $2, now())
-      where #{if slug? => 'slug = $1' else 'key = $1'}}
+      where #{if slug? => 'slug = $1' else 'key = $1'}
       returning key
       """, [(if slug? => slug else key), obj]
     .then (r={}) ->

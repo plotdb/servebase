@@ -52,7 +52,7 @@
           name: cfg.gateway,
           payload: ret.payload || {}
         };
-        return db.query("update payment set (state, gateway, paidtime) = ('complete', $2, now())\nwhere " + (slug != null ? 'slug = $1' : 'key = $1') + "}\nreturning key", [slug != null ? slug : key, obj]);
+        return db.query("update payment set (state, gateway, paidtime) = ('complete', $2, now())\nwhere " + (slug != null ? 'slug = $1' : 'key = $1') + "\nreturning key", [slug != null ? slug : key, obj]);
       }).then(function(r){
         r == null && (r = {});
         if ((r.rows || (r.rows = [])).length < 1) {
