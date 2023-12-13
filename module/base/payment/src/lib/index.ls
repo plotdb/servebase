@@ -26,10 +26,10 @@ notify-handler = (req, res, next) ->
       if !((slug = ret.slug) or (key = ret.key)) => return lderror.reject 400
       obj = name: cfg.gateway, payload: (ret.payload or {})
       db.query """
-      update payment set (state, gateway, paidtime) = ('complete', $2, now())
+      update payment set (state, gateway, paidtime) = ($3, $2, now())
       where #{if slug? => 'slug = $1' else 'key = $1'}
       returning key
-      """, [(if slug? => slug else key), obj]
+      """, [(if slug? => slug else key), obj, (ret.state or \pending)]
     .then (r={}) ->
       if r.[]rows.length < 1 => return lderror.reject 400
       res.send!
@@ -38,8 +38,15 @@ backend.route.extapi.post \/pay/notify, (req, res, next) -> notify-handler req, 
 
 # generic route for accepting 3rd payment gateway redirection or notification
 done-handler = (route or {}).done or (req, res) ->
-  fn = path.join(path.dirname(__filename), '..', 'view/paid/index.pug')
-  res.render fn, {}
+  Promise.resolve!
+    .then ->
+      if !mods[cfg.gateway].notified => req.body
+      else mods[cfg.gateway].notified {cfg: gwinfo, body: req.body or {}}
+    .then (ret = {}) ->
+      if !((slug = ret.slug) or (key = ret.key)) => return lderror.reject 400
+      obj = name: cfg.gateway, payload: (ret.payload or {})
+      fn = path.join(path.dirname(__filename), '..', 'view/done/index.pug')
+      res.render fn, {exports: obj}
 
 backend.route.extapp.post \/pay/done, done-handler
 

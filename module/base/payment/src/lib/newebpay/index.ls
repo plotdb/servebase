@@ -47,7 +47,8 @@ module.exports = do
     code = decipher.update(code, \hex, \utf-8) + decipher.final(\utf-8)
     code = code.substring(0, code.length - code.charCodeAt(code.length - 1))
     obj = JSON.parse(code)
-    return {key: obj.{}Result.MerchantOrderNo, payload: obj}
+    state = if obj.Status == \SUCCESS => \complete else \pending
+    return {key: obj.{}Result.MerchantOrderNo, payload: obj, state}
   endpoint: ({cfg}) ->
     return if cfg.testing => url: \https://ccore.newebpay.com/MPG/mpg_gateway, method: \POST
     else url: \https://core.newebpay.com/MPG/mpg_gateway, method: \POST

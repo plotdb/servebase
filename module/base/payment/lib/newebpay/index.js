@@ -58,7 +58,7 @@
       };
     },
     notified: function(arg$){
-      var cfg, body, code, decipher, obj;
+      var cfg, body, code, decipher, obj, state;
       cfg = arg$.cfg, body = arg$.body;
       code = body.TradeInfo;
       decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv);
@@ -66,9 +66,11 @@
       code = decipher.update(code, 'hex', 'utf-8') + decipher.final('utf-8');
       code = code.substring(0, code.length - code.charCodeAt(code.length - 1));
       obj = JSON.parse(code);
+      state = obj.Status === 'SUCCESS' ? 'complete' : 'pending';
       return {
         key: (obj.Result || (obj.Result = {})).MerchantOrderNo,
-        payload: obj
+        payload: obj,
+        state: state
       };
     },
     endpoint: function(arg$){

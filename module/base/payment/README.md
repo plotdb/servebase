@@ -54,7 +54,7 @@ payment object provides following methods:
    - `payload`: an object with `slug` field indicating the payment row to query
 
 
-## Routes: Gateway Specific 
+## Routes: Gateway Specific
 
  - `/ext/pay/gw/:name`: payment page, showing payment detail and options / fields for users.
    - only applicable for dummy gateway, or any gateway supporting customized payment page.
@@ -79,6 +79,41 @@ where `opt` is an object with following fields:
    - `done(req, res, next)`: for redirection from a completed payment.
  - `perm`: permission check middlewares before different actions:
    - `sign(req, res, next)`: verify if a given signing attempt should be allowed.
+
+
+## Gateway Provider
+
+ - `endpoint(opt)`: return frontend endpoint for opening payment page by sending signed data
+   - option:
+     - `cfg`: gateway configuration defined in secret file.
+   - return an object `{url, method}` where:
+     - `url`: URL for posting data to open as a payment page
+     - `method`: HTTP methods, either `GET`, `POST`, `PUT`.
+ - `sign(opt)`: sign / acquire necessary information for frontend payment page creation.
+   - option:
+     - `cfg`: gateway configuration defined in secret file.
+     - `payload`: payment information object, including following fields:
+       - `amount`: payment amount. Note: should be a string.
+       - `desc`: item description.
+       - `lng`: language hint about how payment page should be rendered.
+       - `slug`: payment record unique slug
+       - `key`: payment record index key. Always a number.
+       - `email`: payer email
+   - return (a promise resolving with) an object with following fields:
+     - `payload`: data to send to 3rd provider payment page.
+ - `notified(opt)`: parse incoming message for payment status notification.
+   - option:
+     - `cfg`: gateway configuration defined in secret file.
+     - `body`: incoming data object
+   - return (a promise resolveing with) an object with following fields:
+     - `slug`: (optional) slug of the record this notification is for
+     - `key`: (optional) key of the record this notification is for
+       - note: at least one of `slug` and `key` should be provided. When both, `slug` is used.
+     - `payload`: returned detail from provider about this payment.
+     - `state`: indicating the result of the payment. either one of:
+       - `complete`: payment is complete.
+       - `pending`: payment is still pending.
+       - (TBD) other state.
 
 
 ## Configuration

@@ -52,7 +52,7 @@
           name: cfg.gateway,
           payload: ret.payload || {}
         };
-        return db.query("update payment set (state, gateway, paidtime) = ('complete', $2, now())\nwhere " + (slug != null ? 'slug = $1' : 'key = $1') + "\nreturning key", [slug != null ? slug : key, obj]);
+        return db.query("update payment set (state, gateway, paidtime) = ($3, $2, now())\nwhere " + (slug != null ? 'slug = $1' : 'key = $1') + "\nreturning key", [slug != null ? slug : key, obj, ret.state || 'pending']);
       }).then(function(r){
         r == null && (r = {});
         if ((r.rows || (r.rows = [])).length < 1) {
@@ -65,9 +65,30 @@
       return notifyHandler(req, res, next);
     });
     doneHandler = (route || {}).done || function(req, res){
-      var fn;
-      fn = path.join(path.dirname(__filename), '..', 'view/paid/index.pug');
-      return res.render(fn, {});
+      return Promise.resolve().then(function(){
+        if (!mods[cfg.gateway].notified) {
+          return req.body;
+        } else {
+          return mods[cfg.gateway].notified({
+            cfg: gwinfo,
+            body: req.body || {}
+          });
+        }
+      }).then(function(ret){
+        var slug, key, obj, fn;
+        ret == null && (ret = {});
+        if (!((slug = ret.slug) || (key = ret.key))) {
+          return lderror.reject(400);
+        }
+        obj = {
+          name: cfg.gateway,
+          payload: ret.payload || {}
+        };
+        fn = path.join(path.dirname(__filename), '..', 'view/done/index.pug');
+        return res.render(fn, {
+          exports: obj
+        });
+      });
     };
     backend.route.extapp.post('/pay/done', doneHandler);
     backend.route.api.post('/pay/sign', aux.signedin, (perm || {}).sign || function(q, s, n){
