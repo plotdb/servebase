@@ -24,7 +24,7 @@
       ItemDesc: payload.desc || 'no description',
       ReturnURL: cfg.ReturnURL,
       NotifyURL: cfg.NotifyURL,
-      Email: cfg.Email,
+      Email: payload.email || '',
       LoginType: 0
     };
     code = [];
@@ -64,14 +64,10 @@
       decipher = crypto.createDecipheriv('aes-256-cbc', cfg.hashkey, cfg.hashiv);
       decipher.setAutoPadding(false);
       code = decipher.update(code, 'hex', 'utf-8') + decipher.final('utf-8');
-      code = code.split('&').map(function(it){
-        return it.split('=');
-      }).map(function(it){
-        return [it[0], decodeURIComponent(it[1])];
-      });
-      obj = Object.fromEntries(code);
+      code = code.substring(0, code.length - code.charCodeAt(code.length - 1));
+      obj = JSON.parse(code);
       return {
-        slug: obj.TradeNo,
+        slug: (obj.Result || (obj.Result = {})).TradeNo,
         payload: obj
       };
     },

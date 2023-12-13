@@ -49,6 +49,7 @@ backend.route.api.post \/pay/sign, aux.signedin, ((perm or {}).sign or ((q,s,n)-
   gateway = (req.body or {}).gateway or cfg.gateway
   if !(payload and gateway and (mod = mods[gateway]) and mod.sign) => return lderror.reject 1020
   payload.slug = suuid!
+  payload.email = req.user.username
   endpoint = mod.endpoint or (->{})
   endpoint = endpoint({cfg: gwinfo}) or {}
   ret = { state: \pending, slug: payload.slug } <<< endpoint{url, method}

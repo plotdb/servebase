@@ -80,6 +80,7 @@
         return lderror.reject(1020);
       }
       payload.slug = suuid();
+      payload.email = req.user.username;
       endpoint = mod.endpoint || function(){
         return {};
       };
