@@ -3,6 +3,7 @@ create table if not exists payment (
   owner int references users(key), -- user who creates this recrod.
   scope text, -- slug of scope this payment is in.
   slug text, -- slug of this payment.
+  payload jsonb, -- data sent to gateway.
   gateway jsonb, -- data collected from gateway.
   invoice jsonb, -- invoice information
   createdtime timestamp default now(),

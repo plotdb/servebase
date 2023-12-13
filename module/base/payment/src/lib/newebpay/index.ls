@@ -12,7 +12,7 @@ prepare = ({cfg, payload}) ->
     TimeStamp: Date.now!
     Version: \2.0
     LangType: payload.lng or \zh-tw
-    MerchantOrderNo: suuid!replace(/\./g,'0')
+    MerchantOrderNo: payload.key
     Amt: Math.floor(amt).toFixed(0)
     ItemDesc: payload.desc or 'no description'
     ReturnURL: cfg.ReturnURL
@@ -47,7 +47,7 @@ module.exports = do
     code = decipher.update(code, \hex, \utf-8) + decipher.final(\utf-8)
     code = code.substring(0, code.length - code.charCodeAt(code.length - 1))
     obj = JSON.parse(code)
-    return {slug: obj.{}Result.MerchantOrderNo, payload: obj}
+    return {key: obj.{}Result.MerchantOrderNo, payload: obj}
   endpoint: ({cfg}) ->
     return if cfg.testing => url: \https://ccore.newebpay.com/MPG/mpg_gateway, method: \POST
     else url: \https://core.newebpay.com/MPG/mpg_gateway, method: \POST

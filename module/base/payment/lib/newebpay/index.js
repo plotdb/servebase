@@ -19,7 +19,7 @@
       TimeStamp: Date.now(),
       Version: '2.0',
       LangType: payload.lng || 'zh-tw',
-      MerchantOrderNo: suuid().replace(/\./g, '0'),
+      MerchantOrderNo: payload.key,
       Amt: Math.floor(amt).toFixed(0),
       ItemDesc: payload.desc || 'no description',
       ReturnURL: cfg.ReturnURL,
@@ -67,7 +67,7 @@
       code = code.substring(0, code.length - code.charCodeAt(code.length - 1));
       obj = JSON.parse(code);
       return {
-        slug: (obj.Result || (obj.Result = {})).MerchantOrderNo,
+        key: (obj.Result || (obj.Result = {})).MerchantOrderNo,
         payload: obj
       };
     },

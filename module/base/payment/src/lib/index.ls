@@ -23,12 +23,13 @@ notify-handler = (req, res, next) ->
       if !mods[cfg.gateway].notified => req.body
       else mods[cfg.gateway].notified {cfg: gwinfo, body: req.body or {}}
     .then (ret = {}) ->
-      if !(slug = ret.slug) => return lderror.reject 400
+      if !((slug = ret.slug) or (key = ret.key)) => return lderror.reject 400
       obj = name: cfg.gateway, payload: (ret.payload or {})
       db.query """
-      update payment set (state, gateway, paidtime) = ('complete', $2, now()) where slug = $1
+      update payment set (state, gateway, paidtime) = ('complete', $2, now())
+      where #{if slug? => 'slug = $1' else 'key = $1'}}
       returning key
-      """, [slug, obj]
+      """, [(if slug? => slug else key), obj]
     .then (r={}) ->
       if r.[]rows.length < 1 => return lderror.reject 400
       res.send!
@@ -56,11 +57,12 @@ backend.route.api.post \/pay/sign, aux.signedin, ((perm or {}).sign or ((q,s,n)-
   Promise.resolve!
     .then ->
       db.query """
-      insert into payment (owner, scope, slug, gateway, state) values ($1,$2,$3,$4,$5)
+      insert into payment (owner, scope, slug, payload, gateway, state) values ($1,$2,$3,$4,$5,$6)
       returning key
-      """, [req.user.key, payload.scope, payload.slug, {gateway}, \pending]
+      """, [req.user.key, payload.scope, payload.slug, payload, {gateway}, \pending]
     .then (r={}) ->
       ret.key = r.[]rows.0.key
+      payload.key = ret.key
       mod.sign {cfg: gwinfo, payload}
     .then ({payload}) -> res.send(ret <<< {payload})
 

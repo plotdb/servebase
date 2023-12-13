@@ -43,16 +43,16 @@
           });
         }
       }).then(function(ret){
-        var slug, obj;
+        var slug, key, obj;
         ret == null && (ret = {});
-        if (!(slug = ret.slug)) {
+        if (!((slug = ret.slug) || (key = ret.key))) {
           return lderror.reject(400);
         }
         obj = {
           name: cfg.gateway,
           payload: ret.payload || {}
         };
-        return db.query("update payment set (state, gateway, paidtime) = ('complete', $2, now()) where slug = $1\nreturning key", [slug, obj]);
+        return db.query("update payment set (state, gateway, paidtime) = ('complete', $2, now())\nwhere " + (slug != null ? 'slug = $1' : 'key = $1') + "}\nreturning key", [slug != null ? slug : key, obj]);
       }).then(function(r){
         r == null && (r = {});
         if ((r.rows || (r.rows = [])).length < 1) {
@@ -92,14 +92,15 @@
         slug: payload.slug
       }, ref$.url = endpoint.url, ref$.method = endpoint.method, ref$);
       return Promise.resolve().then(function(){
-        return db.query("insert into payment (owner, scope, slug, gateway, state) values ($1,$2,$3,$4,$5)\nreturning key", [
-          req.user.key, payload.scope, payload.slug, {
+        return db.query("insert into payment (owner, scope, slug, payload, gateway, state) values ($1,$2,$3,$4,$5,$6)\nreturning key", [
+          req.user.key, payload.scope, payload.slug, payload, {
             gateway: gateway
           }, 'pending'
         ]);
       }).then(function(r){
         r == null && (r = {});
         ret.key = (r.rows || (r.rows = []))[0].key;
+        payload.key = ret.key;
         return mod.sign({
           cfg: gwinfo,
           payload: payload
