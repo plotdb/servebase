@@ -67,7 +67,7 @@
       code = code.substring(0, code.length - code.charCodeAt(code.length - 1));
       obj = JSON.parse(code);
       return {
-        slug: (obj.Result || (obj.Result = {})).TradeNo,
+        slug: (obj.Result || (obj.Result = {})).MerchantOrderNo,
         payload: obj
       };
     },
