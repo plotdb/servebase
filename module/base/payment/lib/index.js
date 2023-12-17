@@ -78,6 +78,7 @@
       });
     };
     backend.route.extapp.post('/pay/done', doneRouter);
+    backend.route.extapp.get('/pay/done', doneRouter);
     backend.route.api.post('/pay/sign', aux.signedin, (perm || {}).sign || function(q, s, n){
       return n();
     }, function(req, res, next){

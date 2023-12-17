@@ -22,8 +22,8 @@ payment =
   open: ({url, method, data}) ->
     form = document.createElement \form
     attrs = method: method or \post, action: url, target: \_blank
+    for k,v of attrs => form.setAttribute k, v
     if !method or method.toLowerCase! == \post =>
-      for k,v of attrs => form.setAttribute k, v
       for k,v of data =>
         input = document.createElement \input
         input.setAttribute \type, \hidden

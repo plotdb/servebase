@@ -79,11 +79,11 @@
         action: url,
         target: '_blank'
       };
+      for (k in attrs) {
+        v = attrs[k];
+        form.setAttribute(k, v);
+      }
       if (!method || method.toLowerCase() === 'post') {
-        for (k in attrs) {
-          v = attrs[k];
-          form.setAttribute(k, v);
-        }
         for (k in data) {
           v = data[k];
           input = document.createElement('input');

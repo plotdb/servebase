@@ -44,6 +44,7 @@ done-router = (req, res, next) ->
       fn = path.join(path.dirname(__filename), '..', 'view/done/index.pug')
       res.render fn, {exports: obj}
 backend.route.extapp.post \/pay/done, done-router
+backend.route.extapp.get \/pay/done, done-router
 
 # this should return a prepared data for passing to 3rd party payment gateway,
 # based on the given gateway name.
