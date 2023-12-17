@@ -3,7 +3,7 @@
   (function(it){
     return module.exports = it;
   })(function(arg$){
-    var route, perm, backend, db, cfg, gwinfo, path, lderror, https, aux, suuid, fs, fetch, log, mods, err, notifyHandler, gw;
+    var route, perm, backend, db, cfg, gwinfo, path, lderror, https, aux, suuid, fs, fetch, log, mods, err, notifyHandler, notifyRouter, doneRouter, gw;
     route = arg$.route, perm = arg$.perm, backend = arg$.backend;
     db = backend.db;
     if (!(cfg = backend.config.payment)) {
@@ -61,12 +61,13 @@
         });
       });
     };
-    backend.route.extapi.post('/pay/notify', function(req, res, next){
+    notifyRouter = function(req, res, next){
       return notifyHandler(req, res, next).then(function(){
         return res.send();
       });
-    });
-    backend.route.extapp.post('/pay/done', function(req, res, next){
+    };
+    backend.route.extapi.post('/pay/notify', notifyRouter);
+    doneRouter = function(req, res, next){
       return notifyHandler(req, res, next).then(function(obj){
         var fn;
         obj == null && (obj = {});
@@ -75,7 +76,8 @@
           exports: obj
         });
       });
-    });
+    };
+    backend.route.extapp.post('/pay/done', doneRouter);
     backend.route.api.post('/pay/sign', aux.signedin, (perm || {}).sign || function(q, s, n){
       return n();
     }, function(req, res, next){
@@ -133,10 +135,10 @@
       backend.route.extapi.post('/pay/gw/dummy/pay', gw.pay);
       backend.route.extapi.post('/pay/gw/dummy/notify', gw.notify || function(q, s, n){
         return n();
-      }, notifyHandler);
+      }, notifyRouter);
       backend.route.extapi.post('/pay/gw/dummy/done', gw.done || function(q, s, n){
         return n();
-      }, doneHandler);
+      }, doneRouter);
       return backend.route.extapp.post('/pay/gw/dummy/', gw.page);
     }
   });

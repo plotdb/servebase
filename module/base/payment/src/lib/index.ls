@@ -34,15 +34,16 @@ notify-handler = (req, res, next) ->
           if r.[]rows.length < 1 => return lderror.reject 400
           return obj
 
-backend.route.extapi.post \/pay/notify, (req, res, next) ->
-  notify-handler req, res, next .then -> res.send!
+notify-router = (req, res, next) -> notify-handler req, res, next .then -> res.send!
+backend.route.extapi.post \/pay/notify, notify-router
 
 # generic route for accepting 3rd payment gateway redirection or notification
-backend.route.extapp.post \/pay/done, (req, res, next) ->
+done-router = (req, res, next) ->
   notify-handler req, res, next
     .then (obj = {}) ->
       fn = path.join(path.dirname(__filename), '..', 'view/done/index.pug')
       res.render fn, {exports: obj}
+backend.route.extapp.post \/pay/done, done-router
 
 # this should return a prepared data for passing to 3rd party payment gateway,
 # based on the given gateway name.
@@ -78,7 +79,7 @@ if cfg.gateway == \dummy =>
   gw = mods.dummy.gateway
   # we consider these endpoints as 3rd parties and thus CSRF token is not needed.
   backend.route.extapi.post \/pay/gw/dummy/pay, gw.pay
-  backend.route.extapi.post \/pay/gw/dummy/notify, (gw.notify or (q,s,n)->n!), notify-handler
-  backend.route.extapi.post \/pay/gw/dummy/done, (gw.done or (q,s,n)->n!), done-handler
+  backend.route.extapi.post \/pay/gw/dummy/notify, (gw.notify or (q,s,n)->n!), notify-router
+  backend.route.extapi.post \/pay/gw/dummy/done, (gw.done or (q,s,n)->n!), done-router
   backend.route.extapp.post \/pay/gw/dummy/, gw.page
 
