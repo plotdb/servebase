@@ -1,8 +1,8 @@
 require! <[crypto @plotdb/suuid lderror node-fetch]>
 
 get-url = ({cfg}) ->
-  return if cfg.testing => url: \https://payment-api.testing.oen.tw, method: \POST
-  else url: \https://payment-api.oen.tw, method: \POST
+  return if cfg.testing => url: \https://payment-api.testing.oen.tw/checkout, method: \POST
+  else url: \https://payment-api.oen.tw/checkout, method: \POST
 
 module.exports =
   sign: ({cfg, payload}) ->
@@ -19,18 +19,19 @@ module.exports =
       successUrl: cfg.successUrl
       failureUrl: cfg.failureUrl or cfg.successUrl
       productDetails: [
-      * description: payload.desc
+      * productionCode: 'n/a'
+        description: payload.desc or 'n/a'
         quantity: 1
         unit: '個/piece'
         unitPrice: amount
       ]
       userEmail: payload.email
 
-    {url, method} = get-url{cfg}
+    {url, method} = get-url {cfg}
 
     opt =
       method: method
-      body: JSON.stringify(p.json)
+      body: JSON.stringify(obj)
       headers:
         "Content-Type": "application/json; charset=UTF-8"
         "Authorization": "Bearer #{cfg.token}"

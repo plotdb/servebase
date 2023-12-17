@@ -10,11 +10,11 @@
     cfg = arg$.cfg;
     return cfg.testing
       ? {
-        url: 'https://payment-api.testing.oen.tw',
+        url: 'https://payment-api.testing.oen.tw/checkout',
         method: 'POST'
       }
       : {
-        url: 'https://payment-api.oen.tw',
+        url: 'https://payment-api.oen.tw/checkout',
         method: 'POST'
       };
   };
@@ -40,19 +40,20 @@
         successUrl: cfg.successUrl,
         failureUrl: cfg.failureUrl || cfg.successUrl,
         productDetails: [{
-          description: payload.desc,
+          productionCode: 'n/a',
+          description: payload.desc || 'n/a',
           quantity: 1,
           unit: '個/piece',
           unitPrice: amount
         }],
         userEmail: payload.email
       };
-      ref$ = {
-        cfg: getUrl.cfg
-      }, url = ref$.url, method = ref$.method;
+      ref$ = getUrl({
+        cfg: cfg
+      }), url = ref$.url, method = ref$.method;
       opt = {
         method: method,
-        body: JSON.stringify(p.json),
+        body: JSON.stringify(obj),
         headers: {
           "Content-Type": "application/json; charset=UTF-8",
           "Authorization": "Bearer " + cfg.token
