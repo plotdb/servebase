@@ -53,8 +53,7 @@ backend.route.api.post \/pay/sign, aux.signedin, ((perm or {}).sign or ((q,s,n)-
   payload.slug = suuid!
   payload.email = req.user.username
   endpoint = mod.endpoint or (->{})
-  endpoint = endpoint({cfg: gwinfo}) or {}
-  ret = { state: \pending, slug: payload.slug } <<< endpoint{url, method}
+  ret = { state: \pending, slug: payload.slug }
   Promise.resolve!
     .then ->
       db.query """
@@ -65,7 +64,9 @@ backend.route.api.post \/pay/sign, aux.signedin, ((perm or {}).sign or ((q,s,n)-
       ret.key = r.[]rows.0.key
       payload.key = ret.key
       mod.sign {cfg: gwinfo, payload}
-    .then ({payload}) -> res.send(ret <<< {payload})
+    .then ({payload}) ->
+      ep = endpoint({cfg: gwinfo, payload}) or {}
+      res.send(ret <<< ep{url, method} <<< {payload})
 
 backend.route.api.post \/pay/check, aux.signedin, (req, res, next) ->
   if !(payload = req.body.payload) => return lderror.reject 400

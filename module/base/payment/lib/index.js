@@ -79,7 +79,7 @@
     backend.route.api.post('/pay/sign', aux.signedin, (perm || {}).sign || function(q, s, n){
       return n();
     }, function(req, res, next){
-      var payload, gateway, mod, endpoint, ret, ref$;
+      var payload, gateway, mod, endpoint, ret;
       payload = (req.body || {}).payload;
       gateway = (req.body || {}).gateway || cfg.gateway;
       if (!(payload && gateway && (mod = mods[gateway]) && mod.sign)) {
@@ -90,13 +90,10 @@
       endpoint = mod.endpoint || function(){
         return {};
       };
-      endpoint = endpoint({
-        cfg: gwinfo
-      }) || {};
-      ret = (ref$ = {
+      ret = {
         state: 'pending',
         slug: payload.slug
-      }, ref$.url = endpoint.url, ref$.method = endpoint.method, ref$);
+      };
       return Promise.resolve().then(function(){
         return db.query("insert into payment (owner, scope, slug, payload, gateway, state) values ($1,$2,$3,$4,$5,$6)\nreturning key", [
           req.user.key, payload.scope, payload.slug, payload, {
@@ -112,9 +109,13 @@
           payload: payload
         });
       }).then(function(arg$){
-        var payload;
+        var payload, ep, ref$;
         payload = arg$.payload;
-        return res.send((ret.payload = payload, ret));
+        ep = endpoint({
+          cfg: gwinfo,
+          payload: payload
+        }) || {};
+        return res.send((ref$ = (ret.url = ep.url, ret.method = ep.method, ret), ref$.payload = payload, ref$));
       });
     });
     backend.route.api.post('/pay/check', aux.signedin, function(req, res, next){

@@ -19,7 +19,7 @@ $bin/srcbuild-pug src/gateway/dummy/paid/index.pug > dist/gateway/dummy/paid/ind
 
 echo "build server files ..."
 $bin/lsc -cp src/lib/index.ls > lib/index.js
-for n in dummy newebpay; do
+for n in dummy newebpay oen; do
   mkdir -p lib/$n
   $bin/lsc -cp src/lib/$n/index.ls > lib/$n/index.js
 done
