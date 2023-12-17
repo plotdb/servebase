@@ -134,3 +134,5 @@ You will have to configure server config file to enable payment, in `payment` fi
           Email: "..."
 
 When `payment.gateway` is `dummy`, a dummy gateway will be automatically created in this server.
+
+For configuration details of individual provider, check `doc/<name>.md` for more information.
