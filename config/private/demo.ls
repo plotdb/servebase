@@ -38,6 +38,7 @@ module.exports = do
     secret: 'this-is-a-sample-secret-please-update-it'
     max-age: 365 * 86400 * 1000
   captcha:
+    enabled: false
     recaptcha:
       sitekey: '...'
       secret: '...'
