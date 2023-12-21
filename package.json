@@ -24,7 +24,6 @@
     "module/base/pugutil",
     "module/base/discuss",
     "module/base/connector",
-    "module/base/payment",
     "backend/engine"
   ],
   "scripts": {
