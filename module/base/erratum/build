@@ -14,6 +14,7 @@ echo "generate blocks for different lderror code.."
 $bin/srcbuild-pug src/block/0.pug -o dist/block/0.html
 $bin/srcbuild-pug src/block/1005.pug -o dist/block/1005.html
 $bin/srcbuild-pug src/block/1007.pug -o dist/block/1007.html
+$bin/srcbuild-pug src/block/1009.pug -o dist/block/1009.html
 $bin/srcbuild-pug src/block/1012.pug -o dist/block/1012.html
 $bin/srcbuild-pug src/block/1020.pug -o dist/block/1020.html
 $bin/srcbuild-pug src/block/1029.pug -o dist/block/1029.html
