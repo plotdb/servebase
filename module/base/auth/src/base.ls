@@ -143,6 +143,7 @@ module.exports =
           # if we want to hint user the account existed.
           # we can handle error id 1014 here (apply existed resource)
           if id == 1004 => return @info "login-exceeded"
+          if id in [1009 1010] => throw e
           @info "#{@_tab}-failed"
           @_failed-hint = true
           @view.render!
