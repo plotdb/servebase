@@ -14,10 +14,9 @@
           scope: \demo
           name: "Generic Goods"
           amount: "13"
-    "toggle-block": ~>
-      core.ldcvmgr.get JSON.parse(@view.panel.get('block-code').value)
-    "toggle-error": ~>
-      core.error(lderror +(@view.panel.get('error-code').value or 0) )
+    "toggle-block": ~> core.ldcvmgr.get JSON.parse(@view.panel.get('block-code').value)
+    "toggle-error": ~> core.error(lderror +(@view.panel.get('error-code').value or 0) )
+    "toggle-cover": ~> core.ldcvmgr.get @view.panel.get('cover-name').value
     error: ~> @error((new lderror 1023) <<< uuid: Math.random!toString(36)substring(2))
     "unhandled-rejection": ~> Promise.reject(lderror 1023)
     # we need an approch to control authpanel. should be done via auth.
