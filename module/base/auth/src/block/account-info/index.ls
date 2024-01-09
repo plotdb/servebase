@@ -17,7 +17,7 @@ module.exports =
         send: "Send Verify Mail"
         update: "Update Basic Info"
         updated: "Updated"
-        'verified at': "verified at {{date}}"
+        'verified at': "verified at: "
       "zh-TW":
         title: "基本資訊"
         displayname: "顯示名稱"
@@ -34,7 +34,7 @@ module.exports =
         send: "寄發認證信"
         update: "更新基本資訊"
         updated: "更新完成"
-        'verified at': "已於 {{date}} 驗證"
+        'verified at': "已驗證，時間："
     dependencies: [
       {name: "ldform"}
       {name: "ldview"}
@@ -94,7 +94,7 @@ module.exports =
             ("#{d.getMonth! + 1}").padStart(2,'0')
             ("#{d.getDate!}").padStart(2,'0')
           ].join(\-)
-          node.innerText = t('verified at', {date: d})
+          node.innerText = t('verified at') + d
         "is-staff": ({node}) -> node.classList.toggle \d-none, !(core.user.staff)
         "is-verified": ({node}) -> node.classList.toggle \d-none, !(core.user.verified)
         "not-verified": ({node}) -> node.classList.toggle \d-none, !!(core.user.verified)
