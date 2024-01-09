@@ -1,0 +1,16 @@
+.ldcv.autogap.scroll: .base.w-640.rwd: .inner
+  script(type="@plotdb/block"): :lsc
+    module.exports = pkg: i18n:
+      en:
+        "title": "Verification Mail Sent"
+        "p": "Please check your email inbox to see if you have received the verification mail. It contains a verification link that you can click on to complete the verification."
+        "close": "Close Dialog"
+      "zh-TW":
+        "title": "認證信已寄出"
+        "p": "請檢查您的電子郵件信箱看看是否有收到認證信。信件內將會包含一個認證連結，點擊後即可完成認證。"
+        "close": "關閉對話框"
+  h1.text-center(t) title
+  br
+  p(t) p
+  br
+  .btn.btn-primary.btn-block.btn-lg.mr-2(data-ldcv-set="",t) close
