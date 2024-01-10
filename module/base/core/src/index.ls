@@ -43,10 +43,8 @@ servebase =
           lng = httputil.qs(\setlng)
           httputil.cookie \lng, lng, {path: \/}
         if !(lng in i18ncfg.supportedLng) =>
-          if /-/.exec(lng) =>
-            if lng.split(\-).0 in (i18ncfg.supportedLng) => lng = lng.split(\-).0
-          else
-            lng = i18ncfg.fallbackLng or i18ncfg.supportedLng.0 or \en
+          lng = if /-/.exec(lng) and (lng.split(\-).0 in (i18ncfg.supportedLng)) => lng.split(\-).0
+          else i18ncfg.fallbackLng or i18ncfg.supportedLng.0 or \en
         console.log "[@servebase/core][i18n] use language: ", lng
         i18n.changeLanguage lng
       .then ->

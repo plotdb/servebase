@@ -65,13 +65,9 @@
           });
         }
         if (!in$(lng, i18ncfg.supportedLng)) {
-          if (/-/.exec(lng)) {
-            if (in$(lng.split('-')[0], i18ncfg.supportedLng)) {
-              lng = lng.split('-')[0];
-            }
-          } else {
-            lng = i18ncfg.fallbackLng || i18ncfg.supportedLng[0] || 'en';
-          }
+          lng = /-/.exec(lng) && in$(lng.split('-')[0], i18ncfg.supportedLng)
+            ? lng.split('-')[0]
+            : i18ncfg.fallbackLng || i18ncfg.supportedLng[0] || 'en';
         }
         console.log("[@servebase/core][i18n] use language: ", lng);
         return i18n.changeLanguage(lng);
