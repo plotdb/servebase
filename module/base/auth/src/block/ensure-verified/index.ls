@@ -90,7 +90,9 @@ module.exports =
             .finally ~> loader.off!
         send: ~> 
           loader.on!
-          ld$.fetch \/api/auth/mail/verify, {method: \POST}, {type: \json}
+          core.captcha
+            .guard cb: (captcha) ->
+              ld$.fetch \/api/auth/mail/verify, {method: \POST}, {type: \json, json: {captcha}}
             .then (ret = {}) ~>
               if ret.result == \verified =>
                 loader.off!
