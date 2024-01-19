@@ -5,7 +5,9 @@ is-email = -> return re-email.exec(it)
 
 user-store = (opt = {}) ->
   @config = opt.config or {}
-  @policy = pw = (@config.policy or {}).password or {}
+  @policy =
+    login: (@config.policy or {}).login or {}
+    password: pw = (@config.policy or {}).password or {}
   pw.renew = if !pw.renew or isNaN(pw.renew) => 0 else (+pw.renew >?= 1)
   if typeof(pw.track) == \object =>
     pw.track.day = if !pw.track.day or isNaN(pw.track.day) => 0 else (+pw.track.day >?= 1)
@@ -64,6 +66,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         return user
 
   create: ({username, password, method, detail, config}) ->
+    policy = @policy.login
     username = username.toLowerCase!
     if !config => config = {}
     if !is-email(username) => return Promise.reject new lderror(1015)
@@ -72,18 +75,20 @@ user-store.prototype = Object.create(Object.prototype) <<< do
       .then (password) ~>
         displayname = if detail => detail.displayname or detail.username
         if !displayname => displayname = username.replace(/@[^@]+$/, "")
+        verified = if method == \local or !(policy and policy.oauth-default-verified) => null
+        else {date: Date.now!}
         config.{}consent.cookie = new Date!getTime!
         user = { username, password, method, displayname, detail, config, createdtime: new Date! }
         @db.query "select key from users where username = $1", [username]
           .then (r={}) ~>
             if r.[]rows.length => return lderror.reject 1014
             @db.query """
-            insert into users (username,password,method,displayname,createdtime,detail,config)
-            values ($1,$2,$3,$4,$5,$6,$7)
+            insert into users (username,password,method,displayname,createdtime,detail,config,verified)
+            values ($1,$2,$3,$4,$5,$6,$7,$8)
             returning key
             """, [
               username, password, method, displayname,
-              new Date!toUTCString!, detail, config
+              new Date!toUTCString!, detail, config, verified
             ]
           .then (r={}) ~>
             if !(r = r.[]rows.0) => return Promise.reject 500
@@ -92,7 +97,8 @@ user-store.prototype = Object.create(Object.prototype) <<< do
           .then -> user
 
   password-track: ({user, password, hash}) ->
-    if !(@policy.track.day or @policy.track.count or @policy.renew)
+    policy = @policy.password
+    if !(policy.track.day or policy.track.count or policy.renew)
     or !(hash or password) => return Promise.resolve!
     # debounce password track to control tracking frequency
     debounce 1000
@@ -101,7 +107,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
       .then ~>
         # it's possible that we are here even if track is not configured.
         # in this case, we track for a minimal amount. (count = 1, day = 1)
-        count = @policy.track.count >? 1
+        count = policy.track.count >? 1
         (r={}) <~ @db.query """
         select key from password
         where owner = $1
@@ -110,22 +116,23 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         if !(p = r.[]rows[* - 1]) => return
         @db.query "delete from password where owner = $1 and key < $2", [user.key, p.key]
       .then ~>
-        day = @policy.track.day >? 1
+        day = policy.track.day >? 1
         @db.query """
         delete from password
         where owner = $1 and createdtime < now() - make_interval(0,0,$2)
         """, [user.key, day]
 
   password-due: ({user}) ->
+    policy = @policy.password
     # always not due ( within 180 days ) if renew is not enabled.
-    if !@policy.renew => return Promise.resolve(-180 * 86400 * 1000)
+    if !policy.renew => return Promise.resolve(-180 * 86400 * 1000)
     @db.query """
     select * from password
     where owner = $1
     order by createdtime desc limit 1
     """, [user.key]
       .then (r={}) ~>
-        freq = @policy.renew * (86400 * 1000)
+        freq = policy.renew * (86400 * 1000)
         now = Date.now!
         checktime = if (entry = r.[]rows.0) =>
           # use max so we can use a future snooze to delay renewal reuqest
@@ -136,7 +143,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         else new Date(user.createdtime).getTime! + freq
         return now - checktime
   ensure-password-unused: ({user, password}) ->
-    track = @policy.track
+    track = @policy.password.track
     if !(track.day or track.count) =>
       qs = "select * from password where owner = $1 order by key desc limit 1"
     else

@@ -55,6 +55,7 @@ module.exports = do
     # login policy
     login:
       logging: false # log logging failure attempt in server log if true.
+      oauth-default-verified: false # consider oauth accounts verified by default
     # password renew policy
     password:
       check-unused: '' # either empty (don't check), `renew` (check only for renewal), `all` ( always check )

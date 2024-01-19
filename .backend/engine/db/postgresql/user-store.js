@@ -15,7 +15,10 @@
     var pw, ref$, ref1$;
     opt == null && (opt = {});
     this.config = opt.config || {};
-    this.policy = pw = (this.config.policy || {}).password || {};
+    this.policy = {
+      login: (this.config.policy || {}).login || {},
+      password: pw = (this.config.policy || {}).password || {}
+    };
     pw.renew = !pw.renew || isNaN(pw.renew)
       ? 0
       : +((ref$ = pw.renew) >= 1
@@ -128,8 +131,9 @@
       });
     },
     create: function(arg$){
-      var username, password, method, detail, config, this$ = this;
+      var username, password, method, detail, config, policy, this$ = this;
       username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, config = arg$.config;
+      policy = this.policy.login;
       username = username.toLowerCase();
       if (!config) {
         config = {};
@@ -144,11 +148,16 @@
           return password;
         }
       }).then(function(password){
-        var displayname, user;
+        var displayname, verified, user;
         displayname = detail ? detail.displayname || detail.username : void 8;
         if (!displayname) {
           displayname = username.replace(/@[^@]+$/, "");
         }
+        verified = method === 'local' || !(policy && policy.oauthDefaultVerified)
+          ? null
+          : {
+            date: Date.now()
+          };
         (config.consent || (config.consent = {})).cookie = new Date().getTime();
         user = {
           username: username,
@@ -164,7 +173,7 @@
           if ((r.rows || (r.rows = [])).length) {
             return lderror.reject(1014);
           }
-          return this$.db.query("insert into users (username,password,method,displayname,createdtime,detail,config)\nvalues ($1,$2,$3,$4,$5,$6,$7)\nreturning key", [username, password, method, displayname, new Date().toUTCString(), detail, config]);
+          return this$.db.query("insert into users (username,password,method,displayname,createdtime,detail,config,verified)\nvalues ($1,$2,$3,$4,$5,$6,$7,$8)\nreturning key", [username, password, method, displayname, new Date().toUTCString(), detail, config, verified]);
         }).then(function(r){
           r == null && (r = {});
           if (!(r = (r.rows || (r.rows = []))[0])) {
@@ -181,9 +190,10 @@
       });
     },
     passwordTrack: function(arg$){
-      var user, password, hash, this$ = this;
+      var user, password, hash, policy, this$ = this;
       user = arg$.user, password = arg$.password, hash = arg$.hash;
-      if (!(this.policy.track.day || this.policy.track.count || this.policy.renew) || !(hash || password)) {
+      policy = this.policy.password;
+      if (!(policy.track.day || policy.track.count || policy.renew) || !(hash || password)) {
         return Promise.resolve();
       }
       return debounce(1000).then(function(){
@@ -197,7 +207,7 @@
         return this$.db.query("insert into password (owner, hash) values ($1, $2)", [user.key, hash]);
       }).then(function(){
         var count, ref$;
-        count = (ref$ = this$.policy.track.count) > 1 ? ref$ : 1;
+        count = (ref$ = policy.track.count) > 1 ? ref$ : 1;
         return this$.db.query("select key from password\nwhere owner = $1\norder by key desc limit $2", [user.key, count]).then(function(r){
           var p, ref$;
           r == null && (r = {});
@@ -208,20 +218,21 @@
         });
       }).then(function(){
         var day, ref$;
-        day = (ref$ = this$.policy.track.day) > 1 ? ref$ : 1;
+        day = (ref$ = policy.track.day) > 1 ? ref$ : 1;
         return this$.db.query("delete from password\nwhere owner = $1 and createdtime < now() - make_interval(0,0,$2)", [user.key, day]);
       });
     },
     passwordDue: function(arg$){
-      var user, this$ = this;
+      var user, policy;
       user = arg$.user;
-      if (!this.policy.renew) {
+      policy = this.policy.password;
+      if (!policy.renew) {
         return Promise.resolve(-180 * 86400 * 1000);
       }
       return this.db.query("select * from password\nwhere owner = $1\norder by createdtime desc limit 1", [user.key]).then(function(r){
         var freq, now, checktime, entry;
         r == null && (r = {});
-        freq = this$.policy.renew * (86400 * 1000);
+        freq = policy.renew * (86400 * 1000);
         now = Date.now();
         checktime = (entry = (r.rows || (r.rows = []))[0])
           ? Math.max(new Date(entry.snooze || 0).getTime(), new Date(entry.createdtime).getTime() + freq)
@@ -232,7 +243,7 @@
     ensurePasswordUnused: function(arg$){
       var user, password, track, qs, params, ref$, this$ = this;
       user = arg$.user, password = arg$.password;
-      track = this.policy.track;
+      track = this.policy.password.track;
       if (!(track.day || track.count)) {
         qs = "select * from password where owner = $1 order by key desc limit 1";
       } else {
