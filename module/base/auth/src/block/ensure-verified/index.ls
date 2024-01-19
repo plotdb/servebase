@@ -73,7 +73,9 @@ module.exports =
       root: root
       handler: step: ({node}) -> node.classList.toggle \d-none, obj.step != +node.getAttribute(\data-step)
       action: click:
-        cancel: ~> @ldcv.cancel!
+        cancel: ~>
+          # NOTE we don't use @ldcv.cancel since ldcvmgr intercepts all errors.
+          @ldcv.set \cancel
         done: ~>
           if (core.user.verified or {}).date => return @ldcv.set \done
           obj.step = 2
