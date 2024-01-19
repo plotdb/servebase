@@ -48,18 +48,26 @@
       route: function(){
         var this$ = this;
         route.auth.post('/mail/verify', aux.signedin, mdw.throttle, mdw.captcha, function(req, res){
-          return db.query("select key from users where key = $1 and deleted is not true", [req.user.key]).then(function(r){
+          return db.query("select key,verified from users where key = $1 and deleted is not true", [req.user.key]).then(function(r){
+            var u;
             r == null && (r = {});
-            if (!(r.rows || (r.rows = [])).length) {
+            if (!(u = (r.rows || (r.rows = []))[0])) {
               return lderror.reject(404);
+            }
+            if ((u.verified || (u.verified = {})).date) {
+              return res.send({
+                result: "verified"
+              });
             }
             return this$.verify({
               req: req,
               user: req.user,
               db: db
+            }).then(function(){
+              return res.send({
+                result: "sent"
+              });
             });
-          }).then(function(){
-            return res.send();
           });
         });
         return route.app.get('/auth/mail/verify/:token', function(req, res){

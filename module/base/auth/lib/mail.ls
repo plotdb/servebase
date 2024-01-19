@@ -29,11 +29,11 @@ verify: ({req, user}) ->
 
 route: ->
   route.auth.post \/mail/verify, aux.signedin, mdw.throttle, mdw.captcha, (req, res) ~>
-    db.query "select key from users where key = $1 and deleted is not true", [req.user.key]
+    db.query "select key,verified from users where key = $1 and deleted is not true", [req.user.key]
       .then (r={}) ~>
-        if !(r.[]rows.length) => return lderror.reject 404
-        @verify {req, user: req.user, db}
-      .then -> res.send!
+        if !(u = r.[]rows.0) => return lderror.reject 404
+        if u.{}verified.date => return res.send {result: "verified"}
+        @verify {req, user: req.user, db} .then -> res.send {result: "sent"}
 
   route.app.get \/auth/mail/verify/:token, (req, res) ->
     lc = {}

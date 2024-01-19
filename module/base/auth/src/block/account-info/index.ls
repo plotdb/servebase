@@ -82,9 +82,11 @@ module.exports =
             local.ldld.on!
             captcha
               .guard cb: (captcha) ->
-                ld$.fetch \/api/auth/mail/verify, {method: \POST}, {json: {captcha}}
+                ld$.fetch \/api/auth/mail/verify, {method: \POST}, {json: {captcha}, type: \json}
               .finally -> debounce 1000 .then -> local.ldld.off!
-              .then -> ldcvmgr.toggle {name: "@servebase/auth", path: "verification-mail-sent"}
+              .then (ret = {}) ->
+                if ret.result != \sent => return
+                ldcvmgr.toggle {name: "@servebase/auth", path: "verification-mail-sent"}
       handler:
         "mail-verify": ({node}) ->
           if !core.user.verified => return
