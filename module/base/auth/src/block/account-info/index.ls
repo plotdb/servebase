@@ -14,7 +14,7 @@ module.exports =
         username: "Account Name"
         email: "Your Email Address"
         verify: "Email Verification"
-        send: "Send Verify Mail"
+        send: "Send Verification Mail"
         update: "Update Basic Info"
         updated: "Updated"
         'verified at': "verified at: "
