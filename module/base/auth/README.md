@@ -69,6 +69,7 @@ APIs of the auth object:
      - `fetch` retrieve data from cookie or server (with `renew`)
  - `ensure()`: ensure a user is logged in. Prompt an authpanel if a user is not logged in.
    - shorthand for `get({authedOnly: true})`
+ - `ensureVerified()`: ensure a user's email is verified. Prompt an verification dialog if user is not verified.
  - `fetch(opt)`: fetch the `global` object from either cookie or server.
    - options:
      - `renew`: true to fetch from server. false to fetch from cookie first. default true.

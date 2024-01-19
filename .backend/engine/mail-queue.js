@@ -25,10 +25,25 @@
     this.base = opt.base || 'base';
     this.log = opt.logger;
     this.info = opt.info || {};
+    this.blacklist = opt.blacklist || [];
     this.list = [];
     return this;
   };
   mailQueue.prototype = import$(Object.create(Object.prototype), {
+    inBlacklist: function(m){
+      var this$ = this;
+      m == null && (m = "");
+      return Promise.resolve().then(function(){
+        var i$, i;
+        for (i$ = this$.blacklist.length - 1; i$ >= 0; --i$) {
+          i = i$;
+          if (~m.indexOf(this$.blacklist[i])) {
+            return true;
+          }
+        }
+        return false;
+      });
+    },
     add: function(obj){
       this.list.push(obj);
       return this.handler();

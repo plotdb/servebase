@@ -12,6 +12,7 @@ get-global = proxise (a) ->
   if a => a.fetch!
 
 auth = (opt={}) ->
+  @_ldcvmgr = opt.ldcvmgr
   @_manager = opt.manager
   @timeout = {loader: 1000, failed: 10000}
   @evt-handler = {}
@@ -142,6 +143,11 @@ auth.prototype = Object.create(Object.prototype) <<< do
         @oauth.form.parentNode.removeChild @oauth.form
       .then (g = {}) -> if !g.{}user.key => Promise.reject new lderror(1000) else return g
       .catch (e) ~> @fire \error, e; return Promise.reject(e)
+
+  ensure-verified: ->
+    (g) <~ @fetch {renew: true} .then _
+    if ((g.user or {}).verified or {}).date => return g
+    @_ldcvmgr.get({name: \@servebase/auth, path: \ensure-verified})
 
 # auth issue may lead to uninitialized auth.
 # in this case, we have to call `auth.reset` so we don't have to pend on a never-inited auth obj.

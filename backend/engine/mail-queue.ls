@@ -25,10 +25,15 @@ mail-queue = (opt={}) ->
   @base = opt.base or 'base'
   @log = opt.logger
   @info = opt.info or {}
+  @blacklist = opt.blacklist or []
   @list = []
   @
 
 mail-queue.prototype = Object.create(Object.prototype) <<< do
+  in-blacklist: (m = "") ->
+    <~ Promise.resolve!then _
+    for i from @blacklist.length - 1 to 0 by -1 => if (~m.indexOf(@blacklist[i])) => return true
+    return false
   add: (obj) ->
     @list.push obj
     @handler!

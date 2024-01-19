@@ -18,6 +18,7 @@
     auth = function(opt){
       var ref$, this$ = this;
       opt == null && (opt = {});
+      this._ldcvmgr = opt.ldcvmgr;
       this._manager = opt.manager;
       this.timeout = {
         loader: 1000,
@@ -246,6 +247,20 @@
         })['catch'](function(e){
           this$.fire('error', e);
           return Promise.reject(e);
+        });
+      },
+      ensureVerified: function(){
+        var this$ = this;
+        return this.fetch({
+          renew: true
+        }).then(function(g){
+          if (((g.user || {}).verified || {}).date) {
+            return g;
+          }
+          return this$._ldcvmgr.get({
+            name: '@servebase/auth',
+            path: 'ensure-verified'
+          });
         });
       }
     });
