@@ -25,7 +25,7 @@ mail-queue = (opt={}) ->
   @base = opt.base or 'base'
   @log = opt.logger
   @info = opt.info or {}
-  @blacklist = opt.blacklist or []
+  @blacklist = (opt.blacklist or []).map((n)->"@#n")
   @list = []
   @
 

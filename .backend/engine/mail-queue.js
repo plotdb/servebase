@@ -25,7 +25,9 @@
     this.base = opt.base || 'base';
     this.log = opt.logger;
     this.info = opt.info || {};
-    this.blacklist = opt.blacklist || [];
+    this.blacklist = (opt.blacklist || []).map(function(n){
+      return "@" + n;
+    });
     this.list = [];
     return this;
   };
