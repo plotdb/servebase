@@ -1,9 +1,9 @@
 (backend) <- (->module.exports = it)  _
-{db,config,route:{api,app}} = backend
+{db,config,route:{api,app},session} = backend
 if config.base != \base => return
 
 require! <[fs path express lderror re2 curegex]>
-require! <[@servebase/backend/aux @servebase/backend/session @servebase/backend/throttle]>
+require! <[@servebase/backend/aux @servebase/backend/throttle]>
 
 route = aux.routecatch express.Router {mergeParams: true}
 api.use \/admin, route
@@ -59,7 +59,7 @@ route.post \/user/:key/password, aux.validate-key, (req, res) ->
     .then -> db.user-store.hashing password, true, true
     .then (pw-hashed) ->
       db.query "update users set (method,password) = ('local',$1) where key = $2", [pw-hashed, key]
-    .then -> session.delete {db, user: key}
+    .then -> session.delete {user: key}
     .then -> res.send!
 
 route.post \/user/:key/email, aux.validate-key, (req, res) ->
@@ -69,11 +69,11 @@ route.post \/user/:key/email, aux.validate-key, (req, res) ->
     .then (r={}) ->
       if r.[]rows.length => return lderror.reject 1011
       db.query "update users set username = $1 where key = $2", [email, key]
-    .then -> session.delete {db, user: key}
+    .then -> session.delete {user: key}
     .then -> res.send!
 
 route.post \/user/:key/logout, aux.validate-key, (req, res) ->
-  session.delete {db, user: +req.params.key}
+  session.delete {user: +req.params.key}
     .then -> res.send!
 
 route.delete \/user/:key, aux.validate-key, (req, res, next) ->
@@ -92,4 +92,4 @@ route.delete \/user/:key, aux.validate-key, (req, res, next) ->
 
 route.put \/su/:key, aux.validate-key, (req, res) ->
   key = +req.params.key
-  session.login {db, key, req} .then -> res.send!
+  session.login {user: key, req} .then -> res.send!

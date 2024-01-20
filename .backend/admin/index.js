@@ -3,8 +3,8 @@
   (function(it){
     return module.exports = it;
   })(function(backend){
-    var db, config, ref$, api, app, fs, path, express, lderror, re2, curegex, aux, session, throttle, route, reEmail, isEmail;
-    db = backend.db, config = backend.config, ref$ = backend.route, api = ref$.api, app = ref$.app;
+    var db, config, ref$, api, app, session, fs, path, express, lderror, re2, curegex, aux, throttle, route, reEmail, isEmail;
+    db = backend.db, config = backend.config, ref$ = backend.route, api = ref$.api, app = ref$.app, session = backend.session;
     if (config.base !== 'base') {
       return;
     }
@@ -15,7 +15,6 @@
     re2 = require('re2');
     curegex = require('curegex');
     aux = require('@servebase/backend/aux');
-    session = require('@servebase/backend/session');
     throttle = require('@servebase/backend/throttle');
     route = aux.routecatch(express.Router({
       mergeParams: true
@@ -106,7 +105,6 @@
         return db.query("update users set (method,password) = ('local',$1) where key = $2", [pwHashed, key]);
       }).then(function(){
         return session['delete']({
-          db: db,
           user: key
         });
       }).then(function(){
@@ -127,7 +125,6 @@
         return db.query("update users set username = $1 where key = $2", [email, key]);
       }).then(function(){
         return session['delete']({
-          db: db,
           user: key
         });
       }).then(function(){
@@ -136,7 +133,6 @@
     });
     route.post('/user/:key/logout', aux.validateKey, function(req, res){
       return session['delete']({
-        db: db,
         user: +req.params.key
       }).then(function(){
         return res.send();
@@ -155,8 +151,7 @@
       var key;
       key = +req.params.key;
       return session.login({
-        db: db,
-        key: key,
+        user: key,
         req: req
       }).then(function(){
         return res.send();

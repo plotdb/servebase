@@ -2,10 +2,10 @@ require! <[lderror jsonwebtoken @plotdb/express-session passport passport-local]
 require! <[passport-facebook]>
 require! <[passport-google-oauth20]>
 require! <[passport-line-auth]>
-require! <[@servebase/backend/aux @servebase/backend/session ./passwd ./mail]>
+require! <[@servebase/backend/aux ./passwd ./mail]>
 
 (backend) <- ((f) -> module.exports = -> f.call {}, it) _
-{db,app,config,route} = backend
+{db,app,config,route,session} = backend
 
 captcha = Object.fromEntries [[k,v] for k,v of config.captcha].map ->
   if it.0 == \enabled => [it.0, it.1] else [it.0, it.1{sitekey, enabled}]
@@ -147,7 +147,7 @@ app.use (req, res, next) ->
   cs = c.split /;/ .filter -> /^connect.sid=/.exec(it.trim!)
   return if cs.length > 1 => next {code: \SESSIONCORRUPTED} else next!
 
-app.use backend.session = express-session do
+app.use express-session do
   secret: config.session.secret
   resave: true
   saveUninitialized: true
@@ -198,7 +198,7 @@ route.auth.put \/user, aux.signedin, backend.middleware.captcha, (req, res, next
   db.query "update users set (displayname,description,title,tags) = ($1,$2,$3,$4) where key = $5",
   [displayname, description, title, tags, req.user.key]
     .then -> req.user <<< {displayname, description, title, tags}
-    .then -> new Promise (res, rej) -> req.login req.user, (-> res!)
+    .then -> session.sync {req, user: req.user.key, obj: req.user}
     .then -> res.send!
 
 # identical to `/auth` but if it's more semantic clear.
@@ -211,13 +211,13 @@ app.get \/auth/reset, (req, res) ->
   res.render "auth/index.pug"
 
 app.post \/api/auth/clear, aux.signedin, backend.middleware.captcha, (req, res) ->
-  <- session.delete {db, user: req.user.key} .then _
+  <- session.delete {user: req.user.key} .then _
   aux.clear-cookie req, res
   <-! req.logout _
   res.send!
 
 app.post \/api/auth/clear/:uid, aux.is-admin, (req, res) ->
-  session.delete {db, user: req.params.uid} .then -> res.send!
+  session.delete {user: req.params.uid} .then -> res.send!
 
 # this must not be guarded by csrf since it's used to recover csrf token.
 app.post \/api/auth/reset, (req, res) ->

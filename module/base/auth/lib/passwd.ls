@@ -2,7 +2,7 @@ require! <[crypto lderror]>
 require! <[@servebase/backend/throttle @servebase/backend/aux]>
 
 (backend) <- ((f) -> module.exports = -> f it) _
-{db,config,route} = backend
+{db,config,route,session} = backend
 
 route: ->
   mdw = throttle: throttle.kit.login, captcha: backend.middleware.captcha
@@ -80,6 +80,6 @@ route: ->
         req.user <<< {password}
         db.query "update users set (password,method) = ($1,'local') where key = $2", [password, req.user.key]
           .then -> db.user-store.password-track {user: req.user, hash: password}
-      .then -> new Promise (res, rej) -> req.login(req.user, -> res!)
+      .then -> session.sync {req, user: req.user.key, obj: req.user}
       .then -> res.send!
 

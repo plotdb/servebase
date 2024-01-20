@@ -10,8 +10,8 @@
       return f(it);
     };
   })(function(backend){
-    var db, config, route;
-    db = backend.db, config = backend.config, route = backend.route;
+    var db, config, route, session;
+    db = backend.db, config = backend.config, route = backend.route, session = backend.session;
     return {
       route: function(){
         var mdw, getmap;
@@ -146,10 +146,10 @@
               });
             });
           }).then(function(){
-            return new Promise(function(res, rej){
-              return req.login(req.user, function(){
-                return res();
-              });
+            return session.sync({
+              req: req,
+              user: req.user.key,
+              obj: req.user
             });
           }).then(function(){
             return res.send();

@@ -1,9 +1,9 @@
 require! <[crypto lderror]>
-require! <[@servebase/backend/aux @servebase/backend/session @servebase/backend/throttle]>
+require! <[@servebase/backend/aux @servebase/backend/throttle]>
 
 (backend) <- ((f) -> module.exports = -> f it) _
 
-{db,config,route} = backend
+{db,config,route,session} = backend
 
 mdw = throttle: throttle.kit.login, captcha: backend.middleware.captcha
 
@@ -50,18 +50,13 @@ route: ->
         if new Date!getTime! - new Date(lc.obj.time).getTime! > 1000 * 600 => return lderror.reject 1013
         lc.verified = verified = {date: Date.now!}
         db.query "update users set verified = $2 where key = $1", [lc.obj.owner, JSON.stringify(verified)]
-        if req.user and req.user.key == lc.obj.owner => session.login {db, key: req.user.key, req}
       .then ->
         db.query "select * from users where key = $1", [lc.obj.owner]
           .then (r={}) ->
             if !(u = r.[]rows.0) => return
             u.verified = lc.verified
-            db.query """
-            update session set detail = jsonb_set(detail, '{passport,user}', ($1)::jsonb)
-            where (detail->'passport'->'user'->>'key')::int = $2
-            """, [JSON.stringify(u), lc.obj.owner]
-      .then ->
-        res.redirect \/auth/?mail-verified
+            session.sync {req, user: lc.obj.owner, obj: u}
+      .then -> res.redirect \/auth/?mail-verified
       .catch (e) ->
         if lderror.id(e) != 1013 => Promise.reject e
         else res.redirect \/auth/?mail-expire
