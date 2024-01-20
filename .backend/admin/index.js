@@ -3,13 +3,11 @@
   (function(it){
     return module.exports = it;
   })(function(backend){
-    var db, config, ref$, api, app, session, fs, path, express, lderror, re2, curegex, aux, throttle, route, reEmail, isEmail;
-    db = backend.db, config = backend.config, ref$ = backend.route, api = ref$.api, app = ref$.app, session = backend.session;
+    var db, config, api, session, express, lderror, re2, curegex, aux, throttle, route, reEmail, isEmail;
+    db = backend.db, config = backend.config, api = backend.route.api, session = backend.session;
     if (config.base !== 'base') {
       return;
     }
-    fs = require('fs');
-    path = require('path');
     express = require('express');
     lderror = require('lderror');
     re2 = require('re2');

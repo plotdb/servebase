@@ -1,8 +1,8 @@
 (backend) <- (->module.exports = it)  _
-{db,config,route:{api,app},session} = backend
+{db,config,route:{api},session} = backend
 if config.base != \base => return
 
-require! <[fs path express lderror re2 curegex]>
+require! <[express lderror re2 curegex]>
 require! <[@servebase/backend/aux @servebase/backend/throttle]>
 
 route = aux.routecatch express.Router {mergeParams: true}
