@@ -258,7 +258,7 @@
         })
         : next();
     });
-    app.use(expressSession({
+    app.use(backend.session.middleware(expressSession({
       secret: config.session.secret,
       resave: true,
       saveUninitialized: true,
@@ -269,7 +269,7 @@
         httpOnly: true,
         maxAge: config.session.maxAge
       }
-    }));
+    })));
     app.use(passport.initialize());
     app.use(passport.session());
     x$ = route.auth;

@@ -6,9 +6,16 @@
     opt == null && (opt = {});
     this.db = opt.db;
     this.log = opt.logServer;
+    this.mdw = null;
     return this;
   };
-  session.prototype = (ref$ = Object.create(Object.prototype), ref$['delete'] = function(arg$){
+  session.prototype = (ref$ = Object.create(Object.prototype), ref$.middleware = function(it){
+    if (arguments.length) {
+      return this.mdw = it;
+    } else {
+      return this.mdw;
+    }
+  }, ref$['delete'] = function(arg$){
     var user;
     user = arg$.user;
     return this.db.query("delete from session where owner = $1", [user]);

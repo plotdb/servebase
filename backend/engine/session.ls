@@ -3,9 +3,11 @@ require! <[lderror]>
 session = (opt = {}) ->
   @db = opt.db
   @log = opt.log-server
+  @mdw = null
   @
 
 session.prototype = Object.create(Object.prototype) <<<
+  middleware: -> if arguments.length => @mdw = it else @mdw
   delete: ({user}) ->
     # alternatively use session store clear?
     @db.query "delete from session where owner = $1", [user]

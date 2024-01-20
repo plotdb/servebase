@@ -147,7 +147,7 @@ app.use (req, res, next) ->
   cs = c.split /;/ .filter -> /^connect.sid=/.exec(it.trim!)
   return if cs.length > 1 => next {code: \SESSIONCORRUPTED} else next!
 
-app.use express-session do
+app.use backend.session.middleware(express-session {
   secret: config.session.secret
   resave: true
   saveUninitialized: true
@@ -157,6 +157,7 @@ app.use express-session do
     path: \/
     httpOnly: true
     maxAge: config.session.max-age
+})
 app.use passport.initialize!
 app.use passport.session!
 
