@@ -146,7 +146,7 @@ auth.prototype = Object.create(Object.prototype) <<< do
 
   ensure-verified: ->
     (g) <~ @fetch {renew: true} .then _
-    if ((g.user or {}).verified or {}).date => return g
+    if ((g.user or {}).verified or {}).date => return \done
     @_ldcvmgr.get({name: \@servebase/auth, path: \ensure-verified})
 
 # auth issue may lead to uninitialized auth.

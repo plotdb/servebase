@@ -255,7 +255,7 @@
           renew: true
         }).then(function(g){
           if (((g.user || {}).verified || {}).date) {
-            return g;
+            return 'done';
           }
           return this$._ldcvmgr.get({
             name: '@servebase/auth',
