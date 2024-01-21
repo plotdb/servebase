@@ -1,4 +1,7 @@
 module.exports = do
+  # production: true if this is a real server for users.
+  # this is a newly added flag so we should consider this as unreliable before everything settled.
+  production: false # default true.
   # verbose name for user, such as in mail title, etc.
   #  - if omitted, `hostname` below or `aux.hostname(req)` should be used instead.
   sitename: 'servebase'
