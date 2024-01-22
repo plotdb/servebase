@@ -12,9 +12,11 @@ session.prototype = Object.create(Object.prototype) <<<
     # alternatively use session store clear?
     @db.query "delete from session where owner = $1", [user]
   sync: ({req, user, obj}) ->
-    # sync update all session for the same user with the same user object
-    # however expression-save with `resave = true` write user object back to session store
-    # so we have to also update req.user to prevent inconsistency.
+    # - sync update all session for the same user with the same user object
+    #   however expression-save with `resave = true` write user object back to session store
+    #   so we have to also update req.user to prevent inconsistency.
+    # - `req` is optional. it should be provided if we also want to sync current user session.
+    #   however this is not always true since admin may want to sync some user's session.
     Promise.resolve!
       .then ~>
         if obj => return Promise.resolve(obj)
@@ -22,7 +24,7 @@ session.prototype = Object.create(Object.prototype) <<<
         return r.[]rows.0
       .then (obj) ~>
         if !obj => return
-        req.user <<< obj
+        if req and req.user.key == user => req.user <<< obj
         @db.query """
         update session set detail = jsonb_set(detail, '{passport,user}', ($1)::jsonb)
         where owner = $2
