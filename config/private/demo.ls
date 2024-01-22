@@ -1,4 +1,8 @@
 module.exports = do
+  # use this to toggle some features that should only be enabled by a real server.
+  # we distinguish this from `backend.mode` and `backend.production`
+  # to prevent potential issues of confusion
+  real-server: false
   # verbose name for user, such as in mail title, etc.
   #  - if omitted, `hostname` below or `aux.hostname(req)` should be used instead.
   sitename: 'servebase'
