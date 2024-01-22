@@ -57,6 +57,11 @@ base = do
     if req.user and req.user.key and req.user.username => return next!
     next(new Error! <<< {name: 'lderror', id: 1000, redirect: "/auth/?nexturl=#{req.originalUrl}"})
 
+  verified: (req, res, next) ->
+    if req.user and req.user.key and req.user.username and
+    req.user.verified and req.user.verified.date => return next!
+    next(new Error! <<< {name: 'lderror', id: 1021})
+
   # deprecated. use lderror.reject instead.
   reject: (code=403,msg="") ->
     e = new Error(if typeof(msg) == typeof({}) => JSON.stringify(msg) else msg)

@@ -79,6 +79,11 @@
         user: req.user
       });
     });
+    app.get('/verified', aux.verified, function(req, res, next){
+      return res.render('me/verified.pug', {
+        user: req.user
+      });
+    });
     return app.get('/view', function(req, res, next){
       return res.render('view.pug', {
         view: true

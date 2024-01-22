@@ -54,6 +54,13 @@
       }
       return next((ref$ = new Error(), ref$.name = 'lderror', ref$.id = 1000, ref$.redirect = "/auth/?nexturl=" + req.originalUrl, ref$));
     },
+    verified: function(req, res, next){
+      var ref$;
+      if (req.user && req.user.key && req.user.username && req.user.verified && req.user.verified.date) {
+        return next();
+      }
+      return next((ref$ = new Error(), ref$.name = 'lderror', ref$.id = 1021, ref$));
+    },
     reject: function(code, msg){
       var e;
       code == null && (code = 403);

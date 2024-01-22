@@ -42,5 +42,6 @@ api.post \/post-test/, (req, res, next) ->
   res.send \pass
 
 app.get \/me/settings, aux.signedin, (req, res, next) -> res.render \me/settings.pug, {user: req.user}
+app.get \/verified, aux.verified, (req, res, next) -> res.render \me/verified.pug, {user: req.user}
 
 app.get \/view, (req, res, next) -> res.render \view.pug, {view: true}
