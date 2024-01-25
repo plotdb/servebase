@@ -34,7 +34,7 @@
       if (!obj) {
         return;
       }
-      if (req && req.user.key === user) {
+      if (req && req.user && req.user.key === user) {
         import$(req.user, obj);
       }
       return this$.db.query("update session set detail = jsonb_set(detail, '{passport,user}', ($1)::jsonb)\nwhere owner = $2", [JSON.stringify(obj), user]);

@@ -24,7 +24,7 @@ session.prototype = Object.create(Object.prototype) <<<
         return r.[]rows.0
       .then (obj) ~>
         if !obj => return
-        if req and req.user.key == user => req.user <<< obj
+        if req and req.user and (req.user.key == user) => req.user <<< obj
         @db.query """
         update session set detail = jsonb_set(detail, '{passport,user}', ($1)::jsonb)
         where owner = $2
