@@ -39,14 +39,18 @@ captcha =
         .catch (e) ->
           if lderror.id(e) in [1009 1010] => debounce(1000).then -> _ idx + 1
           else return Promise.reject e
+
+    # we used to create ldld in `prepare`, however `prepare` is called when block constructed
+    # and thus quite early, even before we provide zmgr from servebase core.
+    # so, we defer ldld initialization until we are going to use it
+    # to ensure we have zmgr configured already.
+    if !@ldld => @ldld = new ldloader className: 'ldld full', auto-z: true, base-z: undefined, zmgr: @_zmgr
     Promise.resolve!
       .then ~> @ldld.on!
       .then ~> _!
       .finally ~> @ldld.off!
 
-  prepare: ->
-    @root = it
-    @ldld = new ldloader className: 'ldld full', auto-z: true, base-z: null, zmgr: @_zmgr
+  prepare: -> @root = it
   verify: ({name}) ->
     provider = @get(name)
     if !@{}obj[name] =>
