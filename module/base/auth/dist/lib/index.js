@@ -229,10 +229,24 @@
       x$.post("/" + name, passport.authenticate(name, {
         scope: config.auth[name].scope || ['profile', 'openid', 'email']
       }));
-      x$.get("/" + name + "/callback", passport.authenticate(name, {
-        successRedirect: '/auth?oauth-done',
-        failureRedirect: '/auth?oauth-failed'
-      }));
+      x$.get("/" + name + "/callback", function(name){
+        return function(req, res, next){
+          return passport.authenticate(name, function(e, u, i){
+            if (e) {
+              return res.redirect("/auth?oauth-failed&code=" + lderror.id(e));
+            }
+            if (!u) {
+              return res.redirect('/auth?oauth-failed');
+            }
+            return req.logIn(u, function(e){
+              if (e) {
+                return next(e);
+              }
+              return res.redirect('/auth?oauth-done');
+            });
+          })(req, res, next);
+        };
+      }(name));
       return x$;
     });
     passport.serializeUser(function(u, done){

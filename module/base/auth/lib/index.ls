@@ -131,9 +131,16 @@ route.auth.get \/info, (req, res) ~>
   strategy[name](config.auth[name])
   route.auth
     ..post "/#name", passport.authenticate name, {scope: config.auth[name].scope or <[profile openid email]>}
-    ..get "/#name/callback", passport.authenticate name, do
-      successRedirect: \/auth?oauth-done
-      failureRedirect: \/auth?oauth-failed
+    ..get "/#name/callback", ((name) -> (req, res, next) ->
+      (
+        (e,u,i) <- passport.authenticate name, _
+        if e => return res.redirect "/auth?oauth-failed&code=#{lderror.id(e)}"
+        if !u => return res.redirect \/auth?oauth-failed
+        (e) <- req.logIn u, _
+        if e => return next e
+        res.redirect \/auth?oauth-done
+      )(req, res, next)
+    )(name)
 
 passport.serializeUser (u,done) !->
   db.user-store.serialize u .then (v) !-> done null, v
