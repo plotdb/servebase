@@ -134,12 +134,15 @@
       var username, password, method, detail, config, policy, this$ = this;
       username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, config = arg$.config;
       policy = this.policy.login;
+      if (policy.acceptSignup != null && !policy.acceptSignup) {
+        return lderror.reject(1040);
+      }
       username = username.toLowerCase();
       if (!config) {
         config = {};
       }
       if (!isEmail(username)) {
-        return Promise.reject(new lderror(1015));
+        return lderror.reject(1015);
       }
       return Promise.resolve().then(function(){
         if (method === 'local') {

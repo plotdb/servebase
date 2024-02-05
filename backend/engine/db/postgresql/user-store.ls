@@ -67,9 +67,10 @@ user-store.prototype = Object.create(Object.prototype) <<< do
 
   create: ({username, password, method, detail, config}) ->
     policy = @policy.login
+    if policy.accept-signup? and !policy.accept-signup => return lderror.reject 1040
     username = username.toLowerCase!
     if !config => config = {}
-    if !is-email(username) => return Promise.reject new lderror(1015)
+    if !is-email(username) => return lderror.reject 1015
     Promise.resolve!
       .then ~> if method == \local => @hashing(password) else password
       .then (password) ~>
