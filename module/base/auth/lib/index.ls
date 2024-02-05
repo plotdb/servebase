@@ -31,7 +31,7 @@ get-user = ({username, password, method, detail, create, cb, req}) ->
       # 1012: permission denied;  1004: quota exceeded(won't hit here?)
       # 1000: user not login; 1034: user not found; 1015: bad param
       # TODO we may need to pass error code to frontend for better error message.
-      if lderror.id(e) in [1000,1004,1012,1015,1034] => return cb null, false
+      if lderror.id(e) in [1000,1004,1012,1015,1034,1040] => return cb e, false
       console.log e
       cb lderror(500)
 
@@ -177,7 +177,7 @@ route.auth
       .then (user) !->
         req.login user, (err) !-> if err => next(err) else res.send {}
       .catch (e) !->
-        if lderror.id(e) == 1014 => return next(e)
+        if lderror.id(e) in [1014 1040] => return next(e)
         console.error e
         next(lderror 403)
   ..post \/login, backend.middleware.captcha, (req, res, next) ->
