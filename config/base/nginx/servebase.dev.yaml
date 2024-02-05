@@ -1,0 +1,9 @@
+name: servebasedev
+ip: 127.0.0.1
+port: 8901
+hostname: servebase.dev
+root: /Users/tkirby/workspace/plotdb/projects/servebase/frontend/base/static/
+cert:
+  crt: /Users/tkirby/workspace/devsuite/cert/servebase.dev/server.crt
+  key: /Users/tkirby/workspace/devsuite/cert/servebase.dev/server.key
+nginxCfgDir: /opt/homebrew/etc/nginx
