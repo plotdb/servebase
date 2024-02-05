@@ -59,6 +59,7 @@ module.exports = do
   policy:
     # login policy
     login:
+      accept-signup: true # default true. set to `false` to reject new signup.
       logging: false # log logging failure attempt in server log if true.
       oauth-default-verified: false # consider oauth accounts verified by default
     # password renew policy
