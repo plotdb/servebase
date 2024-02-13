@@ -49,7 +49,8 @@ Additionally, there are other files ignored in `.gitignore` file but it's up to 
 init:
 
     git init # create a new, empty repo
-    git remote add servebase <servebase-repo-url> # and keep the `servebase` repo with local name `servebase`.
+    # repo url can be like git@github.com:plotdb/servebase
+    git remote add servebase <servebase-repo-url>
     git fetch servebase
     git reset --hard servebase/master # alternatively to specific tag / release.
     git remote add origin <our-repo-url> # repo we are going to use
