@@ -72,6 +72,7 @@ captcha =
       if @obj[name].provider.headless => p = Promise.resolve!
       else p = @obj[name].ldcv.get!
     @obj[name].obj.init!
+      .catch ~> return lderror.reject 1041
       .then ~> @obj[name].obj.render!
       .then -> p
       .then ~>
@@ -88,6 +89,7 @@ captcha =
             return if lc.done => that else lderror.reject 1006
           .catch -> return Promise.reject it
       .catch (e) ->
+        if lderror.id(e) in [1041] => return Promise.reject e
         console.log e
         return {}
 
