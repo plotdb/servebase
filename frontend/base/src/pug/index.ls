@@ -88,7 +88,9 @@
                 .catch ->
                   console.error "accessing /api/demo/post with captcha failed: ", it
                   Promise.reject it
-        .catch -> alert "captcha verification failed"
+        .catch (e) ->
+          if lderror.id(e) in [1041] => return Promise.reject(e)
+          alert "captcha verification failed with id #{lderror.id(e)}"
   init:
     ldcv: ({node}) ~>
       name = node.getAttribute \data-name

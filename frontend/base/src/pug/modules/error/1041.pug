@@ -1,0 +1,12 @@
+include /modules/common.pug
+.ldcv.autogap.scroll: .base.w-640.rwd: .inner
+  .text-center.mb-4
+    h1.font-weight-bold Failed to Initialize Captcha
+    p.text-muted lderror Code: 1041
+  .mb-4
+    p We use Captcha technology to ensure stability of our website, however it failed to be loaded properly. It may be due to the extensions you've installed or your network environment.
+
+    p You can try using incognito mode to see if that resolves the issue, or change your browsing environment (for example, switch from using a VPN to a direct connection). If you continue to encounter problems, please feel free to #[a(href="lda.ldcvmgr.toggle('contact')") contact us] and let us help you.
+  .row
+    .col-md.mb-2: .btn.btn-block.btn-primary.btn-lg(onclick="lda.ldcvmgr.toggle('contact')") Contact Us
+    .col-md.mb-2: .btn.btn-block.btn-outline-primary.btn-lg(data-ldcv-set="") Close
