@@ -91,6 +91,7 @@ module.exports =
         "mail-verify": ({node}) ->
           if !core.user.verified => return
           d = new Date(core.user.verified.date)
+          if isNaN(d.getTime!) => return node.innerText = t('verified')
           d = [
             ("#{d.getYear! + 1900}").padStart(4,'0')
             ("#{d.getMonth! + 1}").padStart(2,'0')
