@@ -307,6 +307,10 @@
         },
         config: config || {}
       }).then(function(user){
+        var ref$;
+        if (((ref$ = config.policy || (config.policy = {})).login || (ref$.login = {})).skipVerify) {
+          return user;
+        }
         return this$.mail.verify({
           req: req,
           user: user

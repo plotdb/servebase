@@ -176,6 +176,7 @@ route.auth
       method: \local, detail: {displayname}, config: (config or {})
     }
       .then (user) ~>
+        if config.{}policy.{}login.skip-verify => return user
         @mail.verify {req, user}
           .catch (err) ~>
             # only log here so user can continue to login.
