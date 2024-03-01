@@ -37,7 +37,7 @@ mail-queue = (opt={}) ->
     else if typeof(opt.blacklist) == \object =>
       if typeof(opt.blacklist.module) == \string  =>
         try
-          p = if !/^./.exec(opt.blacklist.module) => opt.blacklist.module
+          p = if !/^\./.exec(opt.blacklist.module) => opt.blacklist.module
           else path.join(rootdir, opt.blacklist.module)
           @_blacklist = require p
         catch err

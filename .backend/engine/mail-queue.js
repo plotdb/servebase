@@ -42,7 +42,7 @@
       } else if (typeof opt.blacklist === 'object') {
         if (typeof opt.blacklist.module === 'string') {
           try {
-            p = !/^./.exec(opt.blacklist.module)
+            p = !/^\./.exec(opt.blacklist.module)
               ? opt.blacklist.module
               : path.join(rootdir, opt.blacklist.module);
             this._blacklist = require(p);
