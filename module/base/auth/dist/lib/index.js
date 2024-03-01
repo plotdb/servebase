@@ -288,13 +288,12 @@
     app.use(passport.session());
     x$ = route.auth;
     x$.post('/signup', backend.middleware.captcha, function(req, res, next){
-      var ref$, username, displayname, password, config;
+      var ref$, username, displayname, password;
       ref$ = {
         username: (ref$ = req.body).username,
         displayname: ref$.displayname,
-        password: ref$.password,
-        config: ref$.config
-      }, username = ref$.username, displayname = ref$.displayname, password = ref$.password, config = ref$.config;
+        password: ref$.password
+      }, username = ref$.username, displayname = ref$.displayname, password = ref$.password;
       if (!username || !displayname || password.length < 8) {
         return next(lderror(400));
       }
@@ -305,7 +304,7 @@
         detail: {
           displayname: displayname
         },
-        config: config || {}
+        config: req.body.config || {}
       }).then(function(user){
         var ref$;
         if (((ref$ = config.policy || (config.policy = {})).login || (ref$.login = {})).skipVerify) {

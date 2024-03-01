@@ -170,12 +170,14 @@ app.use passport.session!
 
 route.auth
   ..post \/signup, backend.middleware.captcha, (req, res, next) ~>
-    {username,displayname,password,config} = req.body{username,displayname,password,config}
+    # config skipped here to prevent var shadowing of the global config object
+    {username,displayname,password} = req.body{username,displayname,password}
     if !username or !displayname or password.length < 8 => return next(lderror 400)
     db.user-store.create {username, password} <<< {
-      method: \local, detail: {displayname}, config: (config or {})
+      method: \local, detail: {displayname}, config: (req.body.config or {})
     }
       .then (user) ~>
+        # here we use the global config object.
         if config.{}policy.{}login.skip-verify => return user
         @mail.verify {req, user}
           .catch (err) ~>
