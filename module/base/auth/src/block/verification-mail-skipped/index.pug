@@ -1,0 +1,26 @@
+.ldcv.autogap.scroll: .base.w-640.rwd: .inner
+  script(type="@plotdb/block"): :lsc
+    module.exports = pkg: i18n:
+      en:
+        "title": "Verification Mail Not Sent"
+        "p": [
+          "Due to some reasons, we were unable to send a verification email to your address, This may be because your address is not accepted by our mail server."
+          "This situation is common with disposable email addresses or simply due to a typo in the address. You may try again later or contact us for assistance."
+        ]
+        "contact": "Contact Us"
+        "close": "Close Dialog"
+      "zh-TW":
+        "title": "認證信未寄出"
+        "p": [
+          "因某些原因，我們未能寄出認證信至您的電子郵件地址，這可能是由於您的地址不被我們的郵件伺服器所接受。"
+          "這狀況常見於拋棄式的郵件地址或單純的打錯字，您可以稍後再嘗試一次，或者聯繫我們以獲得協助。"
+        ]
+        "contact": "聯繫我們"
+        "close": "關閉對話框"
+  h2.text-center(t) title
+  .my-4
+    p(t) p.0
+    p(t) p.1
+  .row
+    .col-md.mb-2: .btn.btn-outline-secondary.btn-block.btn-lg(onclick="lda.ldcvmgr.toggle('contact')",t) contact
+    .col-md.mb-2: .btn.btn-primary.btn-block.btn-lg(data-ldcv-set="",t) close

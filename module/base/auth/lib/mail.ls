@@ -39,7 +39,7 @@ route: ->
     @verify {req, user: req.user}
       .then -> res.send {result: "sent"}
       .catch (e) ->
-        if lderror.id(e) == 998 => res.send {result: "skipped"}
+        if lderror.id(e) == 998 => return res.send {result: "skipped"}
         return Promise.reject e
 
   route.app.get \/auth/mail/verify/:token, (req, res) ->

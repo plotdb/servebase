@@ -85,8 +85,11 @@ module.exports =
                 ld$.fetch \/api/auth/mail/verify, {method: \POST}, {json: {captcha}, type: \json}
               .finally -> debounce 1000 .then -> local.ldld.off!
               .then (ret = {}) ->
-                if ret.result != \sent => return
-                ldcvmgr.toggle {name: "@servebase/auth", path: "verification-mail-sent"}
+                if ret.result == \sent =>
+                  ldcvmgr.toggle {name: "@servebase/auth", path: "verification-mail-sent"}
+                else if ret.result == \skipped
+                  ldcvmgr.toggle {name: "@servebase/auth", path: "verification-mail-skipped"}
+                else # do nothing.
       handler:
         "mail-verify": ({node}) ->
           if !core.user.verified => return

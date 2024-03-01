@@ -72,7 +72,7 @@
               });
             })['catch'](function(e){
               if (lderror.id(e) === 998) {
-                res.send({
+                return res.send({
                   result: "skipped"
                 });
               }
