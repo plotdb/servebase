@@ -314,6 +314,9 @@
           req: req,
           user: user
         })['catch'](function(err){
+          if (lderror.id(err) === 998) {
+            return user;
+          }
           return backend.logMail.error({
             err: err
           }, ("send mail verification mail failed (" + username + ")").red);

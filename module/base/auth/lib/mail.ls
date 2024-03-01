@@ -14,7 +14,7 @@ getmap = (req) ->
 verify: ({req, user}) ->
   obj = {}
   (ret) <~ backend.mail-queue.in-blacklist user.username .then _
-  if ret => return
+  if ret => return lderror.reject 998
   Promise.resolve!
     .then ->
       time = new Date!
@@ -36,7 +36,11 @@ route: ->
     """, [req.user.key] .then _
     if !(u = r.[]rows.0) => return lderror.reject 404
     if u.{}verified.date => return res.send {result: "verified"}
-    @verify {req, user: req.user} .then -> res.send {result: "sent"}
+    @verify {req, user: req.user}
+      .then -> res.send {result: "sent"}
+      .catch (e) ->
+        if lderror.id(e) == 998 => res.send {result: "skipped"}
+        return Promise.reject e
 
   route.app.get \/auth/mail/verify/:token, (req, res) ->
     lc = {}

@@ -29,7 +29,7 @@
         obj = {};
         return backend.mailQueue.inBlacklist(user.username).then(function(ret){
           if (ret) {
-            return;
+            return lderror.reject(998);
           }
           return Promise.resolve().then(function(){
             var time;
@@ -70,6 +70,13 @@
               return res.send({
                 result: "sent"
               });
+            })['catch'](function(e){
+              if (lderror.id(e) === 998) {
+                res.send({
+                  result: "skipped"
+                });
+              }
+              return Promise.reject(e);
             });
           });
         });

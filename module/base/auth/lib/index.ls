@@ -181,6 +181,7 @@ route.auth
         if config.{}policy.{}login.skip-verify => return user
         @mail.verify {req, user}
           .catch (err) ~>
+            if lderror.id(err) == 998 => return user
             # only log here so user can continue to login.
             backend.log-mail.error {err}, "send mail verification mail failed (#username)".red
           .then -> user
