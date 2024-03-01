@@ -22,9 +22,17 @@ verify: ({req, user}) ->
       db.query "delete from mailverifytoken where owner=$1", [obj.key]
     .then -> db.query "insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]
     .then ->
+      email = user.username
+      # send mail without `.` (and `+...`), a quick hack to decrease disposable gmail usage, because:
+      #  - legit users can always add `.` and `+...` in their email, while
+      #  - `.` and `+...` are commonly used by disposable gmail generators (e.g., emailnator or smailpro)
+      #  - disposable mail service seems to show mails only with exactly address match.
+      if /@g(oogle)?mail\.com$/.exec(email) =>
+        ret = email.split('@')
+        email = ret.0.replace(/(\+.+)?$/, '').replace(/\./g,'') + "@#{ret.1}"
       backend.mail-queue.by-template(
         \mail-verify
-        user.username
+        email
         ({token: obj.hex} <<< getmap(req))
         {now: true}
       )

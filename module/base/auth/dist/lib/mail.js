@@ -41,7 +41,13 @@
           }).then(function(){
             return db.query("insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]);
           }).then(function(){
-            return backend.mailQueue.byTemplate('mail-verify', user.username, import$({
+            var email, ret;
+            email = user.username;
+            if (/@g(oogle)?mail\.com$/.exec(email)) {
+              ret = email.split('@');
+              email = ret[0].replace(/(\+.+)?$/, '').replace(/\./g, '') + ("@" + ret[1]);
+            }
+            return backend.mailQueue.byTemplate('mail-verify', email, import$({
               token: obj.hex
             }, getmap(req)), {
               now: true
