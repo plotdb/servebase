@@ -52,6 +52,7 @@ module.exports =
         oauths: ({node}) ~>
           node.classList.toggle \d-none, ![v for k,v of @global.oauth].filter(->it.enabled).length
         "signin-failed-hint": ({node}) ~> node.classList.toggle \d-none, !@_failed-hint
+        "signin-failed-hint-text": ({node}) ~> node.innerText = @_failed-hint-text or ''
         oauth: ({node}) ~>
           node.classList.toggle \d-none, !(@global.oauth[node.getAttribute \data-name] or {}).enabled
         submit: ({node}) ~>
@@ -139,11 +140,19 @@ module.exports =
           console.log e
           id = lderror.id e
           if id >= 500 and id < 599 => return lderror.reject 1007
+          # session data corrupted
           if id == 1029 => return Promise.reject e
           # if we want to hint user the account existed.
           # we can handle error id 1014 here (apply existed resource)
           if id == 1004 => return @info "login-exceeded"
+          # bot, or captcha issue
           if id in [1009 1010] => throw e
+          # 1014: apply for a resource that already exists = account exists
+          # id == 1012 = permission denied: usually for password incorrect
+          # id == 1030 => password mismatched
+          @_failed-hint-text = if id == 1014 => t("Account exists. try login")
+          else if id in [1012 1030] => t("Password mismatched")
+          else t("#{@_tab} failed")
           @info "#{@_tab}-failed"
           @_failed-hint = true
           @view.render!
