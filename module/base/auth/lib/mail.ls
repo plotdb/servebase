@@ -13,6 +13,8 @@ getmap = (req) ->
 
 verify: ({req, user}) ->
   obj = {}
+  (ret) <~ backend.mail-queue.in-blacklist user.username .then _
+  if ret => return
   Promise.resolve!
     .then ->
       time = new Date!
@@ -29,14 +31,12 @@ verify: ({req, user}) ->
 
 route: ->
   route.auth.post \/mail/verify, aux.signedin, mdw.throttle, mdw.captcha, (req, res) ~>
-    (ret) <~ backend.mail-queue.in-blacklist req.user.username .then _
-    if ret => return res.send {result: "sent"}
     (r={}) <~ db.query """
     select key,verified from users where key = $1 and deleted is not true
     """, [req.user.key] .then _
     if !(u = r.[]rows.0) => return lderror.reject 404
     if u.{}verified.date => return res.send {result: "verified"}
-    @verify {req, user: req.user, db} .then -> res.send {result: "sent"}
+    @verify {req, user: req.user} .then -> res.send {result: "sent"}
 
   route.app.get \/auth/mail/verify/:token, (req, res) ->
     lc = {}

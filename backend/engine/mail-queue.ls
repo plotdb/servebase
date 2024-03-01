@@ -1,4 +1,4 @@
-require! <[fs @plotdb/colors js-yaml lderror]>
+require! <[fs path @plotdb/colors js-yaml lderror]>
 require! <[nodemailer nodemailer-mailgun-transport]>
 require! <[./utils/md]>
 
@@ -11,6 +11,9 @@ require! <[./utils/md]>
 #   html: """  .... ( your html ) .... """
 # }
 #   .then -> ...
+
+libdir = path.dirname fs.realpathSync(__filename.replace(/\(js\)$/,''))
+rootdir = path.join(libdir, '../..')
 
 mail-queue = (opt={}) ->
   @api = if opt.smtp =>
@@ -25,15 +28,32 @@ mail-queue = (opt={}) ->
   @base = opt.base or 'base'
   @log = opt.logger
   @info = opt.info or {}
-  @blacklist = (opt.blacklist or []).map((n)->"@#n")
+  if opt.blacklist? =>
+    if Array.isArray(opt.blacklist) =>
+      @_blacklist = opt.blacklist
+        .map (n) ->
+          "#{(if !n => '' else if /@/.exec(n) => n else "@#n")}".trim!
+        .filter -> it
+    else if typeof(opt.blacklist) == \object =>
+      if typeof(opt.blacklist.module) == \string  =>
+        try
+          p = if !/^./.exec(opt.blacklist.module) => opt.blacklist.module
+          else path.join(rootdir, opt.blacklist.module)
+          @_blacklist = require p
+        catch err
+          @log.error {err}, "blacklist is provided as a module, however failed to load, and thus disabled."
   @list = []
   @
 
 mail-queue.prototype = Object.create(Object.prototype) <<< do
   in-blacklist: (m = "") ->
-    <~ Promise.resolve!then _
-    for i from @blacklist.length - 1 to 0 by -1 => if (~m.indexOf(@blacklist[i])) => return true
-    return false
+    return if !@_blacklist => Promise.resolve false
+    else if Array.isArray(@_blacklist) =>
+      <~ Promise.resolve!then _
+      for i from @_blacklist.length - 1 to 0 by -1 => if (~m.indexOf(@_blacklist[i])) => return true
+      return false
+    else if typeof(@_blacklist.is) == \function => @_blacklist.is m
+    else Promise.resolve false
   add: (obj) ->
     @list.push obj
     @handler!

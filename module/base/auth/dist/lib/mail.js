@@ -27,51 +27,48 @@
         var req, user, obj;
         req = arg$.req, user = arg$.user;
         obj = {};
-        return Promise.resolve().then(function(){
-          var time;
-          time = new Date();
-          obj.key = user.key;
-          obj.hex = (user.key + "-") + crypto.randomBytes(30).toString('hex');
-          obj.time = time;
-          return db.query("delete from mailverifytoken where owner=$1", [obj.key]);
-        }).then(function(){
-          return db.query("insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]);
-        }).then(function(){
-          return backend.mailQueue.byTemplate('mail-verify', user.username, import$({
-            token: obj.hex
-          }, getmap(req)), {
-            now: true
+        return backend.mailQueue.inBlacklist(user.username).then(function(ret){
+          if (ret) {
+            return;
+          }
+          return Promise.resolve().then(function(){
+            var time;
+            time = new Date();
+            obj.key = user.key;
+            obj.hex = (user.key + "-") + crypto.randomBytes(30).toString('hex');
+            obj.time = time;
+            return db.query("delete from mailverifytoken where owner=$1", [obj.key]);
+          }).then(function(){
+            return db.query("insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]);
+          }).then(function(){
+            return backend.mailQueue.byTemplate('mail-verify', user.username, import$({
+              token: obj.hex
+            }, getmap(req)), {
+              now: true
+            });
           });
         });
       },
       route: function(){
         var this$ = this;
         route.auth.post('/mail/verify', aux.signedin, mdw.throttle, mdw.captcha, function(req, res){
-          return backend.mailQueue.inBlacklist(req.user.username).then(function(ret){
-            if (ret) {
+          return db.query("select key,verified from users where key = $1 and deleted is not true", [req.user.key]).then(function(r){
+            var u;
+            r == null && (r = {});
+            if (!(u = (r.rows || (r.rows = []))[0])) {
+              return lderror.reject(404);
+            }
+            if ((u.verified || (u.verified = {})).date) {
               return res.send({
-                result: "sent"
+                result: "verified"
               });
             }
-            return db.query("select key,verified from users where key = $1 and deleted is not true", [req.user.key]).then(function(r){
-              var u;
-              r == null && (r = {});
-              if (!(u = (r.rows || (r.rows = []))[0])) {
-                return lderror.reject(404);
-              }
-              if ((u.verified || (u.verified = {})).date) {
-                return res.send({
-                  result: "verified"
-                });
-              }
-              return this$.verify({
-                req: req,
-                user: req.user,
-                db: db
-              }).then(function(){
-                return res.send({
-                  result: "sent"
-                });
+            return this$.verify({
+              req: req,
+              user: req.user
+            }).then(function(){
+              return res.send({
+                result: "sent"
               });
             });
           });
