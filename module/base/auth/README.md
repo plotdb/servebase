@@ -151,6 +151,13 @@ We use `@plotdb/block` to simplify and offload authpanel from main pages. It's p
       div(ld="info", data-name="signup-failed")
       div(ld="info", data-name="token")
 
+Additionally, following are supported ld selectors:
+
+ - `signin-failed-hint`: node with this selector will show only if signin fails.
+ - `signin-failed-hint-text`: content of this node with be related text for reason of signin failure.
+ - `submit-text`: `login` or `sign up`, based on mode user chooses.
+
+
 Authpanel script works with bootstrap and still have some class names hardcoded, which should be abstracted in the future to make its UI fully customizable.
 
 
