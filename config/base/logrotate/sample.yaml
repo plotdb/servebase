@@ -1,0 +1,3 @@
+root: path-to-your-serverbase-root
+logdir: path-to-logrotate-default-output-dir
+datedir: path-to-organize-logs-by-dates
