@@ -145,17 +145,19 @@ module.exports =
           # if we want to hint user the account existed.
           # we can handle error id 1014 here (apply existed resource)
           if id == 1004 => return @info "login-exceeded"
-          # bot, or captcha issue
-          if id in [1009 1010] => throw e
           # 1014: apply for a resource that already exists = account exists
           # id == 1012 = permission denied: usually for password incorrect
           # id == 1030 => password mismatched
           @_failed-hint-text = if id == 1014 => t("Account exists. try login")
           else if id in [1012 1030] => t("Password mismatched")
+          else if id in [1009 1010] => t("Captcha failed")
+          else if id == 1041 => t("Resource issue")
           else t("#{@_tab} failed")
           @info "#{@_tab}-failed"
           @_failed-hint = true
           @view.render!
           @form.fields.password.value = null
           @form.check {n: \password, now: true}
-          if !id => throw e
+          # 1009, 1010: bot or captcha issue
+          # 1041: resource possibly blocked by client (e.g., adblock blocks captcha)
+          if !id or (id in [1009 1010 1041]) => throw e

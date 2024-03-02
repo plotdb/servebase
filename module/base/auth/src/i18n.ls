@@ -17,6 +17,8 @@ i18n-resource =
       "Password mismatched": "Password mismatched"
       "login failed": "Login failed"
       "signup failed": "Signup failed"
+      "Captcha failed": "Captcha failed"
+      "Resource issue": "Resource issue"
     input:
       email:
         hint: 'your email address, as account name'
@@ -95,6 +97,8 @@ i18n-resource =
       "Password mismatched": "密碼不符合"
       "login failed": "登入失敗"
       "signup failed": "註冊失敗"
+      "Captcha failed": "未通過真人驗證"
+      "Resource issue": "載入資源失敗"
     input:
       email:
         hint: "您的電子郵件地址做為帳戶名"
