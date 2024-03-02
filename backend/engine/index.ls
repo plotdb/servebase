@@ -71,7 +71,7 @@ backend = (opt = {}) ->
   log-level = @config.{}log.level or (if @production => \info else \debug)
   if !(log-level in <[silent trace debug info warn error fatal]>) =>
     throw new Error("pino log level incorrect. please fix secret.ls: log.level")
-  @log = pino level: log-level
+  @log = pino level: log-level, base: null
   @
 
 backend <<< do

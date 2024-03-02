@@ -112,7 +112,8 @@
       throw new Error("pino log level incorrect. please fix secret.ls: log.level");
     }
     this.log = pino({
-      level: logLevel
+      level: logLevel,
+      base: null
     });
     return this;
   };
