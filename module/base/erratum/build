@@ -24,6 +24,7 @@ $bin/srcbuild-pug src/block/490.pug -o dist/block/490.html
 $bin/srcbuild-pug src/block/1000.pug -o dist/block/1000.html
 $bin/srcbuild-pug src/block/1010.pug -o dist/block/1010.html
 $bin/srcbuild-pug src/block/1016.pug -o dist/block/1016.html
+$bin/srcbuild-pug src/block/1041.pug -o dist/block/1041.html
 $bin/srcbuild-pug src/block/403.pug -o dist/block/403.html
 $bin/srcbuild-pug src/block/413.pug -o dist/block/413.html
 $bin/srcbuild-pug src/block/500.pug -o dist/block/500.html
