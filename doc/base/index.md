@@ -44,13 +44,14 @@ To run most of the Servebase backend code you will need a corresponding database
 
 You may need a corresponding database configuration in your private config file.
 
+
 ### Log ( TODO / TBD )
 
 `./start` output logs into a log file `server.log`, with the `pino` log format.
 
 TODO:
 
- - log rotate & backup
+ - log backup
  - format parsing and visualization
 
 
