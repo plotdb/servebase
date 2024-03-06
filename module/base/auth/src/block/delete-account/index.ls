@@ -33,7 +33,7 @@ module.exports =
         if node.classList.contains \disabled => return
         core.loader.on!
         core.captcha
-          .guard cb: ({captcha}) ->
+          .guard cb: (captcha) ->
             payload = {captcha}
             ld$.fetch \/api/auth/user/delete, {method: \post}, {json: payload}
           .finally -> core.loader.off!
