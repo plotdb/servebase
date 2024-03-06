@@ -186,6 +186,16 @@ check `src/base.ls` for sample implementation of authpanel. Its interface should
 
 By default, the URL path `/auth/` and `/api/auth/` is used for communication between frontend and backend.
 
+`@servebase/backend` also expose its internal auth object as `backend.auth`, which provides some APIs as:
+
+ - `user`: user related operations.
+   - `delete({key, username})`: delete the user with either given `key` or `username`.
+     -  one of `key` or `username` should be provided. `key` take precedence over `username`.
+ - `mail`: mail related operations
+   - `verify({req, user})`: - send verification mail to a given user. `user` is an object with:
+     - `key`: user's key
+     - `username`: user's username (email)
+
 
 engine/auth.ls. API endpoints:
 

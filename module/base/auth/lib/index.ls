@@ -17,6 +17,24 @@ oauth = Object.fromEntries(
 
 limit-session-amount = false
 
+@user =
+  delete: ({key, username}) ->
+    if !(key or username) => return lderror.rejrect 400
+    if username => username = "#username".trim!toLowerCase!
+    (r={}) <- db.query """
+    select username,key from users
+    where deleted is not true and
+    #{if key => 'key = $1' else 'username = $1'}
+    """, [if key => key else username] .then _
+    if !(u = r.[]rows.0) => return lderror.reject 404
+    <- session.delete {user: u.key} .then _
+    db.query """
+    update users
+    set (username,displayname,method,password,deleted)
+    = ($2, $3, 'local', '', true)
+    where key = $1
+    """, [u.key, "deleted(#{u.username})", "(deleted user)"]
+
 get-user = ({username, password, method, detail, create, cb, req}) ->
   db.user-store.get {username, password, method, detail, create}
     .then (user) !->
@@ -212,6 +230,10 @@ route.auth.put \/user, aux.signedin, backend.middleware.captcha, (req, res, next
     .then -> req.user <<< {displayname, description, title, tags}
     .then -> session.sync {req, user: req.user.key, obj: req.user}
     .then -> res.send!
+
+route.auth.post \/user/delete, aux.signedin, (req, res) ~>
+  if !(req.user and req.user.key) => return lderror.rejrect 400
+  @user.delete {key: req.user.key} .then -> res.send!
 
 # identical to `/auth` but if it's more semantic clear.
 app.get \/auth/reset, (req, res) ->

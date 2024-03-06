@@ -58,6 +58,30 @@
       return it;
     }));
     limitSessionAmount = false;
+    this.user = {
+      'delete': function(arg$){
+        var key, username;
+        key = arg$.key, username = arg$.username;
+        if (!(key || username)) {
+          return lderror.rejrect(400);
+        }
+        if (username) {
+          username = (username + "").trim().toLowerCase();
+        }
+        return db.query("select username,key from users\nwhere deleted is not true and\n" + (key ? 'key = $1' : 'username = $1'), [key ? key : username]).then(function(r){
+          var u;
+          r == null && (r = {});
+          if (!(u = (r.rows || (r.rows = []))[0])) {
+            return lderror.reject(404);
+          }
+          return session['delete']({
+            user: u.key
+          }).then(function(){
+            return db.query("update users\nset (username,displayname,method,password,deleted)\n= ($2, $3, 'local', '', true)\nwhere key = $1", [u.key, "deleted(" + u.username + ")", "(deleted user)"]);
+          });
+        });
+      }
+    };
     getUser = function(arg$){
       var username, password, method, detail, create, cb, req;
       username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, create = arg$.create, cb = arg$.cb, req = arg$.req;
@@ -401,6 +425,16 @@
           user: req.user.key,
           obj: req.user
         });
+      }).then(function(){
+        return res.send();
+      });
+    });
+    route.auth.post('/user/delete', aux.signedin, function(req, res){
+      if (!(req.user && req.user.key)) {
+        return lderror.rejrect(400);
+      }
+      return this$.user['delete']({
+        key: req.user.key
       }).then(function(){
         return res.send();
       });
