@@ -436,7 +436,9 @@
       return this$.user['delete']({
         key: req.user.key
       }).then(function(){
-        return res.send();
+        return req.logout(function(){
+          return res.send();
+        });
       });
     });
     app.get('/auth/reset', function(req, res){

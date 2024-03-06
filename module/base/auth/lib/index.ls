@@ -233,7 +233,9 @@ route.auth.put \/user, aux.signedin, backend.middleware.captcha, (req, res, next
 
 route.auth.post \/user/delete, aux.signedin, backend.middleware.captcha, (req, res) ~>
   if !(req.user and req.user.key) => return lderror.rejrect 400
-  @user.delete {key: req.user.key} .then -> res.send!
+  <- @user.delete {key: req.user.key} .then _
+  <- req.logout _
+  res.send!
 
 # identical to `/auth` but if it's more semantic clear.
 app.get \/auth/reset, (req, res) ->
