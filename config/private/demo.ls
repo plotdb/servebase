@@ -100,6 +100,10 @@ module.exports = do
     smpt: null
     # Mailgun config: {auth: {domain, api_key}}
     mailgun: null
+    # blacklist emails. either an array of domains, or an object with `module` field,
+    # pointing to a module with `is(email)` API which return a Promise resolving with `true`
+    # if `email` is blacklisted.
+    blacklist: []
   # additional information passing to client side via api/auth/info.
   # use `global.config` to access this object.
   client: {}
