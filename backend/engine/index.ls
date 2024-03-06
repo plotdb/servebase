@@ -64,6 +64,7 @@ backend = (opt = {}) ->
     app: null        # express application
     log: null        # obj for logging, in pino / winston interface
     mail-queue: null # mail queue for sending email
+    auth: null       # auth related APIs, from @servebase/auth
     route: {}        # all default routes
     store: {}        # redis like data store, with get / set function
     session: {}      # session manipulate object
@@ -206,7 +207,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @route.consent = aux.routecatch express.Router {mergeParams: true}
 
         # Authentication
-        auth @  # Authenticate. must before any router ( e.g., /api )
+        @auth = auth @  # Authenticate. must before any router ( e.g., /api )
 
         app.use \/extapi/, @route.extapi
         app.use \/ext/, @route.extapp

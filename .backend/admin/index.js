@@ -54,6 +54,20 @@
     isEmail = function(it){
       return reEmail.exec(it);
     };
+    route.post('/user/delete', function(req, res){
+      var username;
+      if (!(username = req.body.username)) {
+        return lderror.reject(400);
+      }
+      if (!isEmail(username)) {
+        return lderror.reject(400);
+      }
+      return backend.auth.user['delete']({
+        username: username
+      }).then(function(){
+        return res.send({});
+      });
+    });
     route.post('/user/', function(req, res){
       var ref$, username, displayname, password, detail, config, method;
       if (['username', 'displayname', 'password'].filter(function(it){

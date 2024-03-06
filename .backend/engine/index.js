@@ -102,6 +102,7 @@
       app: null,
       log: null,
       mailQueue: null,
+      auth: null,
       route: {},
       store: {},
       session: {},
@@ -321,7 +322,7 @@
         this$.route.consent = aux.routecatch(express.Router({
           mergeParams: true
         }));
-        auth(this$);
+        this$.auth = auth(this$);
         app.use('/extapi/', this$.route.extapi);
         app.use('/ext/', this$.route.extapp);
         if (exts) {

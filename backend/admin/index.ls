@@ -36,6 +36,11 @@ route.post \/users/, (req, res, next) ->
 re-email = curegex.tw.get('email', re2)
 is-email = -> return re-email.exec(it)
 
+route.post \/user/delete, (req, res) ->
+  if !(username = req.body.username) => return lderror.reject 400
+  if !is-email(username) => return lderror.reject 400
+  backend.auth.user.delete {username} .then -> res.send {}
+
 route.post \/user/, (req, res) ->
   if <[username displayname password]>.filter(->!req.body[it]).length => return lderror.reject 400
   {username,displayname,password} = req.body
