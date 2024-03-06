@@ -33,7 +33,7 @@ limit-session-amount = false
     set (username,displayname,method,password,deleted)
     = ($2, $3, 'local', '', true)
     where key = $1
-    """, [u.key, "deleted(#{u.username})", "(deleted user)"]
+    """, [u.key, "deleted(#{u.username})/#{u.key}", "(deleted user #{u.key})"]
 
 get-user = ({username, password, method, detail, create, cb, req}) ->
   db.user-store.get {username, password, method, detail, create}

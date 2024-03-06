@@ -77,7 +77,7 @@
           return session['delete']({
             user: u.key
           }).then(function(){
-            return db.query("update users\nset (username,displayname,method,password,deleted)\n= ($2, $3, 'local', '', true)\nwhere key = $1", [u.key, "deleted(" + u.username + ")", "(deleted user)"]);
+            return db.query("update users\nset (username,displayname,method,password,deleted)\n= ($2, $3, 'local', '', true)\nwhere key = $1", [u.key, "deleted(" + u.username + ")/" + u.key, "(deleted user " + u.key + ")"]);
           });
         });
       }
