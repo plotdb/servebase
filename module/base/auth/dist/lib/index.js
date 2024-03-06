@@ -429,7 +429,7 @@
         return res.send();
       });
     });
-    route.auth.post('/user/delete', aux.signedin, function(req, res){
+    route.auth.post('/user/delete', aux.signedin, backend.middleware.captcha, function(req, res){
       if (!(req.user && req.user.key)) {
         return lderror.rejrect(400);
       }

@@ -231,7 +231,7 @@ route.auth.put \/user, aux.signedin, backend.middleware.captcha, (req, res, next
     .then -> session.sync {req, user: req.user.key, obj: req.user}
     .then -> res.send!
 
-route.auth.post \/user/delete, aux.signedin, (req, res) ~>
+route.auth.post \/user/delete, aux.signedin, backend.middleware.captcha, (req, res) ~>
   if !(req.user and req.user.key) => return lderror.rejrect 400
   @user.delete {key: req.user.key} .then -> res.send!
 

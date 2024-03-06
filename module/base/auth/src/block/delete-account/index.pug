@@ -1,0 +1,13 @@
+.ldcv.autogap.scroll: .base.w-640.rwd: .inner
+  script(type="@plotdb/block"): include:lsc index.ls
+  .text-center.mb-4: h1.mb-0(t="title")
+  .text-muted.mb-4
+    p(t="desc.0")
+    p #[span(t="desc.1") Most important of all, this cannot be undone.]#[b.text-dark(t="sure")]
+  form(ld="form")
+    .form-group
+      input.form-control.form-control-lg(t,t-placeholder="placeholder",name="username")
+      .invalid-feedback(t="mismatch")
+    .row.mt-4
+      .col-md.mb-2: .btn.btn-danger.btn-block.btn-lg.disabled(ld="delete",t="yes")
+      .col-md.mb-2: .btn.btn-outline-secondary.btn-block.btn-lg(data-ldcv-set="",t="no")

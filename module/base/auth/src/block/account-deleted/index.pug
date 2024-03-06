@@ -1,0 +1,15 @@
+.ldcv.scroll.autogap: .base.w-480.rwd: .inner
+  script(type="@plotdb/block"): :lsc
+    module.exports = pkg: i18n:
+      en:
+        title: "Account Deleted"
+        desc: "Your account has been deleted. You can wait for redirection or click the button below to go to home page."
+        back: "Home Page"
+      "zh-TW":
+        title: "帳號已刪除"
+        desc: "您的帳號已經被刪除。您可以等待跳轉回首頁，或直接點擊按鈕立刻跳轉。"
+        back: "回首頁"
+
+  .text-center.mb-4: h2.mb-0(t="title")
+  p.my-4(t="desc")
+  .text-center: a.btn.btn-outline-secondary(href="/",t="back")
