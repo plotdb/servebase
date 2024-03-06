@@ -75,26 +75,31 @@ module.exports =
   init: ({ctx}) ->
     {curegex, ldform} = ctx
     ({core}) <~ servebase.corectx _
-    <~ core.init!then _
     @ldcv = {}
     {loader, error, captcha} = core
     view = new ldview do
       root: '[ld-scope=password-reset]'
       init:
-        "sent": ({node}) ~> @ldcv.sent = new ldcover root: node, lock: true
-        "not-found": ({node}) ~> @ldcv.not-found = new ldcover root: node
+        "sent": ({node}) ~> @ldcv.sent = new ldcover root: node, lock: true, zmgr: core.zmgr
+        "not-found": ({node}) ~> @ldcv.not-found = new ldcover root: node, zmgr: core.zmgr
         "email": ({node}) ~> node.focus!
       action: click: do
         submit: ({node}) ~>
           if !pw-reset-mail.ready! => return
           loader.on!
-          captcha.guard cb: (captcha) ~>
-            ld$.fetch '/api/auth/passwd/reset', {method: \POST}, {json: {email: view.get(\email).value, captcha}}
-              .finally ~> loader.off!
-              .then ~> @ldcv.sent.get!
-              .catch (e) ~>
-                if lderror.id(e) == 404 => @ldcv.not-found.toggle!
-                else error e
+          captcha
+            .guard cb: (captcha) ~>
+              ld$.fetch(
+                '/api/auth/passwd/reset'
+                {method: \POST}
+                {json: {email: view.get(\email).value, captcha}}
+              )
+            .finally ~> loader.off!
+            .then ~> @ldcv.sent.get!
+            .catch (e) ~>
+              if lderror.id(e) == 404 => @ldcv.not-found.toggle!
+              else error e
+
     pw-reset-mail = new ldform do
       names: -> <[email]>
       submit: '.btn[ld=submit]'
