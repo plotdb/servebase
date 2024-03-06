@@ -105,7 +105,7 @@ block body
                   .dropdown-item(ld="random-password") Random Password
                   .dropdown-item(ld="force-logout") Force Logout
                   .dropdown-item(ld="delete-user") Delete User
-          div
+          .pb-4
             h5 Add User
             hr
             .form-group
@@ -118,6 +118,13 @@ block body
               b password #[span.text-sm / left empty for auto generation]
               input.form-control(ld="adduser.password",type="password",aria-label="password")
             .btn.btn-primary(ld="adduser") Add User
+          div
+            h5 Delete User
+            hr
+            .form-group
+              b username
+              input.form-control(ld="deluser.username",aria-label="username")
+            .btn.btn-primary(ld="deluser") Delete User
   +nbr(2)
   #pivot
   .w-1024.rwd.mx-auto.p-4.shadow.rounded.border: div(ld="discuss")

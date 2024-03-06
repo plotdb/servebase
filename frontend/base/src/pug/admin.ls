@@ -60,6 +60,12 @@
         .then -> alert "user created ( key: #{it.key} )"
         .then ~>
           <[username displayname password]>.map ~> @view.admin.get("adduser.#{it}").value = ''
+    deluser: ~>
+      username = @view.admin.get('deluser.username').value
+      if !username => return
+      ld$.fetch "/api/admin/user/delete", {method: \POST}, {type: \json, json: {username}}
+        .then -> alert "user `#username` deleted"
+        .then ~> @view.admin.get('deluser.username').value = ''
 
     search: ({node}) ~>
       keyword = @view.admin.get('keyword').value or ''
