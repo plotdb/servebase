@@ -14,6 +14,7 @@
  - `root`: repo root directory
  - `server`: http.Server object
  - `app`: express application
+ - `auth`: auth module
  - `log`: logger object, in pino interface
  - `log-server`: child log of `log` for server information
  - `log-build`: child log of `log` for build information
