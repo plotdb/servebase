@@ -4,7 +4,7 @@
     h1(t) title
     p.text-muted.mb-4(t) desc
     br
-    form#password-reset.form.text-left.m-a(method="POST")
+    form#password-reset.form.text-left.m-auto(method="POST")
       .from-group.mb-3
         label(t) enter.new
         input.form-control(name="password",type="password",t,t-placeholder="enter.min")
@@ -24,7 +24,7 @@
           target="_blank",rel="noopener noreferrer",t) hint.1.1
           span(t) hint.1.2
 
-  .ldcv.ldcvmgr.autogap.scroll(data-name="done",data-lock="true"): .base.w-480.rwd: .inner
+  .ldcv.ldcvmgr.autogap.scroll(data-name="done",data-lock="true"): .base.w-640.rwd: .inner
     .text-center: h1(t) done
     .my-4
       p(t) note.0
