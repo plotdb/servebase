@@ -106,4 +106,6 @@ module.exports = do
     blacklist: []
   # additional information passing to client side via api/auth/info.
   # use `global.config` to access this object.
+  # when this is a string, it will be treated as a module path to load.
+  # this module should accept `backend` as parameter and returns the real client config.
   client: {}
