@@ -4,9 +4,10 @@ block head
     html, body { height: 100%; width: 100% }
 block body
   include /modules/navtop.pug
+  #root.w-100.h-100.d-flex
 block script
   +script({name: "@servebase/auth", path: "route.min.js"})
   script(type="module"): :lsc
     ({core}) <- ldc.register <[core navtop]>, _
     <- core.init!then _
-    core.auth.route!
+    core.auth.route {root}
