@@ -99,7 +99,6 @@ module.exports =
             .catch (e) ~>
               if lderror.id(e) == 404 => @ldcv.not-found.toggle!
               else error e
-
     pw-reset-mail = new ldform do
       names: -> <[email]>
       submit: '.btn[ld=submit]'

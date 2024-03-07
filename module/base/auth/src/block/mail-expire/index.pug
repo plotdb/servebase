@@ -1,10 +1,8 @@
-.w-100.h-100.d-flex.align-items-center.justify-content-center: .text-center
+.w-640.rwd.m-auto
   script(type="@plotdb/block"): include:lsc index.ls
-  .w-100.h-100.d-flex.align-items-center.justify-content-center: .text-center
+  .my-5.text-center
     h1(t) title
     p(t) desc
-    .my-4.py-4
-      //-img(src="/assets/img/p/auth/reset/alarm.svg")
-    p
+    .mt-4
       div(t) toolong
       div #[span(t) try] #[a(href="/me/settings/",t) again]

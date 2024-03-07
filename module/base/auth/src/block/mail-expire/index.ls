@@ -4,7 +4,7 @@ module.exports =
       en:
         "title": "Verification Link Expired"
         "desc": "It has been a while since the link was created, thus it's expired for security reason."
-        "toolong": "Too long before you received the mail?"
+        "toolong": "Take too long for you to receive the mail?"
         "try": "You can try"
         "again": "send it again"
       "zh-TW":

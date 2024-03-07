@@ -1,29 +1,30 @@
-.w-100.h-100.d-flex.align-items-center.justify-content-center: .text-center
+.m-auto(style="width:440px;max-width:440px;padding:0 10px")
   script(type="@plotdb/block"): include:lsc index.ls
-  h1(t) title
-  p.text-muted.mb-4(t) desc
-  br
-  form#password-reset.form.text-left.m-a(method="POST", style="width:400px")
-    .from-group.mb-3
-      label(t) enter.new
-      input.form-control(name="password",type="password",t,t-placeholder="enter.min")
-      .invalid-feedback(t) enter.weak
-    .from-group.mb-3
-      label(t) enter.again
-      input.form-control(name="confirm",type="password",placeholder="")
-      .invalid-feedback(t) enter.mismatch
-    input.btn.btn-success.btn-block.mt-2.disabled(ld="submit",type="button",t,t-value="setup")
+  .text-center.my-5
+    h1(t) title
+    p.text-muted.mb-4(t) desc
     br
-    br
-    .text-muted: small
-      p(t) hint.0
-      p
-        span(t) hint.1.0
-        a.mx-1(href="https://en.wikipedia.org/wiki/Password_strength",
-        target="_blank",rel="noopener noreferrer",t) hint.1.1
-        span(t) hint.1.2
+    form#password-reset.form.text-left.m-a(method="POST")
+      .from-group.mb-3
+        label(t) enter.new
+        input.form-control(name="password",type="password",t,t-placeholder="enter.min")
+        .invalid-feedback(t) enter.weak
+      .from-group.mb-3
+        label(t) enter.again
+        input.form-control(name="confirm",type="password",placeholder="")
+        .invalid-feedback(t) enter.mismatch
+      input.btn.btn-success.btn-block.mt-2.disabled(ld="submit",type="button",t,t-value="setup")
+      br
+      br
+      .text-muted: small
+        p(t) hint.0
+        p
+          span(t) hint.1.0
+          a.mx-1(href="https://en.wikipedia.org/wiki/Password_strength",
+          target="_blank",rel="noopener noreferrer",t) hint.1.1
+          span(t) hint.1.2
 
-  .ldcv.ldcvmgr.autogap.scroll(data-name="done",data-lock="true"): .base.w-640: .inner
+  .ldcv.ldcvmgr.autogap.scroll(data-name="done",data-lock="true"): .base.w-480.rwd: .inner
     .text-center: h1(t) done
     .my-4
       p(t) note.0
@@ -31,16 +32,15 @@
         span(t) note.1
         a.mx-1.clickable(onclick="lda.ldcvmgr.toggle('contact')",t) contact
         span(t) letushelp
-    br
     .row
       .col-sm.mb-2: .btn.btn-lg.btn-block.btn-primary(data-ldcv-set="login",t) login now
       .col-sm.mb-2: a.btn.btn-lg.btn-block.btn-outline-secondary(href="/",t) homepage
-  .ldcv.ldcvmgr(data-name="invalid",data-lock="true"): .base.w-640: .inner.card: .card-body: .p-4
+
+  .ldcv.ldcvmgr.autogap.scroll(data-name="invalid",data-lock="true"): .base.w-480.rwd: .inner
     .text-center
       h1(t) invalid.title
       p(t) invalid.desc
-    br
-    .text-muted
+    .text-muted.my-4
       p
         span(t) note.2.0
         a.mx-1(href="/auth/?passwd-reset",t) reset page
@@ -49,7 +49,4 @@
         span(t) note.3
         a.mx-1.clickable(onclick="lda.ldcvmgr.toggle('contact')",t) contact
         span(t) letushelp
-
-    br
     a.btn.btn-primary.btn-lg.btn-block(href="/auth/?passwd-reset",t) send again
-

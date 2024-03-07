@@ -1,9 +1,9 @@
-.w-100.h-100.d-flex.align-items-center.justify-content-center: div
+.m-auto(style="width:440px;max-width:440px;padding:0 10px"): .my-5
   include @/ldview/index.pug
   script(type="@plotdb/block"): include:lsc index.ls
   h3.text-center(t) forgot
   br
-  +scope("password-reset"): form.form.text-left(style="margin:auto;width:400px")
+  +scope("password-reset"): form.form.text-left
     .from-group
       p(t) enter
       input.form-control.form-control-lg(ld="email",name="email",placeholder="e.g, me@someurl.com")
