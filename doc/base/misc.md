@@ -1,6 +1,9 @@
 ## Versioning
 
-use `pre-commit` git hook ( tool/git-hooks ) to update version before commiting to `.version` file.
+use `pre-commit` git hook ( tool/git-hooks ) to update version before commiting to `.version` file. Here is a sample command to config git hook:
+
+    git config core.hooksPath tool/git-hooks
+
 
 Version acquisition:
 
