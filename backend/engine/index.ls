@@ -194,6 +194,10 @@ backend.prototype = Object.create(Object.prototype) <<< do
           base: @feroot
         })
         app.set 'domain', @config.domain
+        if (c = @config.client) =>
+          @config.client = if typeof(c) == \string => require(path.join(rootdir, c))(@)
+          else if typeof(c) == \object => c else {}
+          app.set 'client', @config.client
         app.set 'sysinfo', ~> @{version, cachestamp}
         app.set 'view engine', 'pug'
         app.set 'views', path.join(__dirname, '../..', @feroot, 'src/pug')

@@ -251,7 +251,7 @@
         });
         return this$.store.init();
       }).then(function(){
-        var app;
+        var app, c;
         this$.db = new postgresql(this$);
         this$.session = new session(this$);
         this$.app = app = express();
@@ -297,6 +297,14 @@
           base: this$.feroot
         }));
         app.set('domain', this$.config.domain);
+        if (c = this$.config.client) {
+          this$.config.client = typeof c === 'string'
+            ? require(path.join(rootdir, c))(this$)
+            : typeof c === 'object'
+              ? c
+              : {};
+          app.set('client', this$.config.client);
+        }
         app.set('sysinfo', function(){
           return {
             version: this$.version,
