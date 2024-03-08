@@ -104,8 +104,13 @@ module.exports = do
     # pointing to a module with `is(email)` API which return a Promise resolving with `true`
     # if `email` is blacklisted.
     blacklist: []
-  # additional information passing to client side via api/auth/info.
-  # use `global.config` to access this object.
-  # when this is a string, it will be treated as a module path to load.
-  # this module should accept `backend` as parameter and returns the real client config.
+  # client: additional information passing to client side via
+  #  - api/auth/info, (acces via `global.config`)
+  #  - as locals used in view rendering. (available in `settings.client`)
+  # it can be either:
+  #  - a string: it will be treated as a module path to load.
+  #  - an object with a string in `module` field: the `module` field will be the path of the module to load.
+  #  - an object wihtout `module` string field: used directly in `global.config` and `settings.client`
+  #  - empty object `{}` otherwise.
+  # when we expect a module, it should accept `backend` as parameter and returns the real client config.
   client: {}

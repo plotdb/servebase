@@ -300,9 +300,11 @@
         if (c = this$.config.client) {
           this$.config.client = typeof c === 'string'
             ? require(path.join(rootdir, c))(this$)
-            : typeof c === 'object'
-              ? c
-              : {};
+            : typeof c === 'object' && typeof c.module === 'string'
+              ? require(path.join(rootdir, c.module))(this$)
+              : typeof c === 'object'
+                ? c
+                : {};
           app.set('client', this$.config.client);
         }
         app.set('sysinfo', function(){

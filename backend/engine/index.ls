@@ -196,6 +196,8 @@ backend.prototype = Object.create(Object.prototype) <<< do
         app.set 'domain', @config.domain
         if (c = @config.client) =>
           @config.client = if typeof(c) == \string => require(path.join(rootdir, c))(@)
+          else if typeof(c) == \object and typeof(c.module) == \string =>
+            require(path.join(rootdir, c.module))(@)
           else if typeof(c) == \object => c else {}
           app.set 'client', @config.client
         app.set 'sysinfo', ~> @{version, cachestamp}
