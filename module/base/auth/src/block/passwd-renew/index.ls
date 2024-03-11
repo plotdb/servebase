@@ -95,7 +95,7 @@ module.exports =
               id = lderror.id e
               ldnotify.send \danger, (
                 if id == 1031 => t(\enter.weak)
-                else if id == 1030 => t(\enter.mismatch)
+                else if id == 1030 => t(\enter.nomatch)
                 else if id == 1036 => t(\no_reused)
                 else t(\fail)
               )

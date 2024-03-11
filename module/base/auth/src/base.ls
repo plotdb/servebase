@@ -124,9 +124,10 @@ module.exports =
               # try logging in again. if it still fails, fallback to normal error handling process
               ld$.fetch "#{@_auth.api-root!}#{@_tab}", {method: \POST}, {json: body, type: \json}
         .then (ret = {}) ~>
-          if !ret.password-should-renew => return
-          core.ldcvmgr.get {name: "@servebase/auth", path: "passwd-renew"}
-        .then ~> @_auth.fetch!
+          (g) <~ @_auth.fetch!then _
+          if !ret.password-should-renew => return g
+          <~ core.ldcvmgr.get {name: "@servebase/auth", path: "passwd-renew"} .then _
+          return g
         .finally ~> @ldld.off!
         .then (g) ~>
           debounce 350, ~> @info \default
