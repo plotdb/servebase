@@ -3,7 +3,6 @@
   script(type="@plotdb/block"): include:lsc index.ls
   h3.text-center(t) title
   p(t) desc
-  hr
   form.form.text-left.m-auto
     .form-group
       label(t) enter.old
@@ -11,27 +10,28 @@
       input.d-none(name="username",type="text",autocomplete="username")
       input.form-control(name="oldpasswd",type="password",autocomplete="current-password")
       .invalid-feedback(t) enter.nomatch
-    .from-group.mb-3
-      label(t) enter.new
-      input.form-control(name="newpasswd1",type="password",t,t-placeholder="enter.min",autocomplete="new-password")
-      .invalid-feedback(t) enter.weak
-    .from-group.mb-3
-      label(t) enter.again
-      input.form-control(name="newpasswd2",type="password",autocomplete="new-password")
-      .invalid-feedback(t) enter.mismatch
+    .row
+      .col-md
+        .from-group.mb-3
+          label(t) enter.new
+          input.form-control(name="newpasswd1",type="password",t,t-placeholder="enter.min",autocomplete="new-password")
+          .invalid-feedback(t) enter.weak
+      .col-md
+        .from-group.mb-3
+          label(t) enter.again
+          input.form-control(name="newpasswd2",type="password",autocomplete="new-password")
+          .invalid-feedback(t) enter.mismatch
     .form-group.mb-3.d-flex.g-3.align-items-center(data-node="passwd-bar1")
-      label.text-capitalize(t="strength") &nbsp;
+      label.text-capitalize.mb-0(t="strength") &nbsp;
       .flex-grow-1.progress(style="height:18px"): .progress-bar.progress-bar-striped(style="width:0%")
-    .btn.btn-success.btn-block.mt-2.disabled.ld-ext-right(ld="submit")
-      span(t="setup")
-      .ld.ldld.bare.em-1
-    br
-    .text-muted: small
-      p(t) hint.0
-      p
-        span(t) hint.1.0
-        a.mx-1(href="https://en.wikipedia.org/wiki/Password_strength",
-        target="_blank",rel="noopener noreferrer",t) hint.1.1
-        span(t) hint.1.2
-  hr
-  .text-right: .btn.btn-outline-secondary(t,data-ldcv-set="") skip
+    .d-flex.g-2.my-4
+      .btn.btn-lg.btn-outline-secondary.flex-grow-1.text-nowrap(t,data-ldcv-set="") skip
+      .btn.btn-lg.btn-success.disabled.ld-ext-right.flex-grow-1.text-nowrap(ld="submit")
+        span(t="setup")
+        .ld.ldld.bare.em-1
+    .text-muted(style="line-height:1.2em"): small
+      span(t) hint.0
+      span(t) hint.1.0
+      a.mx-1(href="https://en.wikipedia.org/wiki/Password_strength",
+      target="_blank",rel="noopener noreferrer",t) hint.1.1
+      span(t) hint.1.2
