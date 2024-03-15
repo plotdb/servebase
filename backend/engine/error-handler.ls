@@ -33,6 +33,10 @@ handler = (err, req, res, next) ->
   # 4. log all unexpected error.
   try
     if !err => return next!
+    # for taking care of body-parser 400 json syntax error. It may not come from body-parser,
+    # however since the source has set status to 400 explicitly,
+    # we can consider all these kind of error as 400 and use lderror to handle them.
+    if err.status == 400 => err = lderror 400
     # SESSION corrupted, usually caused by a duplicated session id
     # this is generated in @servebase/auth by a middleware
     # which checks for duplicated session id

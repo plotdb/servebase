@@ -35,6 +35,9 @@
         if (!err) {
           return next();
         }
+        if (err.status === 400) {
+          err = lderror(400);
+        }
         if (err.code === 'SESSIONCORRUPTED') {
           aux.clearCookie(req, res);
           err = lderror(1029);
