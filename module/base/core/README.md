@@ -12,6 +12,7 @@ service core module that initializes, constructs and provides following members:
  - `zmgr`: z-index manager
  - `error`: error handler
  - `i18n`: i18n object. use this instead accessing `i18next` directly for module abstraction.
+ - `hint`: additional information for above modules.
 
 with additional APIs stored in `servebase` global variable:
 
@@ -103,3 +104,12 @@ Both the option in `servebase.config` or the `corecfg` ldc module are something 
 
     https://serve.base/?lng=en
 
+
+## hint
+
+`hint` provides additional informations for core modules. It's an object with following fields:
+
+ - `i18n`: an object with following fields:
+   - `placeholder`: default false. Indicate if a given i18n module is a placeholder.
+     - a placeholder i18n module is a module that only contains keys and no actual translations.
+       It's used to provide a default value for a given key.

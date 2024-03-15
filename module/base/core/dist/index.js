@@ -30,11 +30,12 @@
       this.i18n = i18n = (that = ((ref$ = this._cfg).i18n || (ref$.i18n = {})).driver)
         ? that
         : typeof i18next != 'undefined' && i18next !== null ? i18next : undefined;
+      ((ref$ = this.hint).i18n || (ref$.i18n = {})).placeholder = this._cfg.i18n.placeholder || false;
       if (i18n == null) {
         return Promise.resolve();
       }
       block.i18n.use(i18n);
-      i18ncfg = this._cfg.i18n.cfg || {
+      i18ncfg = {
         supportedLng: ['en', 'zh-TW'],
         fallbackLng: 'en',
         fallbackNS: '',
@@ -42,6 +43,9 @@
         keySeparator: '.',
         nsSeparator: ':'
       };
+      if (this._cfg.i18n.cfg) {
+        i18ncfg = import$(i18ncfg, this._cfg.i18n.cfg);
+      }
       return Promise.resolve().then(function(){
         return i18n.init(i18ncfg);
       }).then(function(){
@@ -97,6 +101,7 @@
       }
       this.global = {};
       this.user = {};
+      this.hint = {};
       this.zmgr = new zmgr();
       this.manager = this._cfg.manager || new block.manager({
         registry: function(arg$){
@@ -237,6 +242,11 @@
     module.exports = servebase;
   } else if (typeof window != 'undefined' && window !== null) {
     window.servebase = servebase;
+  }
+  function import$(obj, src){
+    var own = {}.hasOwnProperty;
+    for (var key in src) if (own.call(src, key)) obj[key] = src[key];
+    return obj;
   }
   function in$(x, xs){
     var i = -1, l = xs.length >>> 0;

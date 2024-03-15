@@ -20,15 +20,18 @@ servebase =
     # TODO to optimize, we may delay or completely ignore i18n, since not every service need i18n
     # TODO we should at least provide a dummy i18n so i18n.t will work
     @i18n = i18n = if @_cfg.{}i18n.driver => that else if i18next? => i18next else undefined
+    @hint.{}i18n.placeholder = @_cfg.i18n.placeholder or false
     if !i18n? => return Promise.resolve!
     block.i18n.use i18n
-    i18ncfg = @_cfg.i18n.cfg or {
-      supportedLng: <[en zh-TW]>, fallbackLng: \en, fallbackNS: '', defaultNS: ''
+    i18ncfg = {
+      supportedLng: <[en zh-TW]>, fallbackLng: \en
+      fallbackNS: '', defaultNS: ''
       # pitfall: Namespaced key with spaces doesn't work
       # workaround: explicitly provide separator
       #  - https://github.com/i18next/i18next/issues/1670
       keySeparator: '.', nsSeparator: ':'
     }
+    if @_cfg.i18n.cfg => i18ncfg = i18ncfg <<< @_cfg.i18n.cfg
     Promise.resolve!
       .then -> i18n.init i18ncfg
       .then -> if i18nextBrowserLanguageDetector? => i18n.use i18nextBrowserLanguageDetector
@@ -66,6 +69,7 @@ servebase =
     if typeof(@_cfg) == \function => @_cfg = @_cfg!
     @ <<< global: {}, user: {}
     @ <<<
+      hint: {} # additional hints for config and status.
       zmgr: new zmgr!
       manager: @_cfg.manager or new block.manager do
         registry: ({ns, url, name, version, path, type}) ->
