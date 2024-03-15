@@ -19,6 +19,7 @@ site-wise navigation menu dynamics
  - `authed` show if current user is signed in.
  - `avatar`: show user avatar. default to `/assets/avatar/#{uid}`
  - `t`: indicating that this tag should be translated. `textContent` of this tag will be used as key.
+ - `lng-picker`: indicating a language picker widget, and will be hidden if i18n module is either a placeholder or not available.
 
 Set th `ld-scope` attribute to `@servebase/navtop` in the root element of your navbar for the module to recognize your DOM tree.
 

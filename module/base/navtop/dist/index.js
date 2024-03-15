@@ -107,6 +107,11 @@
             }
           },
           handler: {
+            "lng-picker": function(arg$){
+              var node;
+              node = arg$.node;
+              return node.classList.toggle('d-none', !core.i18n || !!core.hint.i18n.placeholder);
+            },
             "show-version": function(arg$){
               var node;
               node = arg$.node;

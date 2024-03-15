@@ -47,6 +47,7 @@ core.init!then ->
         return if core.i18n => core.i18n.t("@servebase/navtop:#{node.getAttribute(\t) or ''}") else ''
       version: ({node}) ~> "#{@global.version}-" + "#{@global.cachestamp}".slice(-4)
     handler:
+      "lng-picker": ({node}) ~> node.classList.toggle \d-none, (!core.i18n or !!core.hint.i18n.placeholder)
       "show-version": ({node}) ~> node.classList.toggle \d-none, false
       "@": ({node}) ~> node.style.display = if @toggled => \block else \none
       admin: ({node}) ~> node.classList.toggle \d-none, !@user.staff
