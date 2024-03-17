@@ -212,12 +212,16 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @route.auth = aux.routecatch express.Router {mergeParams: true}
         @route.consent = aux.routecatch express.Router {mergeParams: true}
 
-        # Authentication
-        @auth = auth @  # Authenticate. must before any router ( e.g., /api )
-
+        # ext related APIs used to be after `auth @` (which enables session)
+        # however, cookie setting other than `{SameSite: 'none', Secure: true}`
+        # won't make session work correctly because `connect.sid` can't be set.
+        # thus, we have to put `ext` before `auth` to prevent user from losing session.
         app.use \/extapi/, @route.extapi
         app.use \/ext/, @route.extapp
         if exts => exts @ # External API without extapi prefix. should be rarely used.
+
+        # Authentication
+        @auth = auth @  # Authenticate. must before any router ( e.g., /api )
 
         # CSRF Protection. must after session
         app.use @middleware.csrf = csurf!

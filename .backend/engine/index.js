@@ -332,12 +332,12 @@
         this$.route.consent = aux.routecatch(express.Router({
           mergeParams: true
         }));
-        this$.auth = auth(this$);
         app.use('/extapi/', this$.route.extapi);
         app.use('/ext/', this$.route.extapp);
         if (exts) {
           exts(this$);
         }
+        this$.auth = auth(this$);
         app.use(this$.middleware.csrf = csurf());
         app.use('/api', this$.route.api);
         app.use('/api/auth', this$.route.auth);
