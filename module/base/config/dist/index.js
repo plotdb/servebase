@@ -2,7 +2,7 @@ var livescript, path;
 livescript = require('livescript');
 path = require('path');
 module.exports = {
-  as: function(m){
+  from: function(m){
     var _m, ret;
     m == null && (m = []);
     _m = Array.isArray(m)
@@ -12,7 +12,7 @@ module.exports = {
       return require(path.join(__dirname, '../../../../config', m));
     });
     return Array.isArray(m)
-      ? _m
-      : _m[0];
+      ? ret
+      : ret[0];
   }
 };
