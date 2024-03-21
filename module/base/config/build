@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+echo "prepare..."
+rm -rf dist
+mkdir -p dist
+
+bin=../../../node_modules/.bin
+echo "build src/index.ls -> dist/index.js ..."
+$bin/lsc -cb --no-header -o dist src/index.ls
