@@ -38,7 +38,14 @@
 
 Following are apis available in `backend` object. Most of them are only for server use.
 
- - `start`: init a backend server.
+ - `prepare(opt)`: prepare basic components for backend without starting it.
+   - return a Promise which resolves with the backend object.
+   - `opt`: options for preparing backend, which is an object with following fields:
+     - `db`:
+       - `query-only`: true to suppress trim (session cleaning up). default true.
+         - see `backend/db/postgresql` for more information.
+ - `start`: init a backend server. 
+   - return a Promise which resolves with the backend object.
  - `listen({logger, i18n})`: start the inited backend server. ( TODO: merge back into `start`? )
  - `watch`: start a source code building daemon.
 

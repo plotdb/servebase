@@ -123,9 +123,7 @@
       var b;
       opt == null && (opt = {});
       b = new backend(opt);
-      return b.prepare().then(function(){
-        return b.start();
-      }).then(function(){
+      return b.start().then(function(){
         return b;
       });
     }
@@ -196,8 +194,9 @@
         desdir: 'static'
       }, ref$));
     },
-    prepare: function(){
+    prepare: function(opt){
       var this$ = this;
+      opt == null && (opt = {});
       return Promise.resolve().then(function(){
         var i18nEnabled, ref$;
         this$.logSecurity = this$.log.child({
@@ -253,13 +252,22 @@
         });
         return this$.store.init();
       }).then(function(){
-        this$.db = new postgresql(this$);
-        return this$.session = new session(this$);
+        var queryOnly;
+        queryOnly = (opt.db || {}).queryOnly != null ? (opt.db || {}).queryOnly : true;
+        this$.db = new postgresql(this$, {
+          queryOnly: queryOnly
+        });
+        this$.session = new session(this$);
+        return this$;
       });
     },
     start: function(){
       var this$ = this;
-      return Promise.resolve().then(function(){
+      return this.prepare({
+        db: {
+          queryOnly: false
+        }
+      }).then(function(){
         var app, c;
         this$.app = app = express();
         this$.logServer.info(("initializing backend in " + app.get('env') + " mode").cyan);
@@ -361,10 +369,11 @@
         return this$.listen();
       }).then(function(){
         this$.logServer.info(("listening on port " + this$.server.address().port).cyan);
-        return this$.watch({
+        this$.watch({
           logger: this$.logBuild,
           i18n: this$.i18n
         });
+        return this$;
       })['catch'](function(err){
         var e;
         try {

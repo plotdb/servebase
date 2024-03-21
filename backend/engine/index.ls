@@ -78,9 +78,7 @@ backend = (opt = {}) ->
 backend <<< do
   create: (opt = {}) -> 
     b = new backend opt
-    b.prepare!
-      .then -> b.start!
-      .then -> return b
+    b.start!then -> return b
 
 backend.prototype = Object.create(Object.prototype) <<< do
   listen: -> new Promise (res, rej) ~>
@@ -121,7 +119,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
       asset: {srcdir: 'src/pug', desdir: 'static'}
     })
 
-  prepare: ->
+  prepare: (opt={}) ->
     Promise.resolve!
       .then ~>
         @log-security = @log.child {module: \security}
@@ -152,11 +150,13 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @store = new redis-node @config.redis{url}
         @store.init!
       .then ~>
-        @db = new postgresql @
+        query-only = if (opt.db or {}).query-only? => (opt.db or {}).query-only else true
+        @db = new postgresql @, {query-only}
         @session = new session @
+        @
 
   start: ->
-    Promise.resolve!
+    @prepare {db: query-only: false}
       .then ~>
         @app = app = express!
         @log-server.info "initializing backend in #{app.get \env} mode".cyan
@@ -249,6 +249,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
       .then ~>
         @log-server.info "listening on port #{@server.address!port}".cyan
         @watch {logger: @log-build, i18n: @i18n}
+        @
       .catch (err) ~>
         try
           @log-server.error {err}, "failed to start server. ".red
