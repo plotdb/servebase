@@ -123,7 +123,9 @@
       var b;
       opt == null && (opt = {});
       b = new backend(opt);
-      return b.start().then(function(){
+      return b.prepare().then(function(){
+        return b.start();
+      }).then(function(){
         return b;
       });
     }
@@ -194,7 +196,7 @@
         desdir: 'static'
       }, ref$));
     },
-    start: function(){
+    prepare: function(){
       var this$ = this;
       return Promise.resolve().then(function(){
         var i18nEnabled, ref$;
@@ -251,9 +253,14 @@
         });
         return this$.store.init();
       }).then(function(){
-        var app, c;
         this$.db = new postgresql(this$);
-        this$.session = new session(this$);
+        return this$.session = new session(this$);
+      });
+    },
+    start: function(){
+      var this$ = this;
+      return Promise.resolve().then(function(){
+        var app, c;
         this$.app = app = express();
         this$.logServer.info(("initializing backend in " + app.get('env') + " mode").cyan);
         app.disable('x-powered-by');

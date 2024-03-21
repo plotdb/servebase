@@ -78,7 +78,9 @@ backend = (opt = {}) ->
 backend <<< do
   create: (opt = {}) -> 
     b = new backend opt
-    b.start!then -> return b
+    b.prepare!
+      .then -> b.start!
+      .then -> return b
 
 backend.prototype = Object.create(Object.prototype) <<< do
   listen: -> new Promise (res, rej) ~>
@@ -119,7 +121,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
       asset: {srcdir: 'src/pug', desdir: 'static'}
     })
 
-  start: ->
+  prepare: ->
     Promise.resolve!
       .then ~>
         @log-security = @log.child {module: \security}
@@ -153,6 +155,9 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @db = new postgresql @
         @session = new session @
 
+  start: ->
+    Promise.resolve!
+      .then ~>
         @app = app = express!
         @log-server.info "initializing backend in #{app.get \env} mode".cyan
 
