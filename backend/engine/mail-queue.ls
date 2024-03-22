@@ -1,4 +1,4 @@
-require! <[fs path @plotdb/colors js-yaml lderror]>
+require! <[fs path @servebase/config @plotdb/colors js-yaml lderror]>
 require! <[nodemailer nodemailer-mailgun-transport]>
 require! <[./utils/md]>
 
@@ -102,29 +102,14 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     delete payload.content
     @send(payload,opt).then -> res!
 
-  by-template: (name, email, map = {}, config = {}) ->
-    fn = (b) -> "config/#b/mail/#name.yaml"
-    fs.promises.access fn \private
-      .then ~> fn \private
-      .catch ~> fs.promises.access fn @base .then ~> fn @base
-      .catch ~> fs.promises.access fn \base .then ~> fn \base
-      .catch (e) ~>
-        @log.error "send mail failed: read template file failed.", e
-        return lderror.reject 1027
-      .then (file) ~>
-        fs.promises.read-file file
-          .catch (e) ~>
-            @log.error "send mail failed: read template file failed. ", e
-            return lderror.reject 1017
-      .then (content) ~>
-        try
-          return js-yaml.safe-load(content)
-        catch e
-          @log.error "send mail failed: parse template yaml failed.", e
-          return lderror.reject 1017
+  by-template: (name, email, map = {}, opt = {}) ->
+    config.yaml [\private, @base, \base].map(->path.join(it, "mail/#name.yaml"))
       .then (payload) ~>
-        option = from: payload.from, to: email, subject: payload.subject, content: payload.content
-        if config.bcc => option.bcc = config.bcc
-        @send-from-md(option, map,{now: config.now})
+        obj = from: payload.from, to: email, subject: payload.subject, content: payload.content
+        if opt.bcc => obj.bcc = opt.bcc
+        @send-from-md(obj, map,{now: opt.now})
+      .catch (err) ~>
+        @log.error {err}, "send mail by template failed for name `#name`"
+        return Promise.reject(err)
 
 module.exports = mail-queue
