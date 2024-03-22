@@ -83,7 +83,8 @@ route.post \/user/:key/logout, aux.validate-key, (req, res) ->
 
 route.delete \/user/:key, aux.validate-key, (req, res, next) ->
   key = +req.params.key
-  db.query "delete from users where key = $1", [key]
+  session.delete {user: key}
+    .then -> db.query "delete from users where key = $1", [key]
     .catch ->
       # delete user failed. there might be some additional rows in other table owned by this user.
       # just remove the username, displayname and mark the account as deleted.

@@ -153,7 +153,11 @@
     route['delete']('/user/:key', aux.validateKey, function(req, res, next){
       var key;
       key = +req.params.key;
-      return db.query("delete from users where key = $1", [key])['catch'](function(){
+      return session['delete']({
+        user: key
+      }).then(function(){
+        return db.query("delete from users where key = $1", [key]);
+      })['catch'](function(){
         return db.query("update users\nset (username,displayname,deleted)\n= (('deleted-' || key),('user ' || key),true)\nwhere key = $1", [key]);
       }).then(function(){
         return res.send();
