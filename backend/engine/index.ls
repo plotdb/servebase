@@ -28,6 +28,8 @@ argv = yargs
   .argv
 cfg-name = argv.c
 try
+  # requiring livescript file is only possible if `livescript` is imported.
+  # in this case, `livescript` is imported in `ext/pug` in @plotdb/srcbuild.
   secret = require "../../config/private/#{cfg-name or 'secret'}"
 catch e
   console.log "failed to load config file `config/private/#{cfg-name or 'secret'}`.".red
