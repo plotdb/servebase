@@ -71,6 +71,7 @@ Both the option in `servebase.config` or the `corecfg` ldc module are something 
    - `auth`: an object to customize auth behavior, with following fields:
      - `authpanel`: block id of the authpanel to use.
    - `i18n`: optional i18n related configs. if provided, should be an object with following fields:
+     - `placeholder`: should consider i18n module as a placeholder. see `i18n` in `hint` for more information.
      - `locales`: i18n resource objects for core modules translation. namespaced. (such as navtop )
        - this should be an object containing objects for each namespace with bundles of languages. e.g.,
 
