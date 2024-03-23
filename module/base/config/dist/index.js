@@ -42,5 +42,13 @@ module.exports = {
         return jsYaml.safeLoad(it);
       });
     });
+  },
+  text: function(m){
+    m == null && (m = []);
+    return this._wrap(m, function(p){
+      return fs.readFile(p).then(function(it){
+        return it;
+      });
+    });
   }
 };
