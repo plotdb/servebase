@@ -13,4 +13,4 @@ module.exports =
   from: (p) -> require @_p(p)
   json: (m = []) -> @_wrap m, ((p) -> fs.read-json p)
   yaml: (m = []) -> @_wrap m, ((p) -> fs.read-file p .then -> js-yaml.safe-load it)
-  text: (m = []) -> @_wrap m, ((p) -> fs.read-file p .then -> it)
+  text: (m = []) -> @_wrap m, ((p) -> fs.read-file p .then -> it.toString!)

@@ -47,7 +47,7 @@ module.exports = {
     m == null && (m = []);
     return this._wrap(m, function(p){
       return fs.readFile(p).then(function(it){
-        return it;
+        return it.toString();
       });
     });
   }
