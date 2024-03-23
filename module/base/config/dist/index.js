@@ -26,7 +26,7 @@ module.exports = {
       });
     })();
   },
-  require: function(p){
+  from: function(p){
     return require(this._p(p));
   },
   json: function(m){
