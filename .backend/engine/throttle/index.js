@@ -128,6 +128,13 @@
       delayCount: 15,
       delay: 200,
       key: key.user
+    }),
+    testing: throttle({
+      span: 1 * 60 * 1000,
+      maxCount: 1,
+      delayCount: 1,
+      delay: 100,
+      key: key.user
     })
   };
   module.exports = throttle;

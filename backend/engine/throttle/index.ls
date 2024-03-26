@@ -73,5 +73,6 @@ throttle.kit =
   signup:  throttle span: 10 * 60 * 1000, max-count: 10, delay-count:  5, delay: 400, key: key.ip
   login:   throttle span:  1 * 60 * 1000, max-count: 20, delay-count:  5, delay: 200, key: key.ip
   generic: throttle span:  1 * 60 * 1000, max-count: 30, delay-count: 15, delay: 200, key: key.user
+  testing: throttle span:  1 * 60 * 1000, max-count: 1, delay-count: 1, delay: 100, key: key.user
 
 module.exports = throttle
