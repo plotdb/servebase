@@ -33,6 +33,7 @@ handler = (err, req, res, next) ->
   # 4. log all unexpected error.
   try
     if !err => return next!
+    _detail = user: (req.user or {}).key or 0, ip: aux.ip(req), url: req.originalUrl
     # for taking care of body-parser 400 json syntax error. It may not come from body-parser,
     # however since the source has set status to 400 explicitly,
     # we can consider all these kind of error as 400 and use lderror to handle them.
@@ -48,7 +49,9 @@ handler = (err, req, res, next) ->
     if err.id == 1029 =>
       # SESSIONCORRUPTED is a rare and strange error.
       # we should log it until we have confidence that this is solved correctly.
-      err.log = true
+      # here we log manually to prevent overwhelming error message.
+      # it we want to use standard mechanism to log, set `err.log` to true
+      backend.log-error.warn("1029 SESSIONCORRUPTED #{JSON.stringify(_detail)}")
       # we used to handle this in a specific route such as `/auth/reset`.
       # However, this exception may be emitted directly from @plotdb/express-session,
       # thus bypass `/auth/reset` directly - in this case we can never handle them.
@@ -58,7 +61,7 @@ handler = (err, req, res, next) ->
         req.logout!
       catch _e
     err.uuid = suuid!
-    err <<< {_detail: user: (req.user or {}).key or 0, ip: aux.ip(req), url: req.originalUrl}
+    err <<< {_detail}
     # log every single error except those will be logged below ( has id + log = true )
     if backend.config.log.all-error and !(lderror.id(err) and err.log) =>
       backend.log-error.debug(

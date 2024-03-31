@@ -30,11 +30,16 @@
       return res.status(490).send(err);
     };
     handler = function(err, req, res, next){
-      var _e, e;
+      var _detail, _e, e;
       try {
         if (!err) {
           return next();
         }
+        _detail = {
+          user: (req.user || {}).key || 0,
+          ip: aux.ip(req),
+          url: req.originalUrl
+        };
         if (err.status === 400) {
           err = lderror(400);
         }
@@ -46,7 +51,7 @@
           err = lderror(1005);
         }
         if (err.id === 1029) {
-          err.log = true;
+          backend.logError.warn("1029 SESSIONCORRUPTED " + JSON.stringify(_detail));
           try {
             aux.clearCookie(req, res);
             req.logout();
@@ -55,11 +60,7 @@
           }
         }
         err.uuid = suuid();
-        err._detail = {
-          user: (req.user || {}).key || 0,
-          ip: aux.ip(req),
-          url: req.originalUrl
-        };
+        err._detail = _detail;
         if (backend.config.log.allError && !(lderror.id(err) && err.log)) {
           backend.logError.debug({
             err: err
