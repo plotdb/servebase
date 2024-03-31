@@ -347,6 +347,9 @@
         this$.route.consent = aux.routecatch(express.Router({
           mergeParams: true
         }));
+        app.get("/d/health", function(req, res){
+          return res.json({});
+        });
         app.use('/extapi/', this$.route.extapi);
         app.use('/ext/', this$.route.extapp);
         if (exts) {

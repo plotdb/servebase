@@ -219,6 +219,9 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @route.auth = aux.routecatch express.Router {mergeParams: true}
         @route.consent = aux.routecatch express.Router {mergeParams: true}
 
+        # health check endpoint
+        app.get "/d/health", (req, res) -> res.json {}
+
         # ext related APIs used to be after `auth @` (which enables session)
         # however, cookie setting other than `{SameSite: 'none', Secure: true}`
         # won't make session work correctly because `connect.sid` can't be set.
