@@ -42,6 +42,7 @@ module.exports = do
   session:
     secret: 'this-is-a-sample-secret-please-update-it'
     max-age: 365 * 86400 * 1000
+    include-sub-domain: false # set to true to use `.<domain>` in session cookie
   captcha:
     enabled: false
     recaptcha:

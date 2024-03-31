@@ -178,10 +178,11 @@ app.use backend.session.middleware(express-session {
   saveUninitialized: true
   store: db.session-store
   proxy: true
-  cookie: do
+  cookie: {
     path: \/
     httpOnly: true
     maxAge: config.session.max-age
+  } <<< (if config.session.include-sub-domain => {domain: ".#{config.domain}"} else {})
 })
 app.use passport.initialize!
 app.use passport.session!

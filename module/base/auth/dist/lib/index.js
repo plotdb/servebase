@@ -302,11 +302,15 @@
       saveUninitialized: true,
       store: db.sessionStore,
       proxy: true,
-      cookie: {
+      cookie: import$({
         path: '/',
         httpOnly: true,
         maxAge: config.session.maxAge
-      }
+      }, config.session.includeSubDomain
+        ? {
+          domain: "." + config.domain
+        }
+        : {})
     })));
     app.use(passport.initialize());
     app.use(passport.session());
@@ -476,4 +480,9 @@
     this.mail.route();
     return this;
   });
+  function import$(obj, src){
+    var own = {}.hasOwnProperty;
+    for (var key in src) if (own.call(src, key)) obj[key] = src[key];
+    return obj;
+  }
 }).call(this);
