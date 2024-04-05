@@ -156,7 +156,7 @@
       logger = arg$.logger, i18n = arg$.i18n;
       this.version = 'na';
       updateVersion = function(it){
-        this$.version = fs.readFileSync(it).toString();
+        this$.version = (fs.readFileSync(it).toString() || "rand-" + Math.random().toString(36).substring(2)).trim();
         return logger.info("Deploy Repo version " + this$.version);
       };
       chokidar.watch(['.version']).on('add', updateVersion).on('change', updateVersion);

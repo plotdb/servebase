@@ -90,7 +90,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
   watch: ({logger, i18n}) ->
     @version = 'na'
     update-version = ~>
-      @version = (fs.read-file-sync it .toString!)
+      @version = ((fs.read-file-sync it .toString!) or "rand-#{Math.random!toString(36).substring(2)}").trim!
       logger.info "Deploy Repo version #{@version}"
     chokidar.watch <[.version]>
       .on \add, update-version
