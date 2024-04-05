@@ -89,9 +89,12 @@ backend.prototype = Object.create(Object.prototype) <<< do
 
   watch: ({logger, i18n}) ->
     @version = 'na'
+    update-version = ~>
+      @version = (fs.read-file-sync it .toString!)
+      logger.info "Deploy Repo version #{@version}"
     chokidar.watch <[.version]>
-      .on \add, (~> @version = (fs.read-file-sync it .toString!) )
-      .on \change, (~> @version = (fs.read-file-sync it .toString!) )
+      .on \add, update-version
+      .on \change, update-version
 
     if !(@config.build and @config.build.enabled) => return
 

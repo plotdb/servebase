@@ -152,14 +152,14 @@
       });
     },
     watch: function(arg$){
-      var logger, i18n, ref$, mgr, dom, win, this$ = this;
+      var logger, i18n, updateVersion, ref$, mgr, dom, win, this$ = this;
       logger = arg$.logger, i18n = arg$.i18n;
       this.version = 'na';
-      chokidar.watch(['.version']).on('add', function(it){
-        return this$.version = fs.readFileSync(it).toString();
-      }).on('change', function(it){
-        return this$.version = fs.readFileSync(it).toString();
-      });
+      updateVersion = function(it){
+        this$.version = fs.readFileSync(it).toString();
+        return logger.info("Deploy Repo version " + this$.version);
+      };
+      chokidar.watch(['.version']).on('add', updateVersion).on('change', updateVersion);
       if (!(this.config.build && this.config.build.enabled)) {
         return;
       }
