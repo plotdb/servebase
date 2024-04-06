@@ -171,6 +171,9 @@
           config: config,
           createdtime: new Date()
         };
+        if (verified) {
+          user.verified = verified;
+        }
         return this$.db.query("select key from users where username = $1", [username]).then(function(r){
           r == null && (r = {});
           if ((r.rows || (r.rows = [])).length) {

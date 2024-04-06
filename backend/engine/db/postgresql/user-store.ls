@@ -80,6 +80,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         else {date: Date.now!}
         config.{}consent.cookie = new Date!getTime!
         user = { username, password, method, displayname, detail, config, createdtime: new Date! }
+        if verified => user <<< {verified}
         @db.query "select key from users where username = $1", [username]
           .then (r={}) ~>
             if r.[]rows.length => return lderror.reject 1014
