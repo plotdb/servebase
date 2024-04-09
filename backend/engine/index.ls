@@ -92,6 +92,9 @@ backend.prototype = Object.create(Object.prototype) <<< do
     update-version = ~>
       @version = ((fs.read-file-sync it .toString!) or "rand-#{Math.random!toString(36).substring(2)}").trim!
       logger.info "Deploy Repo version #{@version}"
+    # awaitWriteFinish: we experience empty .version file with no further event fired ever.
+    # consider .version should not be empty, it may caused by a delay between file update.
+    # so we add this option trying to see if this can be resolved.
     chokidar.watch <[.version]>, awaitWriteFinish: {stabilityThreshold: 2000, pollInterval: 500}
       .on \add, update-version
       .on \change, update-version
