@@ -159,7 +159,12 @@
         this$.version = (fs.readFileSync(it).toString() || "rand-" + Math.random().toString(36).substring(2)).trim();
         return logger.info("Deploy Repo version " + this$.version);
       };
-      chokidar.watch(['.version']).on('add', updateVersion).on('change', updateVersion);
+      chokidar.watch(['.version'], {
+        awaitWriteFinish: {
+          stabilityThreshold: 2000,
+          pollInterval: 500
+        }
+      }).on('add', updateVersion).on('change', updateVersion);
       if (!(this.config.build && this.config.build.enabled)) {
         return;
       }
