@@ -15,6 +15,11 @@ $bin/lsc -cp src/route.ls > dist/route.js
 echo "minify dist/route.js -> dist/route.min.js ..."
 $bin/uglifyjs dist/route.js > dist/route.min.js
 
+echo "build src/base-imp.ls -> dist/base-imp.js ..."
+$bin/lsc -cpb --no-header src/base-imp.ls > dist/base-imp.js
+echo "minify dist/base-imp.js -> dist/base-imp.min.js ..."
+$bin/uglifyjs dist/base-imp.js -m -c > dist/base-imp.min.js
+
 echo "build authpanel.pug -> dist/index.html ..."
 $bin/srcbuild-pug src/authpanel.pug > dist/index.html
 echo "build base.pug -> dist/base.html ..."

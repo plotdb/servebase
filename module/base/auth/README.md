@@ -254,3 +254,33 @@ engine/auth.ls. API endpoints:
  - username pattern ( email? )
  - password pattern
 
+
+## Authpanel Construction
+
+In order to reduce bundle size, you may want to construct the authpanel without extending `auth` block. This is experimenting but you can include `base-imp.js` and construct block module manually, similar to what has been done in `src/base-def.ls` and `src/base.pug`:
+
+
+base.pug: 
+
+    script(type="module"): :lsc
+      include base-imp.js
+      include base-def.js
+
+
+base-def.ls:
+
+    module.exports = {
+      pkg:
+        name: "auth", version: "0.0.1", path: "base.html"
+        i18n: i18n-resource
+        dependencies: [
+          {name: "ldview", version: "main"}
+          {name: "ldnotify", version: "main"}
+          {name: "ldform", version: "main"}
+          {name: "ldbutton", version: "main", type: \css}
+          {name: "@loadingio/loading.css", version: "main", path: "lite.min.css"}
+          {name: "ldnotify", version: "main", type: \css, global: true}
+          {name: "curegex", version: "main", path: "curegex.min.js"}
+        ]
+    } <<< base-imp
+
