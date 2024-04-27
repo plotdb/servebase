@@ -12,13 +12,13 @@ i18n-resource =
     passwd: 'password'
     "reset passwd": "Reset Password"
     required: 'requried field'
-    failed-hint:
-      "Account exists. Try login": "Account exists. Try login"
-      "Password mismatched": "Password mismatched"
-      "login failed": "Login failed"
-      "signup failed": "Signup failed"
-      "Captcha failed": "Captcha failed"
-      "Resource issue": "Resource issue"
+    #failed-hint:
+    "Account exists. Try login": "Account exists. Try login"
+    "Password mismatched": "Password mismatched"
+    "login failed": "Login failed"
+    "signup failed": "Signup failed"
+    "Captcha failed": "Captcha failed"
+    "Resource issue": "Resource issue"
     input:
       email:
         hint: 'your email address, as account name'
@@ -92,13 +92,13 @@ i18n-resource =
     passwd: '密碼'
     'reset passwd': '重設密碼'
     required: '不能留白'
-    failed-hint:
-      "Account exists. Try login": "帳號存在，請改用登入"
-      "Password mismatched": "密碼不符合"
-      "login failed": "登入失敗"
-      "signup failed": "註冊失敗"
-      "Captcha failed": "未通過真人驗證"
-      "Resource issue": "載入資源失敗"
+    #failed-hint:
+    "Account exists. Try login": "帳號存在，請改用登入"
+    "Password mismatched": "密碼不符合"
+    "login failed": "登入失敗"
+    "signup failed": "註冊失敗"
+    "Captcha failed": "未通過真人驗證"
+    "Resource issue": "載入資源失敗"
     input:
       email:
         hint: "您的電子郵件地址做為帳戶名"
