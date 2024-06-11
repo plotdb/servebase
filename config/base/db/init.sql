@@ -59,3 +59,15 @@ create table if not exists pwresettoken (
 );
 
 create index if not exists idx_pwresettoken on pwresettoken (token);
+
+create table if not exists invitetoken (
+  key serial primary key,
+  owner int, -- no cascade and foreign key since we should keep it even if owner is gone.
+  scope text,
+  token text unique not null,
+  createdtime timestamp default now(),
+  ttl timestamp,
+  domain text,
+  detail jsonb,
+  deleted boolean default false
+);
