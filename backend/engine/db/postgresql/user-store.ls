@@ -46,13 +46,13 @@ user-store.prototype = Object.create(Object.prototype) <<< do
     md5 = crypto.createHash(\md5).update(password).digest(\hex)
     bcrypt.compare md5, hash, (e, ret) -> if ret => res! else rej new lderror(1012)
 
-  get: ({username, password, method, detail, create}) ->
+  get: ({username, password, method, detail, create, invite-token}) ->
     username = username.toLowerCase!
     if !(is-email username) => return Promise.reject new lderror(1015)
     @db.query "select * from users where username = $1", [username]
       .then (ret = {}) ~>
         if !(user = ret.[]rows.0) and !create => return lderror.reject 1034
-        if !user => return @create {username, password, method, detail}
+        if !user => return @create {username, password, method, detail, invite-token}
         if !(method == \local or user.method == \local) =>
           delete user.password
           return user
@@ -65,9 +65,11 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         delete user.password
         return user
 
-  create: ({username, password, method, detail, config}) ->
+  create: ({username, password, method, detail, config, invite-token}) ->
     policy = @policy.login
-    if policy.accept-signup? and !policy.accept-signup => return lderror.reject 1040
+    if policy.accept-signup? and (!policy.accept-signup or policy.accept-signup == \no) =>
+      return lderror.reject 1040
+
     username = username.toLowerCase!
     if !config => config = {}
     if !is-email(username) => return lderror.reject 1015
@@ -84,6 +86,18 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         @db.query "select key from users where username = $1", [username]
           .then (r={}) ~>
             if r.[]rows.length => return lderror.reject 1014
+            p = if policy.accept-signup != \invite => Promise.resolve null
+            else @db.query """select * from invitetoken where token = $1 and deleted is not true""", [invite-token]
+          .then (r) ~>
+            if r and !(token = r.[]rows.0) => return lderror.reject 1043 # token required
+            if !token => return
+            detail = token.detail or {}
+            if !detail.count => return
+            if (detail.used or 0) >= detail.count => lderror.reject 1004
+            token.detail.used = token.detail.used + 1
+            config.{}invite-token[invite-token] = {createdtime: Date.now!}
+            @db.query "update invitetoken set detail = $2 where key = $1", [token.key, token.detail]
+          .then ~>
             @db.query """
             insert into users (username,password,method,displayname,createdtime,detail,config,verified)
             values ($1,$2,$3,$4,$5,$6,$7,$8)

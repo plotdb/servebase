@@ -89,8 +89,8 @@
       });
     },
     get: function(arg$){
-      var username, password, method, detail, create, this$ = this;
-      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, create = arg$.create;
+      var username, password, method, detail, create, inviteToken, this$ = this;
+      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, create = arg$.create, inviteToken = arg$.inviteToken;
       username = username.toLowerCase();
       if (!isEmail(username)) {
         return Promise.reject(new lderror(1015));
@@ -106,7 +106,8 @@
             username: username,
             password: password,
             method: method,
-            detail: detail
+            detail: detail,
+            inviteToken: inviteToken
           });
         }
         if (!(method === 'local' || user.method === 'local')) {
@@ -131,10 +132,10 @@
       });
     },
     create: function(arg$){
-      var username, password, method, detail, config, policy, this$ = this;
-      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, config = arg$.config;
+      var username, password, method, detail, config, inviteToken, policy, this$ = this;
+      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, config = arg$.config, inviteToken = arg$.inviteToken;
       policy = this.policy.login;
-      if (policy.acceptSignup != null && !policy.acceptSignup) {
+      if (policy.acceptSignup != null && (!policy.acceptSignup || policy.acceptSignup === 'no')) {
         return lderror.reject(1040);
       }
       username = username.toLowerCase();
@@ -175,10 +176,35 @@
           user.verified = verified;
         }
         return this$.db.query("select key from users where username = $1", [username]).then(function(r){
+          var p;
           r == null && (r = {});
           if ((r.rows || (r.rows = [])).length) {
             return lderror.reject(1014);
           }
+          return p = policy.acceptSignup !== 'invite'
+            ? Promise.resolve(null)
+            : this$.db.query("select * from invitetoken where token = $1 and deleted is not true", [inviteToken]);
+        }).then(function(r){
+          var token, detail;
+          if (r && !(token = (r.rows || (r.rows = []))[0])) {
+            return lderror.reject(1043);
+          }
+          if (!token) {
+            return;
+          }
+          detail = token.detail || {};
+          if (!detail.count) {
+            return;
+          }
+          if ((detail.used || 0) >= detail.count) {
+            lderror.reject(1004);
+          }
+          token.detail.used = token.detail.used + 1;
+          (config.inviteToken || (config.inviteToken = {}))[inviteToken] = {
+            createdtime: Date.now()
+          };
+          return this$.db.query("update invitetoken set detail = $2 where key = $1", [token.key, token.detail]);
+        }).then(function(){
           return this$.db.query("insert into users (username,password,method,displayname,createdtime,detail,config,verified)\nvalues ($1,$2,$3,$4,$5,$6,$7,$8)\nreturning key", [username, password, method, displayname, new Date().toUTCString(), detail, config, verified]);
         }).then(function(r){
           r == null && (r = {});
