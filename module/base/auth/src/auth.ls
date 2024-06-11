@@ -124,16 +124,18 @@ auth.prototype = Object.create(Object.prototype) <<< do
         new Promise (res, rej) ->
 
   prompt: (o) -> @ui.authpanel true, o
-  oauth: ({name}) ->
+  oauth: ({name, invite-token}) ->
     @get!
       .then (g = {}) ~>
         if g.{}user.key => return g
         # before oauth login
         @oauth.window = window.open '', 'oauth-login', 'height=640,width=560'
         @oauth.form = form = ld$.create name: \div
+        token = if !invite-token => ""
+        else """<input type="hidden" name="inviteToken" value="#{encodeURIComponent invite-token}"/>"""
         form.innerHTML = """
         <form target="oauth-login" action="#{@api-root!}#name/" method="post">
-          <input type="hidden" name="_csrf" value="#{g.csrf-token}"/>
+          <input type="hidden" name="_csrf" value="#{g.csrf-token}"/>#token
         </form>"""
         document.body.appendChild form
         window.oauth-login = login = proxise(-> ld$.find(form, 'form', 0).submit!)

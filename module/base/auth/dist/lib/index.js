@@ -17,7 +17,7 @@
       return f.call({}, it);
     };
   })(function(backend){
-    var db, app, config, route, session, captcha, k, v, oauth, limitSessionAmount, getUser, strategy, x$, this$ = this;
+    var db, app, config, route, session, captcha, k, v, oauth, policy, ref$, ref1$, limitSessionAmount, getUser, strategy, injectInviteToken, x$, this$ = this;
     db = backend.db, app = backend.app, config = backend.config, route = backend.route, session = backend.session;
     captcha = Object.fromEntries((function(){
       var ref$, results$ = [];
@@ -57,6 +57,10 @@
     }).filter(function(it){
       return it;
     }));
+    policy = {};
+    if (((ref$ = (ref1$ = backend.config).policy || (ref1$.policy = {})).login || (ref$.login = {})).acceptSignup != null) {
+      (policy.login || (policy.login = {})).acceptSignup = backend.config.policy.login.acceptSignup;
+    }
     limitSessionAmount = false;
     this.user = {
       'delete': function(arg$){
@@ -83,14 +87,15 @@
       }
     };
     getUser = function(arg$){
-      var username, password, method, detail, create, cb, req;
-      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, create = arg$.create, cb = arg$.cb, req = arg$.req;
+      var username, password, method, detail, create, inviteToken, cb, req;
+      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, create = arg$.create, inviteToken = arg$.inviteToken, cb = arg$.cb, req = arg$.req;
       return db.userStore.get({
         username: username,
         password: password,
         method: method,
         detail: detail,
-        create: create
+        create: create,
+        inviteToken: inviteToken
       }).then(function(user){
         db.query("select count(ip) from session where owner = $1 group by ip", [user.key]).then(function(r){
           r == null && (r = {});
@@ -107,7 +112,7 @@
         if (e && ((ref$ = config.policy || (config.policy = {})).login || (ref$.login = {})).logging) {
           backend.logSecurity.info("login fail " + method + " method " + username + " eid " + e.id + "/" + e.message);
         }
-        if ((ref$ = lderror.id(e)) === 1000 || ref$ === 1004 || ref$ === 1012 || ref$ === 1015 || ref$ === 1034 || ref$ === 1040) {
+        if ((ref$ = lderror.id(e)) === 1000 || ref$ === 1004 || ref$ === 1012 || ref$ === 1015 || ref$ === 1034 || ref$ === 1040 || ref$ === 1043) {
           return cb(e, false);
         }
         console.log(e);
@@ -128,7 +133,8 @@
             detail: null,
             create: false,
             cb: cb,
-            req: req
+            req: req,
+            inviteToken: req.session.inviteToken
           });
         }));
       },
@@ -151,7 +157,8 @@
               detail: profile,
               create: true,
               cb: cb,
-              req: req
+              req: req,
+              inviteToken: req.session.inviteToken
             });
           }
         }));
@@ -174,7 +181,8 @@
               detail: profile,
               create: true,
               cb: cb,
-              req: req
+              req: req,
+              inviteToken: req.session.inviteToken
             });
           }
         }));
@@ -203,7 +211,8 @@
               detail: profile,
               create: true,
               cb: cb,
-              req: req
+              req: req,
+              inviteToken: req.session.inviteToken
             });
           } catch (e$) {
             e = e$;
@@ -233,6 +242,7 @@
           : {},
         captcha: captcha,
         oauth: oauth,
+        policy: policy,
         version: backend.version,
         cachestamp: backend.cachestamp,
         config: backend.config.client || {}
@@ -243,6 +253,13 @@
       });
       return res.send(payload);
     });
+    injectInviteToken = function(req, res, next){
+      var t;
+      if (req.body && (t = req.body.inviteToken)) {
+        req.session.inviteToken = t;
+      }
+      return next();
+    };
     ['local', 'google', 'facebook', 'line'].forEach(function(name){
       var x$;
       if (!(config.auth || (config.auth = {}))[name]) {
@@ -250,7 +267,7 @@
       }
       strategy[name](config.auth[name]);
       x$ = route.auth;
-      x$.post("/" + name, passport.authenticate(name, {
+      x$.post("/" + name, injectInviteToken, passport.authenticate(name, {
         scope: config.auth[name].scope || ['profile', 'openid', 'email']
       }));
       x$.get("/" + name + "/callback", function(name){
@@ -316,18 +333,20 @@
     app.use(passport.session());
     x$ = route.auth;
     x$.post('/signup', backend.middleware.captcha, function(req, res, next){
-      var ref$, username, displayname, password;
+      var ref$, username, displayname, password, inviteToken;
       ref$ = {
         username: (ref$ = req.body).username,
         displayname: ref$.displayname,
-        password: ref$.password
-      }, username = ref$.username, displayname = ref$.displayname, password = ref$.password;
+        password: ref$.password,
+        inviteToken: ref$.inviteToken
+      }, username = ref$.username, displayname = ref$.displayname, password = ref$.password, inviteToken = ref$.inviteToken;
       if (!username || !displayname || password.length < 8) {
         return next(lderror(400));
       }
       return db.userStore.create({
         username: username,
         password: password,
+        inviteToken: inviteToken,
         method: 'local',
         detail: {
           displayname: displayname
@@ -361,7 +380,7 @@
         });
       })['catch'](function(e){
         var ref$;
-        if ((ref$ = lderror.id(e)) === 1014 || ref$ === 1040) {
+        if ((ref$ = lderror.id(e)) === 1004 || ref$ === 1014 || ref$ === 1040 || ref$ === 1043) {
           return next(e);
         }
         console.error(e);

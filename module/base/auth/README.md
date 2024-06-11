@@ -22,6 +22,7 @@ User information is stored in an object called `global`, passed by an API by req
  - `oauth`: additional oauth methods, as an object with oauth name to `{enabled}` mapping.
  - `version`: software version
  - `config`: other configuration for frontend, from `client` field of `secret.ls`.
+ - `policy`: server policy information (partially). see `lib/index.ls` for detail.
 
 
 ## Frontend 

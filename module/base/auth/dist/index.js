@@ -210,10 +210,10 @@
         return this.ui.authpanel(true, o);
       },
       oauth: function(arg$){
-        var name, this$ = this;
-        name = arg$.name;
+        var name, inviteToken, this$ = this;
+        name = arg$.name, inviteToken = arg$.inviteToken;
         return this.get().then(function(g){
-          var form, login;
+          var form, token, login;
           g == null && (g = {});
           if ((g.user || (g.user = {})).key) {
             return g;
@@ -222,7 +222,10 @@
           this$.oauth.form = form = ld$.create({
             name: 'div'
           });
-          form.innerHTML = "<form target=\"oauth-login\" action=\"" + this$.apiRoot() + name + "/\" method=\"post\">\n  <input type=\"hidden\" name=\"_csrf\" value=\"" + g.csrfToken + "\"/>\n</form>";
+          token = !inviteToken
+            ? ""
+            : "<input type=\"hidden\" name=\"inviteToken\" value=\"" + encodeURIComponent(inviteToken) + "\"/>";
+          form.innerHTML = "<form target=\"oauth-login\" action=\"" + this$.apiRoot() + name + "/\" method=\"post\">\n  <input type=\"hidden\" name=\"_csrf\" value=\"" + g.csrfToken + "\"/>" + token + "\n</form>";
           document.body.appendChild(form);
           window.oauthLogin = login = proxise(function(){
             return ld$.find(form, 'form', 0).submit();

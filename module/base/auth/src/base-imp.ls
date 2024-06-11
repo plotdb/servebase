@@ -23,7 +23,11 @@ base-imp =
         keyup: input: ({node, evt}) ~> if evt.keyCode == 13 => @submit!
         click:
           oauth: ({node}) ~>
-            @_auth.oauth {name: node.getAttribute \data-name}
+            p = if g.{}policy.{}login.accept-signup != \invite => Promise.resolve!
+            else core.ldcvmgr.get {name: "@servebase/auth", path: "invite-token"}
+            p
+              .then (r = {}) ~>
+                @_auth.oauth {name: node.getAttribute \data-name, invite-token: r.invite-token}
               .then (g) ~>
                 debounce 350, ~> @info \default
                 @form.reset!
@@ -98,9 +102,22 @@ base-imp =
       @ldld.on!
         .then -> debounce 1000
         .then ~>
-          core.captcha.guard cb: (captcha) ~>
-            body <<< {captcha}
-            ld$.fetch "#{@_auth.api-root!}#{@_tab}", {method: \POST}, {json: body, type: \json}
+          g = @global
+          p = if g.{}policy.{}login.accept-signup != \invite or @_tab != \signup => Promise.resolve!
+          else core.ldcvmgr.get {name: "@servebase/auth", path: "invite-token"}
+        .then (r = {}) ~>
+          _ = (o = {}) ~>
+            core.captcha
+              .guard cb: (captcha) ~>
+                body <<< {captcha} <<< (if o.invite-token => o{invite-token} else {})
+                ld$.fetch "#{@_auth.api-root!}#{@_tab}", {method: \POST}, {json: body, type: \json}
+              .catch (e) ~>
+                # 1043 token required
+                if lderror.id(e) != 1043 => return Promise.reject e
+                (r) <~ core.ldcvmgr.get {name: "@servebase/auth", path: "invite-token"} .then _
+                if !(r and r.token) => return Promise.reject e
+                _ r{token}
+          _(if r.invite-token => r else {} )
         .catch (e) ~>
           if lderror.id(e) != 1005 => return Promise.reject e
           # 1005 csrftoken mismatch - try recoverying directly by reset session

@@ -14,6 +14,9 @@ oauth = Object.fromEntries(
     .map -> return if it.0 == \local => null else [it.0, {enabled: !(it.1.enabled?) or it.1.enabled }]
     .filter -> it
 )
+policy = {}
+if backend.config.{}policy.{}login.accept-signup? =>
+  policy.{}login.accept-signup = backend.config.policy.login.accept-signup
 
 limit-session-amount = false
 
@@ -35,8 +38,8 @@ limit-session-amount = false
     where key = $1
     """, [u.key, "deleted(#{u.username})/#{u.key}", "(deleted user #{u.key})"]
 
-get-user = ({username, password, method, detail, create, cb, req}) ->
-  db.user-store.get {username, password, method, detail, create}
+get-user = ({username, password, method, detail, create, invite-token, cb, req}) ->
+  db.user-store.get {username, password, method, detail, create, invite-token}
     .then (user) !->
       db.query "select count(ip) from session where owner = $1 group by ip", [user.key]
         .then (r={}) ->
@@ -47,9 +50,9 @@ get-user = ({username, password, method, detail, create, cb, req}) ->
       if e and config.{}policy.{}login.logging =>
         backend.log-security.info "login fail #method method #username eid #{e.id}/#{e.message}"
       # 1012: permission denied;  1004: quota exceeded(won't hit here?)
-      # 1000: user not login; 1034: user not found; 1015: bad param
+      # 1000: user not login; 1034: user not found; 1015: bad param; 1043: token required
       # TODO we may need to pass error code to frontend for better error message.
-      if lderror.id(e) in [1000,1004,1012,1015,1034,1040] => return cb e, false
+      if lderror.id(e) in [1000,1004,1012,1015,1034,1040,1043] => return cb e, false
       console.log e
       cb lderror(500)
 
@@ -59,7 +62,10 @@ strategy = do
       usernameField: \username, passwordField: \password
       passReqToCallback: true
     }, (req, username,password,cb) ~>
-      get-user {username, password, method: \local, detail: null, create: false, cb, req}
+      get-user {
+        username, password, method: \local, detail: null, create: false, cb, req
+        invite-token: req.session.invite-token
+      }
 
   google: (opt) ->
     passport.use new passport-google-oauth20.Strategy(
@@ -75,6 +81,7 @@ strategy = do
         else get-user {
           username: profile.emails.0.value, password: null
           method: \google, detail: profile, create: true, cb, req
+          invite-token: req.session.invite-token
         }
     )
 
@@ -91,6 +98,7 @@ strategy = do
         else get-user {
           username: profile.emails.0.value, password: null
           method: \facebook, detail: profile, create: true, cb, req
+          invite-token: req.session.invite-token
         }
     )
 
@@ -112,6 +120,7 @@ strategy = do
           get-user {
             username: ret.email, password: null
             method: \line, detail: profile, create: true, cb, req
+            invite-token: req.session.invite-token
           }
         catch e
           console.log e
@@ -137,6 +146,7 @@ route.auth.get \/info, (req, res) ~>
     user: if req.user => req.user{key, config, plan, displayname, verified, username, staff} else {}
     captcha: captcha
     oauth: oauth
+    policy: policy
     version: backend.version
     cachestamp: backend.cachestamp
     config: backend.config.client or {}
@@ -144,11 +154,19 @@ route.auth.get \/info, (req, res) ~>
   res.cookie 'global', payload, { path: '/', secure: true }
   res.send payload
 
+# we check if invite-token when user sign up
+inject-invite-token = (req, res, next) ->
+  if req.body and (t = req.body.invite-token) => req.session.invite-token = t
+  next!
+
 <[local google facebook line]>.for-each (name) ->
   if !config{}auth[name] => return
   strategy[name](config.auth[name])
   route.auth
-    ..post "/#name", passport.authenticate name, {scope: config.auth[name].scope or <[profile openid email]>}
+    ..post(
+      "/#name", inject-invite-token,
+      passport.authenticate(name, {scope: config.auth[name].scope or <[profile openid email]>})
+    )
     ..get "/#name/callback", ((name) -> (req, res, next) ->
       (
         (e,u,i) <- passport.authenticate name, _
@@ -190,9 +208,9 @@ app.use passport.session!
 route.auth
   ..post \/signup, backend.middleware.captcha, (req, res, next) ~>
     # config skipped here to prevent var shadowing of the global config object
-    {username,displayname,password} = req.body{username,displayname,password}
+    {username,displayname,password,invite-token} = req.body{username,displayname,password,invite-token}
     if !username or !displayname or password.length < 8 => return next(lderror 400)
-    db.user-store.create {username, password} <<< {
+    db.user-store.create {username, password, invite-token} <<< {
       method: \local, detail: {displayname}, config: (req.body.config or {})
     }
       .then (user) ~>
@@ -207,7 +225,7 @@ route.auth
       .then (user) !->
         req.login user, (err) !-> if err => next(err) else res.send {}
       .catch (e) !->
-        if lderror.id(e) in [1014 1040] => return next(e)
+        if lderror.id(e) in [1004 1014 1040 1043] => return next(e)
         console.error e
         next(lderror 403)
   ..post \/login, backend.middleware.captcha, (req, res, next) ->

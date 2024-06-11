@@ -24,7 +24,7 @@ echo "build authpanel.pug -> dist/index.html ..."
 $bin/srcbuild-pug src/authpanel.pug > dist/index.html
 echo "build base.pug -> dist/base.html ..."
 $bin/srcbuild-pug src/base.pug > dist/base.html
-blocks="auth mail-verified oauth-failed passwd-done passwd-reset passwd-renew mail-expire oauth-done passwd-change passwd-expire account-info change-password verification-mail-sent verification-mail-skipped ensure-verified delete-account account-deleted"
+blocks="auth mail-verified oauth-failed passwd-done passwd-reset passwd-renew mail-expire oauth-done passwd-change passwd-expire account-info change-password verification-mail-sent verification-mail-skipped ensure-verified delete-account account-deleted invite-token"
 for name in $blocks; do
   mkdir -p dist/$name
   echo "build $name/index.pug -> dist/$name/index.html ..."

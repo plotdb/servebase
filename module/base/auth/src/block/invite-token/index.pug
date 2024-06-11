@@ -1,0 +1,11 @@
+.ldcv.autogap.scroll: .base.w-480.rwd: .inner
+  include @/ldview/index.pug
+  script(type="@plotdb/block"): include:lsc index.ls
+  h2.mb-2.text-center(t="title")
+  .text-muted(t="desc")
+  .form-group.my-4.pb-1
+    input.form-control.form-control-lg(ld="token",name="invite",t,t-placeholder="input.hint")
+    .invalid-feedback(style="margin-bottom:-.75em",t="input.invalid")
+  .d-flex.g-4.flex-wrap
+    .btn.btn-lg.flex-grow-1.btn-outline-secondary(data-ldcv-set="",t="cancel")
+    .btn.btn-lg.flex-grow-1.btn-primary(ld="submit",t="submit")

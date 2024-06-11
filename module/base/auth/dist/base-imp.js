@@ -44,10 +44,21 @@ baseImp = {
               },
               click: {
                 oauth: function(arg$){
-                  var node;
+                  var node, p, ref$;
                   node = arg$.node;
-                  return this$._auth.oauth({
-                    name: node.getAttribute('data-name')
+                  p = ((ref$ = g.policy || (g.policy = {})).login || (ref$.login = {})).acceptSignup !== 'invite'
+                    ? Promise.resolve()
+                    : core.ldcvmgr.get({
+                      name: "@servebase/auth",
+                      path: "invite-token"
+                    });
+                  return p.then(function(r){
+                    r == null && (r = {});
+                    return this$._auth.oauth({
+                      name: node.getAttribute('data-name', {
+                        inviteToken: r.inviteToken
+                      })
+                    });
                   }).then(function(g){
                     debounce(350, function(){
                       return this$.info('default');
@@ -231,17 +242,53 @@ baseImp = {
         return this.ldld.on().then(function(){
           return debounce(1000);
         }).then(function(){
-          return core.captcha.guard({
-            cb: function(captcha){
-              body.captcha = captcha;
-              return ld$.fetch(this$._auth.apiRoot() + "" + this$._tab, {
-                method: 'POST'
-              }, {
-                json: body,
-                type: 'json'
+          var g, p, ref$;
+          g = this$.global;
+          return p = ((ref$ = g.policy || (g.policy = {})).login || (ref$.login = {})).acceptSignup !== 'invite' || this$._tab !== 'signup'
+            ? Promise.resolve()
+            : core.ldcvmgr.get({
+              name: "@servebase/auth",
+              path: "invite-token"
+            });
+        }).then(function(r){
+          var _;
+          r == null && (r = {});
+          _ = function(o){
+            o == null && (o = {});
+            return core.captcha.guard({
+              cb: function(captcha){
+                import$((body.captcha = captcha, body), o.inviteToken
+                  ? {
+                    inviteToken: o.inviteToken
+                  }
+                  : {});
+                return ld$.fetch(this$._auth.apiRoot() + "" + this$._tab, {
+                  method: 'POST'
+                }, {
+                  json: body,
+                  type: 'json'
+                });
+              }
+            })['catch'](function(e){
+              if (lderror.id(e) !== 1043) {
+                return Promise.reject(e);
+              }
+              return core.ldcvmgr.get({
+                name: "@servebase/auth",
+                path: "invite-token"
+              }).then(function(r){
+                if (!(r && r.token)) {
+                  return Promise.reject(e);
+                }
+                return _({
+                  token: r.token
+                });
               });
-            }
-          });
+            });
+          };
+          return _(r.inviteToken
+            ? r
+            : {});
         })['catch'](function(e){
           if (lderror.id(e) !== 1005) {
             return Promise.reject(e);
