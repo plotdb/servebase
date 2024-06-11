@@ -61,7 +61,9 @@ module.exports = do
     # login policy
     login:
       skip-verify: false # default false. when true, verification mail won't be sent when `signup`.
-      accept-signup: true # default true. set to `false` to reject new signup.
+      # accept-signup: default true. set to `false` or `no` to reject new signup,
+      # or `invite` to accept new signup by invitation code.
+      accept-signup: true
       logging: false # log logging failure attempt in server log if true.
       oauth-default-verified: false # consider oauth accounts verified by default
     # password renew policy
