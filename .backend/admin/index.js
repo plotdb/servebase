@@ -3,7 +3,7 @@
   (function(it){
     return module.exports = it;
   })(function(backend){
-    var db, config, api, session, express, lderror, re2, curegex, aux, throttle, route, reEmail, isEmail;
+    var db, config, api, session, express, lderror, re2, curegex, suuid, aux, throttle, route, reEmail, isEmail;
     db = backend.db, config = backend.config, api = backend.route.api, session = backend.session;
     if (config.base !== 'base') {
       return;
@@ -12,6 +12,7 @@
     lderror = require('lderror');
     re2 = require('re2');
     curegex = require('curegex');
+    suuid = require('@plotdb/suuid');
     aux = require('@servebase/backend/aux');
     throttle = require('@servebase/backend/throttle');
     route = aux.routecatch(express.Router({
@@ -163,7 +164,7 @@
         return res.send();
       });
     });
-    return route.put('/su/:key', aux.validateKey, function(req, res){
+    route.put('/su/:key', aux.validateKey, function(req, res){
       var key;
       key = +req.params.key;
       return session.login({
@@ -171,6 +172,25 @@
         req: req
       }).then(function(){
         return res.send();
+      });
+    });
+    return route.post('/invite-token', function(req, res){
+      var detail, token;
+      detail = {
+        count: (req.body || {}).count || 1,
+        used: 0
+      };
+      token = (req.body || {}).token || suuid();
+      return db.query("select key from invitetoken where token = $1 and deleted is not true", [token]).then(function(r){
+        r == null && (r = {});
+        if ((r.rows || (r.rows = [])).length) {
+          return lderror.reject(1011);
+        }
+        return db.query("insert into invitetoken (owner,token,detail)\nvalues ($1, $2, $3) returning token", [req.user.key, token, detail]);
+      }).then(function(){
+        return res.send({
+          token: token
+        });
       });
     });
   });

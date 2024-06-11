@@ -2,7 +2,7 @@
 {db,config,route:{api},session} = backend
 if config.base != \base => return
 
-require! <[express lderror re2 curegex]>
+require! <[express lderror re2 curegex @plotdb/suuid]>
 require! <[@servebase/backend/aux @servebase/backend/throttle]>
 
 route = aux.routecatch express.Router {mergeParams: true}
@@ -99,3 +99,14 @@ route.delete \/user/:key, aux.validate-key, (req, res, next) ->
 route.put \/su/:key, aux.validate-key, (req, res) ->
   key = +req.params.key
   session.login {user: key, req} .then -> res.send!
+
+route.post \/invite-token, (req, res) ->
+  detail = {count: (req.body or {}).count or 1, used: 0}
+  token = (req.body or {}).token or suuid!
+  db.query """select key from invitetoken where token = $1 and deleted is not true""", [token]
+    .then (r={}) ->
+      if r.[]rows.length => return lderror.reject 1011
+      db.query """
+      insert into invitetoken (owner,token,detail)
+      values ($1, $2, $3) returning token""", [req.user.key, token, detail]
+    .then -> res.send {token}

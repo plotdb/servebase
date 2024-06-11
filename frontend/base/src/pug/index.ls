@@ -63,6 +63,12 @@
     "post-test": ->
       ld$.fetch "/api/demo/post-test/", {method: \POST}, {type: \text}
         .then -> console.log it
+    "create-invite-token": ~>
+      token = @view.panel.get(\invite-token).value or null
+      count = +(@view.panel.get(\invite-token-count).value or 1)
+      if isNaN(count) => count = 1
+      ld$.fetch "/api/admin/invite-token", {method: \POST}, {json: {token, count}, type: \json}
+        .then (r={}) -> ldnotify.send \success, "token `#{r.token}` created."
     "hcaptcha-done": ~>
       console.log "done..."
       #@capobj.get!then -> console.log ">", it

@@ -37,9 +37,14 @@ block body
         .btn.btn-sm.btn-outline-secondary.mr-2(ld="captcha",data-type="all") Captcha (All)
         .card.my-2: .card-body
           div(ld="hcaptcha")
-          .btn.btn-outline-secondary(ld="hcaptcha-done") Submit
-        .card.my-2: .card-body
-          .btn.btn-outline-secondary(ld="post-test") Post Test Data
+          .d-flex.g-2
+            .btn.btn-outline-secondary(ld="hcaptcha-done") Submit for hCaptcha
+            .btn.btn-outline-secondary(ld="post-test") Post Test Data
+        .input-group.my-2
+          input.form-control(ld="invite-token",placeholder="invite token")
+          input.form-control(ld="invite-token-count",placeholder="token count")
+          .input-group-append
+            .btn.btn-outline-secondary(ld="create-invite-token") Create Invite Token
 
         .input-group.my-2
           input.form-control(ld="password-reset-email")
