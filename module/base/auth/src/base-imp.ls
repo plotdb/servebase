@@ -110,13 +110,14 @@ base-imp =
             core.captcha
               .guard cb: (captcha) ~>
                 body <<< {captcha} <<< (if o.invite-token => o{invite-token} else {})
+                <~ debounce 150 .then _
                 ld$.fetch "#{@_auth.api-root!}#{@_tab}", {method: \POST}, {json: body, type: \json}
               .catch (e) ~>
                 # 1043 token required
                 if lderror.id(e) != 1043 => return Promise.reject e
                 (r) <~ core.ldcvmgr.get {name: "@servebase/auth", path: "invite-token"} .then _
-                if !(r and r.token) => return Promise.reject e
-                _ r{token}
+                if !(r and r.invite-token) => return Promise.reject e
+                _ r{invite-token}
           _(if r.invite-token => r else {} )
         .catch (e) ~>
           if lderror.id(e) != 1005 => return Promise.reject e

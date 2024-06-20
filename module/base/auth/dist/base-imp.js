@@ -262,11 +262,13 @@ baseImp = {
                     inviteToken: o.inviteToken
                   }
                   : {});
-                return ld$.fetch(this$._auth.apiRoot() + "" + this$._tab, {
-                  method: 'POST'
-                }, {
-                  json: body,
-                  type: 'json'
+                return debounce(150).then(function(){
+                  return ld$.fetch(this$._auth.apiRoot() + "" + this$._tab, {
+                    method: 'POST'
+                  }, {
+                    json: body,
+                    type: 'json'
+                  });
                 });
               }
             })['catch'](function(e){
@@ -277,11 +279,11 @@ baseImp = {
                 name: "@servebase/auth",
                 path: "invite-token"
               }).then(function(r){
-                if (!(r && r.token)) {
+                if (!(r && r.inviteToken)) {
                   return Promise.reject(e);
                 }
                 return _({
-                  token: r.token
+                  inviteToken: r.inviteToken
                 });
               });
             });

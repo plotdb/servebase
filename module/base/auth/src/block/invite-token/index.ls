@@ -23,8 +23,8 @@ module.exports =
     view = new ldview do
       root: root
       action: click: submit: ({node}) ~>
-        if !(token = view.get(\token).value) => return
-        @ldcv.set {token}
+        if !(invite-token = view.get(\token).value) => return
+        @ldcv.set {invite-token}
 
 
 
