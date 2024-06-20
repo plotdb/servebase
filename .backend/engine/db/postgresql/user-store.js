@@ -197,7 +197,7 @@
             return;
           }
           if ((detail.used || 0) >= detail.count) {
-            lderror.reject(1004);
+            return lderror.reject(1004);
           }
           token.detail.used = token.detail.used + 1;
           (config.inviteToken || (config.inviteToken = {}))[inviteToken] = {

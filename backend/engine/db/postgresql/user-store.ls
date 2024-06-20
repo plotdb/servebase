@@ -93,7 +93,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
             if !token => return
             detail = token.detail or {}
             if !detail.count => return
-            if (detail.used or 0) >= detail.count => lderror.reject 1004
+            if (detail.used or 0) >= detail.count => return lderror.reject 1004
             token.detail.used = token.detail.used + 1
             config.{}invite-token[invite-token] = {createdtime: Date.now!}
             @db.query "update invitetoken set detail = $2 where key = $1", [token.key, token.detail]
