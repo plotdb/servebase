@@ -262,7 +262,7 @@ baseImp = {
                     inviteToken: o.inviteToken
                   }
                   : {});
-                return debounce(150).then(function(){
+                return debounce(250).then(function(){
                   return ld$.fetch(this$._auth.apiRoot() + "" + this$._tab, {
                     method: 'POST'
                   }, {
@@ -275,15 +275,17 @@ baseImp = {
               if (lderror.id(e) !== 1043) {
                 return Promise.reject(e);
               }
-              return core.ldcvmgr.get({
-                name: "@servebase/auth",
-                path: "invite-token"
-              }).then(function(r){
-                if (!(r && r.inviteToken)) {
-                  return Promise.reject(e);
-                }
-                return _({
-                  inviteToken: r.inviteToken
+              return debounce(250).then(function(){
+                return core.ldcvmgr.get({
+                  name: "@servebase/auth",
+                  path: "invite-token"
+                }).then(function(r){
+                  if (!(r && r.inviteToken)) {
+                    return Promise.reject(e);
+                  }
+                  return _({
+                    inviteToken: r.inviteToken
+                  });
                 });
               });
             });
