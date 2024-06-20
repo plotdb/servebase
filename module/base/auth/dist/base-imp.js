@@ -275,7 +275,7 @@ baseImp = {
               if (lderror.id(e) !== 1043) {
                 return Promise.reject(e);
               }
-              return debounce(250).then(function(){
+              return debounce(1000).then(function(){
                 return core.ldcvmgr.get({
                   name: "@servebase/auth",
                   path: "invite-token"
