@@ -83,10 +83,10 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
   send-directly: (payload) -> new Promise (res, rej) ~>
     @log.info "#{if @suppress => '(suppressed)'.gray else ''} sending [from:#{payload.from}] [to:#{payload.to}] [subject:#{payload.subject}]".cyan
     if @suppress => return res!
-    (e,i) <~ @api.sendMail payload, _
-    if !e => return res!
-    @log.error "send mail failed: api.sendMail failed.", e
-    return rej lderror 500
+    (err,i) <~ @api.sendMail payload, _
+    if !err => return res!
+    @log.error {err}, "send mail failed: api.sendMail failed."
+    return res!
 
   # content -> text / html
   send-from-md: (payload, map = {}, opt={}) -> new Promise (res, rej) ~>

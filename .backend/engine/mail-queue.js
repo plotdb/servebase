@@ -125,12 +125,14 @@
         if (this$.suppress) {
           return res();
         }
-        return this$.api.sendMail(payload, function(e, i){
-          if (!e) {
+        return this$.api.sendMail(payload, function(err, i){
+          if (!err) {
             return res();
           }
-          this$.log.error("send mail failed: api.sendMail failed.", e);
-          return rej(lderror(500));
+          this$.log.error({
+            err: err
+          }, "send mail failed: api.sendMail failed.");
+          return res();
         });
       });
     },
