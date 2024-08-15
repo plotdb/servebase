@@ -121,7 +121,18 @@
     sendDirectly: function(payload){
       var this$ = this;
       return new Promise(function(res, rej){
-        this$.log.info(((this$.suppress ? '(suppressed)'.gray : '') + " sending [from:" + payload.from + "] [to:" + payload.to + "] [subject:" + payload.subject + "]").cyan);
+        var cc, bcc;
+        cc = !payload.cc
+          ? ' '
+          : " [cc:" + (Array.isArray(payload.cc)
+            ? payload.cc.join(' ')
+            : payload.cc) + "] ";
+        bcc = !payload.bcc
+          ? ''
+          : "[bcc:" + (Array.isArray(payload.bcc)
+            ? payload.bcc.join(' ')
+            : payload.bcc) + "] ";
+        this$.log.info(((this$.suppress ? '(suppressed)'.gray : '') + " sending [from:" + payload.from + "] [to:" + payload.to + "]" + cc + bcc + "[subject:" + payload.subject + "]").cyan);
         if (this$.suppress) {
           return res();
         }

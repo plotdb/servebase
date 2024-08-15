@@ -81,7 +81,11 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
 
   # directly send
   send-directly: (payload) -> new Promise (res, rej) ~>
-    @log.info "#{if @suppress => '(suppressed)'.gray else ''} sending [from:#{payload.from}] [to:#{payload.to}] [subject:#{payload.subject}]".cyan
+    cc = if !payload.cc => ' '
+    else " [cc:#{if Array.isArray(payload.cc) => payload.cc.join(' ') else payload.cc}] "
+    bcc = if !payload.bcc => ''
+    else "[bcc:#{if Array.isArray(payload.bcc) => payload.bcc.join(' ') else payload.bcc}] "
+    @log.info "#{if @suppress => '(suppressed)'.gray else ''} sending [from:#{payload.from}] [to:#{payload.to}]#cc#bcc[subject:#{payload.subject}]".cyan
     if @suppress => return res!
     (err,i) <~ @api.sendMail payload, _
     if !err => return res!
