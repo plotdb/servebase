@@ -8,6 +8,7 @@
     this._tag = "[@servebase/connector]";
     this._init = opt.init;
     this._ldcv = opt.ldcv || function(){};
+    this._error = opt.error || null;
     this._reconnect = opt.reconnect;
     this._path = opt.path || '/ws';
     this.hub = {};
@@ -24,6 +25,11 @@
       }
     }).then(function(){
       return console.log(this$._tag + " connected.");
+    })['catch'](function(e){
+      if (this$._error && typeof this$._error === 'function') {
+        return this$._error(e);
+      }
+      return Promise.reject(e);
     })['catch'](function(e){
       return Promise.reject(e);
     });

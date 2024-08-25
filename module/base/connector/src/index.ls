@@ -2,6 +2,7 @@ connector = (opt = {}) ->
   @ <<< ws: null, _running: false, _tag: "[@servebase/connector]"
   @_init = opt.init
   @_ldcv = opt.ldcv or (->)
+  @_error = opt.error or null
   @_reconnect = opt.reconnect
   @_path = opt.path or \/ws
   @hub = {}
@@ -18,6 +19,13 @@ connector.prototype = Object.create(Object.prototype) <<<
         # this may be caused by customized reconnect, which contains initialization code.
         # we should stop and hint user otherwise it may lead to unexpected result.
         # original code, which ignore error if ws connected: /* if @ws.status! == 2 => return */
+        # additionally, we may want to customize error info based on returned code
+        # so we support a customized error handler here if available.
+        if @_error and typeof(@_error) == \function => return @_error(e)
+        Promise.reject e
+      .catch (e) ~>
+        # error handler may simply return a altered error, so we still take care of it here.
+        # this may be considered as redundant since we reject a rejection directly in a rejection handler (TBR)
         Promise.reject e
   reopen: ->
     if @_running => return
