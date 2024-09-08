@@ -132,10 +132,10 @@
       });
     },
     create: function(arg$){
-      var username, password, method, detail, config, inviteToken, policy, this$ = this;
-      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, config = arg$.config, inviteToken = arg$.inviteToken;
+      var username, password, method, detail, config, inviteToken, force, policy, this$ = this;
+      username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, config = arg$.config, inviteToken = arg$.inviteToken, force = arg$.force;
       policy = this.policy.login;
-      if (policy.acceptSignup != null && (!policy.acceptSignup || policy.acceptSignup === 'no')) {
+      if (!force && policy.acceptSignup != null && (!policy.acceptSignup || policy.acceptSignup === 'no')) {
         return lderror.reject(1040);
       }
       username = username.toLowerCase();
@@ -181,7 +181,7 @@
           if ((r.rows || (r.rows = [])).length) {
             return lderror.reject(1014);
           }
-          return p = policy.acceptSignup !== 'invite'
+          return p = force || policy.acceptSignup !== 'invite'
             ? Promise.resolve(null)
             : this$.db.query("select * from invitetoken where token = $1 and deleted is not true", [inviteToken]);
         }).then(function(r){

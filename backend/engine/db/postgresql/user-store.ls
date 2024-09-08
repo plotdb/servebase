@@ -65,9 +65,9 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         delete user.password
         return user
 
-  create: ({username, password, method, detail, config, invite-token}) ->
+  create: ({username, password, method, detail, config, invite-token, force}) ->
     policy = @policy.login
-    if policy.accept-signup? and (!policy.accept-signup or policy.accept-signup == \no) =>
+    if !force and policy.accept-signup? and (!policy.accept-signup or policy.accept-signup == \no) =>
       return lderror.reject 1040
 
     username = username.toLowerCase!
@@ -86,7 +86,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         @db.query "select key from users where username = $1", [username]
           .then (r={}) ~>
             if r.[]rows.length => return lderror.reject 1014
-            p = if policy.accept-signup != \invite => Promise.resolve null
+            p = if force or policy.accept-signup != \invite => Promise.resolve null
             else @db.query """select * from invitetoken where token = $1 and deleted is not true""", [invite-token]
           .then (r) ~>
             if r and !(token = r.[]rows.0) => return lderror.reject 1043 # token required
