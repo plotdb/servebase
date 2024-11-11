@@ -9,7 +9,7 @@
       p(t="s1.desc.1")
       .row.mt-4
         .col-md.mt-2: .btn.btn-lg.btn-outline-secondary.btn-block.mr-2(ld="cancel",t="s1.btn.0")
-        .col-md.mt-2: .btn.btn-lg.btn-primary.btn-block.mr-2.text-nowrap(ld="send") #[span(t="s1.btn.1")] #[i.i-mail.ml-2]
+        .col-md.mt-2: .btn.btn-lg.btn-primary.btn-block.mr-2.text-nowrap(ld="send") #[span(t="s1.btn.1")] #[i.i-mail.ml-2(aria-hidden="true")]
     .d-none(ld="step",data-step="2")
       .text-center.mb-4
         h2.mb-1(t="s2.title")
@@ -19,7 +19,7 @@
       p(t="s2.desc.2")
       .d-flex.g-2.mt-4.flex-wrap
         .btn.btn-lg.btn-outline-secondary.text-nowrap.flex-grow-1(ld="cancel",t="s2.btn.0")
-        .btn.btn-lg.btn-outline-secondary.text-nowrap.flex-grow-1(ld="send") #[span(t="s2.btn.1")] #[i.i-mail.ml-2]
+        .btn.btn-lg.btn-outline-secondary.text-nowrap.flex-grow-1(ld="send") #[span(t="s2.btn.1")] #[i.i-mail.ml-2(aria-hidden="true")]
         .btn.btn-lg.btn-primary.text-nowrap.flex-grow-1(ld="verify",t="s2.btn.2")
     .d-none(ld="step",data-step="3")
       .text-center.mb-4
@@ -27,12 +27,12 @@
       p(t="s3.desc.0")
       .d-flex.g-2.mt-4.flex-wrap
         .btn.btn-lg.btn-outline-secondary.text-nowrap.flex-grow-1(ld="cancel",t="s2.btn.0")
-        .btn.btn-lg.btn-outline-secondary.text-nowrap.flex-grow-1(ld="send") #[span(t="s2.btn.1")] #[i.i-mail.ml-2]
+        .btn.btn-lg.btn-outline-secondary.text-nowrap.flex-grow-1(ld="send") #[span(t="s2.btn.1")] #[i.i-mail.ml-2(aria-hidden="true")]
         .btn.btn-lg.btn-primary.text-nowrap.flex-grow-1(ld="verify",t="s2.btn.2")
 
     .d-none(ld="step",data-step="4")
       .text-center.mb-4
-        h2.mb-1 #[span(t="s4.title")] #[sup: i.text-success.i-check]
+        h2.mb-1 #[span(t="s4.title")] #[sup: i.text-success.i-check(aria-hidden="true")]
       p(t="s4.desc.0")
       p(t="s4.desc.1")
       .mt-4: .btn.btn-lg.btn-block.btn-primary(ld="done",t="s4.btn")
