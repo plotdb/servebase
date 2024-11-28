@@ -13,6 +13,7 @@ with following constructor options:
    - accepting a single parameter which is either `true` or `false` ( for loading status. `true` = loading)
  - `path`: websocket server path. default `/ws`.
 
+
 And following API:
 
  - `init()`: create a websocket and connect to server through it.
@@ -21,6 +22,9 @@ And following API:
  - `open`: open a socket connection. auto called after `init()` is called.
  - `reopen`: reopen a socket connection. auto called when previous socket was closed.
    - unlike `open`, this triggers given `ldcv` for loading indicator.
+ - `on(name, cb)`: register an event handler for event `name`.
+ - `fire(name, ...args)`: fire an event with `name` and additional options `...args`.
+
 
 Available members for customized functions:
 

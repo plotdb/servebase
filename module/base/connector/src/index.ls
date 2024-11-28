@@ -5,15 +5,19 @@ connector = (opt = {}) ->
   @_error = opt.error or null
   @_reconnect = opt.reconnect
   @_path = opt.path or \/ws
+  @_evthdr = {}
   @hub = {}
   @
 
 connector.prototype = Object.create(Object.prototype) <<<
+  on: (n, cb) -> (if Array.isArray(n) => n else [n]).map (n) ~> @_evthdr.[][n].push cb
+  fire: (n, ...v) -> for cb in (@_evthdr[n] or []) => cb.apply @, v
   open: ->
     console.log "#{@_tag} ws reconnect ..."
     @ws.connect!
       .then ~> console.log "#{@_tag} object reconnect ..."
       .then ~> if @_reconnect => @_reconnect!
+      .then ~> @fire \reconnect
       .then ~> console.log "#{@_tag} connected."
       .catch (e) ~>
         # this may be caused by customized reconnect, which contains initialization code.

@@ -11,10 +11,31 @@
     this._error = opt.error || null;
     this._reconnect = opt.reconnect;
     this._path = opt.path || '/ws';
+    this._evthdr = {};
     this.hub = {};
     return this;
   };
-  connector.prototype = (ref$ = Object.create(Object.prototype), ref$.open = function(){
+  connector.prototype = (ref$ = Object.create(Object.prototype), ref$.on = function(n, cb){
+    var this$ = this;
+    return (Array.isArray(n)
+      ? n
+      : [n]).map(function(n){
+      var ref$;
+      return ((ref$ = this$._evthdr)[n] || (ref$[n] = [])).push(cb);
+    });
+  }, ref$.fire = function(n){
+    var v, res$, i$, to$, ref$, len$, cb, results$ = [];
+    res$ = [];
+    for (i$ = 1, to$ = arguments.length; i$ < to$; ++i$) {
+      res$.push(arguments[i$]);
+    }
+    v = res$;
+    for (i$ = 0, len$ = (ref$ = this._evthdr[n] || []).length; i$ < len$; ++i$) {
+      cb = ref$[i$];
+      results$.push(cb.apply(this, v));
+    }
+    return results$;
+  }, ref$.open = function(){
     var this$ = this;
     console.log(this._tag + " ws reconnect ...");
     return this.ws.connect().then(function(){
@@ -23,6 +44,8 @@
       if (this$._reconnect) {
         return this$._reconnect();
       }
+    }).then(function(){
+      return this$.fire('reconnect');
     }).then(function(){
       return console.log(this$._tag + " connected.");
     })['catch'](function(e){
