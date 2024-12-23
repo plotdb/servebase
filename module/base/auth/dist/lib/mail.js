@@ -45,7 +45,7 @@
             email = user.username;
             if (/@g(oogle)?mail\.com$/.exec(email)) {
               ret = email.split('@');
-              email = ret[0].replace(/(\+.+)?$/, '').replace(/\./g, '') + ("@" + ret[1]);
+              email = ret[0].replace(/(\+.*)$/, '').replace(/\./g, '') + ("@" + ret[1]);
             }
             return backend.mailQueue.byTemplate('mail-verify', email, import$({
               token: obj.hex

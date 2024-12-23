@@ -29,7 +29,7 @@ verify: ({req, user}) ->
       #  - disposable mail service seems to show mails only with exactly address match.
       if /@g(oogle)?mail\.com$/.exec(email) =>
         ret = email.split('@')
-        email = ret.0.replace(/(\+.+)?$/, '').replace(/\./g,'') + "@#{ret.1}"
+        email = ret.0.replace(/(\+.*)$/, '').replace(/\./g,'') + "@#{ret.1}"
       backend.mail-queue.by-template(
         \mail-verify
         email
