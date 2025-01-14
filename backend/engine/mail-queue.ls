@@ -109,7 +109,8 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
   by-template: (name, email, map = {}, opt = {}) ->
     config.yaml [\private, @base, \base].map(->path.join(it, "mail/#name.yaml"))
       .then (payload) ~>
-        obj = from: payload.from, to: email, subject: payload.subject, content: payload.content
+        obj = from: opt.from or payload.from, to: email, subject: payload.subject, content: payload.content
+        if opt.cc => obj.cc = opt.cc
         if opt.bcc => obj.bcc = opt.bcc
         @send-from-md(obj, map,{now: opt.now})
       .catch (err) ~>

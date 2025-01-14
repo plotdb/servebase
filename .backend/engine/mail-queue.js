@@ -179,11 +179,14 @@
       })).then(function(payload){
         var obj;
         obj = {
-          from: payload.from,
+          from: opt.from || payload.from,
           to: email,
           subject: payload.subject,
           content: payload.content
         };
+        if (opt.cc) {
+          obj.cc = opt.cc;
+        }
         if (opt.bcc) {
           obj.bcc = opt.bcc;
         }
