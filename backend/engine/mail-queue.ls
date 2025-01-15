@@ -101,12 +101,17 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
       content = content.replace(re, v)
       payload.from = payload.from.replace(re, v)
       payload.subject = payload.subject.replace(re, v)
+    # We may want to trap unresolved tokens
+    # if /\#{[^}]+}/.exec(content) => throw new Error("unresolved token exists when sending from md.")
     payload.text = md.to-text(content)
     payload.html = md.to-html(content)
     delete payload.content
     @send(payload,opt).then -> res!
 
   by-template: (name, email, map = {}, opt = {}) ->
+    # TODO add i18n support.
+    # we may want to use subfolder (e.g., en/mail/some.yaml) to store mails for different language
+    # and a fallback lng should be considered.
     config.yaml [\private, @base, \base].map(->path.join(it, "mail/#name.yaml"))
       .then (payload) ~>
         obj = from: opt.from or payload.from, to: email, subject: payload.subject, content: payload.content
