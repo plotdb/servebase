@@ -203,7 +203,7 @@
       var this$ = this;
       opt == null && (opt = {});
       return Promise.resolve().then(function(){
-        var i18nEnabled, ref$;
+        var ref$, i18nEnabled;
         this$.logSecurity = this$.log.child({
           module: 'security'
         });
@@ -223,10 +223,10 @@
           module: 'i18n'
         });
         if (this$.config.mail) {
-          this$.mailQueue = new mailQueue(import$({
+          this$.mailQueue = new mailQueue((ref$ = import$({
             logger: this$.logMail,
             base: this$.config.base
-          }, this$.config.mail || {}));
+          }, this$.config.mail || {}), ref$.sitename = this$.config.sitename, ref$.domain = this$.config.domain, ref$));
         }
         process.on('uncaughtException', function(err, origin){
           this$.logServer.error({

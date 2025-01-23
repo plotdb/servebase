@@ -137,7 +137,12 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @log-mail = @log.child {module: \mail}
         @log-i18n = @log.child {module: \i18n}
         if @config.mail =>
-          @mail-queue = new mail-queue {logger: @log-mail, base: @config.base} <<< (@config.mail or {})
+          @mail-queue = new mail-queue({
+            logger: @log-mail, base: @config.base
+          } <<< (@config.mail or {}) <<< {
+            sitename: @config.sitename
+            domain: @config.domain
+          })
 
         process.on \uncaughtException, (err, origin) ~>
           @log-server.error {err}, "uncaught exception ocurred, outside express routes".red
