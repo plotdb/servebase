@@ -1,6 +1,6 @@
 require! <[lderror @servebase/backend/throttle @servebase/backend/aux]>
 (backend, {api, app}) <- (->module.exports = it)  _
-{db} = backend
+{config, db} = backend
 
 app.get \/, throttle.kit.generic, (req, res, next) ->
   db.query "select count(key) as count from users"
@@ -45,3 +45,19 @@ app.get \/me/settings, aux.signedin, (req, res, next) -> res.render \me/settings
 app.get \/verified, aux.verified, (req, res, next) -> res.render \me/verified.pug, {user: req.user}
 
 app.get \/view, (req, res, next) -> res.render \view.pug, {view: true}
+
+app.get \/trigger-notify, (req, res, next) ->
+  email = (config.admin or {}).email
+  recipients = if Array.isArray(email) => email else [email]
+  email = recipients.join(\,)
+  name = req.query.name or \notify-test
+  if !email => return res.send 'admin email not set'
+  if !name => return res.send 'template name not set'
+  backend.mail-queue.batch {
+    sender: """\"servebase notifier" <#{recipients.0}>"""
+    recipients: recipients
+    name: name
+    params: {name, email, token: Math.random!toString(36)substring(2)}
+    batch-size: 1
+  }
+    .then -> res.send "mail request sent to #email"

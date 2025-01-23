@@ -1,6 +1,9 @@
-require! <[fs path @servebase/config @plotdb/colors js-yaml lderror]>
+require! <[fs path @servebase/config @plotdb/colors js-yaml lderror re2 curegex]>
 require! <[nodemailer nodemailer-mailgun-transport]>
 require! <[./utils/md]>
+
+re-email = curegex.tw.get('email', re2)
+is-email = -> return re-email.exec(it)
 
 # # sample code for sending mail
 # backend.mail-queue.add {
@@ -28,6 +31,7 @@ mail-queue = (opt={}) ->
   @base = opt.base or 'base'
   @log = opt.logger
   @info = opt.info or {}
+  @cfg = opt or {}
   if opt.blacklist? =>
     if Array.isArray(opt.blacklist) =>
       @_blacklist = opt.blacklist
@@ -93,7 +97,9 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     return res!
 
   # content -> text / html
-  send-from-md: (payload, map = {}, opt={}) -> new Promise (res, rej) ~>
+  send-from-md: (payload, map = {}, opt={}) ->
+    payload = JSON.parse JSON.stringify payload
+    (res, rej) <~ new Promise _
     content = (payload.content or '')
     payload.from = (@info or {}).from or payload.from
     for k,v of map =>
@@ -121,5 +127,28 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
       .catch (err) ~>
         @log.error {err}, "send mail by template failed for name `#name`"
         return Promise.reject(err)
+
+  batch: ({sender, recipients, name, payload, params, batch-size}) ->
+    sender = @cfg.default-sender or sender
+    if !sender and !(@cfg.sitename and @cfg.domain) => return lderror.reject 1015
+    # we may want to make sure sender is a valid recipient
+    # since no-reply@xxx probably won't be a correct sender.
+    if !sender => sender = "\"#{@cfg.sitename}\" <no-reply@#{@cfg.domain}>"
+    batch = []
+    params = (params or {}) <<< @cfg{sitename, domain}
+    payload = {} <<< (payload or {}) <<< from: sender
+    batch-size = batch-size or 1
+    recipients = (recipients or []).map(-> it).filter(->is-email it)
+    if !recipients.length => return Promise.resolve!
+    if !(name or payload.subject) => return Promise.resolve!
+    while recipients.length => batch.push(recipients.splice 0, batch-size)
+    ps = batch.map (rs = []) ~>
+      if !rs.length => return Promise.resolve!
+      payload <<< (if rs.length > 1 => {to: sender, bcc: rs} else {to: rs})
+      # use site template if payload contains no content fields
+      if name and !(payload.subject and (payload.text or payload.html)) =>
+        return @by-template(name, payload.to, params, {now: true, bcc: payload.bcc})
+      @send payload
+    Promise.all ps
 
 module.exports = mail-queue

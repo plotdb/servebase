@@ -107,6 +107,8 @@ module.exports = do
     # pointing to a module with `is(email)` API which return a Promise resolving with `true`
     # if `email` is blacklisted.
     blacklist: []
+    # default sender when sending mail. can be overwritten if explicitly set when calling mail APIs.
+    default-sender: null
   # client: additional information passing to client side via
   #  - api/auth/info, (acces via `global.config`)
   #  - as locals used in view rendering. (available in `settings.client`)

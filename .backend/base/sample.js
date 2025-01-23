@@ -7,9 +7,9 @@
   (function(it){
     return module.exports = it;
   })(function(backend, arg$){
-    var api, app, db;
+    var api, app, config, db;
     api = arg$.api, app = arg$.app;
-    db = backend.db;
+    config = backend.config, db = backend.db;
     app.get('/', throttle.kit.generic, function(req, res, next){
       return db.query("select count(key) as count from users").then(function(r){
         var count;
@@ -84,9 +84,37 @@
         user: req.user
       });
     });
-    return app.get('/view', function(req, res, next){
+    app.get('/view', function(req, res, next){
       return res.render('view.pug', {
         view: true
+      });
+    });
+    return app.get('/trigger-notify', function(req, res, next){
+      var email, recipients, name;
+      email = (config.admin || {}).email;
+      recipients = Array.isArray(email)
+        ? email
+        : [email];
+      email = recipients.join(',');
+      name = req.query.name || 'notify-test';
+      if (!email) {
+        return res.send('admin email not set');
+      }
+      if (!name) {
+        return res.send('template name not set');
+      }
+      return backend.mailQueue.batch({
+        sender: "\"servebase notifier\" <" + recipients[0] + ">",
+        recipients: recipients,
+        name: name,
+        params: {
+          name: name,
+          email: email,
+          token: Math.random().toString(36).substring(2)
+        },
+        batchSize: 1
+      }).then(function(){
+        return res.send("mail request sent to " + email);
       });
     });
   });

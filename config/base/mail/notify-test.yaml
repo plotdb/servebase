@@ -1,0 +1,12 @@
+from: '"#{sitename} Support" <noreply@#{domain}>'
+subject: 'Notifier Testing'
+content: |
+  this is a test mail triggered by a mail test endpoint in #{sitename}. You receive this mail because admin email in #{sitename} is configured to #{email}.
+
+  this notification contains following parameters:
+
+  token: #{token}
+
+
+  Thanks,
+  #{sitename} team

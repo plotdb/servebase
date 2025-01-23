@@ -89,6 +89,15 @@ mail-queue API:
      - `private` (e.g., `config/private/mail/...`)
      - name configured in `base` field in secret file.
      - `base` (e.g., `config/base/mail/...`)
+ - `batch({sender, recipients, name, payload, params, batch-size})`:
+   - an abstract API for sending batch mails.
+   - options:
+     - `recipients`: array of recipients.
+     - `sender`: sender. use `defaultSender` or generate from `sitename`, `domain` if omitted.
+     - `name`: template name. use `payload` if omitted.
+     - `payload`: payload for mail. use template if omitted.
+     - `params`: parameters for template
+     - `batch-size`: size of batch. default 1.
 
 
 ## View Rendering
