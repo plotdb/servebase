@@ -237,6 +237,7 @@
         batch.push(recipients.splice(0, batchSize));
       }
       ps = batch.map(function(rs){
+        var ref$;
         rs == null && (rs = []);
         if (!rs.length) {
           return Promise.resolve();
@@ -250,10 +251,9 @@
             to: rs
           });
         if (name && !(payload.subject && (payload.text || payload.html))) {
-          return this$.byTemplate(name, payload.to, params, {
-            now: true,
-            bcc: payload.bcc
-          });
+          return this$.byTemplate(name, payload.to, params, (ref$ = {
+            now: true
+          }, ref$.from = payload.from, ref$.bcc = payload.bcc, ref$));
         }
         return this$.send(payload);
       });

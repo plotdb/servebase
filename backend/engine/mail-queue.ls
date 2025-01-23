@@ -147,7 +147,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
       payload <<< (if rs.length > 1 => {to: sender, bcc: rs} else {to: rs})
       # use site template if payload contains no content fields
       if name and !(payload.subject and (payload.text or payload.html)) =>
-        return @by-template(name, payload.to, params, {now: true, bcc: payload.bcc})
+        return @by-template(name, payload.to, params, ({now: true} <<< payload{from, bcc}))
       @send payload
     Promise.all ps
 
