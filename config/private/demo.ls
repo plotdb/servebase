@@ -19,6 +19,7 @@ module.exports = do
     enabled: true
     lng: <[en zh-TW]>
     ns: <[default]>
+    fallback-lng: 'en'
   base: 'base'
   srcbuild: [] # value in `base` will be added by default
   redis:

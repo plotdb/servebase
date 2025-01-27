@@ -1,5 +1,5 @@
-require! <[fs yargs express @plotdb/colors path pino lderror pino-http body-parser csurf chokidar]>
-require! <[i18next-http-middleware]>
+require! <[fs yargs express @plotdb/colors path pino lderror pino-http body-parser cookie-parser csurf chokidar]>
+require! <[i18next-http-middleware accepts]>
 require! <[@plotdb/srcbuild @plotdb/block jsdom]>
 require! <[@plotdb/srcbuild/dist/view/pug]>
 require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql]>
@@ -185,6 +185,8 @@ backend.prototype = Object.create(Object.prototype) <<< do
           logger: @log.child({module: \route})
           auto-logging: (!@production)
 
+        app.use cookie-parser!
+
         app.use body-parser.json do
           limit: @config.limit
           # sometimes service such as github webhook access to `req.body` and expect it to be in raw format.
@@ -273,6 +275,25 @@ backend.prototype = Object.create(Object.prototype) <<< do
           console.log "log failed: ".red, e
           console.log "original error - failed to start server: ".red, err
         process.exit -1
+
+  lng: (req) ->
+    fallback = (@config.i18n or {}).fallback-lng
+    supported = (@config.i18n or {}).lng or null
+    lngs = if req => accepts(req).languages! else []
+    lngs = ([if req and req.cookies => req.cookies["lng"] else null] ++ (lngs or []) ++ [fallback]).filter(->it)
+    if supported => lngs = lngs.filter -> it in supported
+    hash = {}
+    ret = []
+    for lng in lngs =>
+      if hash[lng] => continue
+      hash[lng] = true
+      ret.push lng
+      lng = lng.split(\-).0
+      if hash[lng] => continue
+      hash[lng] = true
+      ret.push lng
+    ret = ret.filter -> !!/[a-zA-Z-]+/.exec(it)
+    return ret
 
 if require.main == module =>
   backend.create {config: secret}

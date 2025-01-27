@@ -48,6 +48,7 @@ Following are apis available in `backend` object. Most of them are only for serv
    - return a Promise which resolves with the backend object.
  - `listen({logger, i18n})`: start the inited backend server. ( TODO: merge back into `start`? )
  - `watch`: start a source code building daemon.
+ - `lng(req)`: return preferred language in order based on given `req` object. req is optional.
 
 And a constructor API:
 
