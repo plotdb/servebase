@@ -184,7 +184,7 @@
       opt == null && (opt = {});
       return config.yaml(['private', this.base, 'base'].map(function(it){
         return path.join(it, "mail/" + name + ".yaml");
-      })).then(function(payload){
+      }), opt.lng).then(function(payload){
         var obj;
         obj = {
           from: opt.from || payload.from,
@@ -209,8 +209,8 @@
       });
     },
     batch: function(arg$){
-      var sender, recipients, name, payload, params, batchSize, batch, ref$, ref1$, ps, this$ = this;
-      sender = arg$.sender, recipients = arg$.recipients, name = arg$.name, payload = arg$.payload, params = arg$.params, batchSize = arg$.batchSize;
+      var sender, recipients, name, payload, params, batchSize, lng, batch, ref$, ref1$, ps, this$ = this;
+      sender = arg$.sender, recipients = arg$.recipients, name = arg$.name, payload = arg$.payload, params = arg$.params, batchSize = arg$.batchSize, lng = arg$.lng;
       sender = this.cfg.defaultSender || sender;
       if (!sender && !(this.cfg.sitename && this.cfg.domain)) {
         return lderror.reject(1015);
@@ -252,6 +252,7 @@
           });
         if (name && !(payload.subject && (payload.text || payload.html))) {
           return this$.byTemplate(name, payload.to, params, (ref$ = {
+            lng: lng,
             now: true
           }, ref$.from = payload.from, ref$.bcc = payload.bcc, ref$));
         }

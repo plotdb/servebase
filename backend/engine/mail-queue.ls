@@ -118,7 +118,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     # TODO add i18n support.
     # we may want to use subfolder (e.g., en/mail/some.yaml) to store mails for different language
     # and a fallback lng should be considered.
-    config.yaml [\private, @base, \base].map(->path.join(it, "mail/#name.yaml"))
+    config.yaml [\private, @base, \base].map(->path.join(it, "mail/#name.yaml")), opt.lng
       .then (payload) ~>
         obj = from: opt.from or payload.from, to: email, subject: payload.subject, content: payload.content
         if opt.cc => obj.cc = opt.cc
@@ -128,7 +128,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
         @log.error {err}, "send mail by template failed for name `#name`"
         return Promise.reject(err)
 
-  batch: ({sender, recipients, name, payload, params, batch-size}) ->
+  batch: ({sender, recipients, name, payload, params, batch-size, lng}) ->
     sender = @cfg.default-sender or sender
     if !sender and !(@cfg.sitename and @cfg.domain) => return lderror.reject 1015
     # we may want to make sure sender is a valid recipient
@@ -147,7 +147,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
       payload <<< (if rs.length > 1 => {to: sender, bcc: rs} else {to: rs})
       # use site template if payload contains no content fields
       if name and !(payload.subject and (payload.text or payload.html)) =>
-        return @by-template(name, payload.to, params, ({now: true} <<< payload{from, bcc}))
+        return @by-template(name, payload.to, params, ({lng, now: true} <<< payload{from, bcc}))
       @send payload
     Promise.all ps
 
