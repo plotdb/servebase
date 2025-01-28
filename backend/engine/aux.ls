@@ -59,8 +59,9 @@ base = do
 
   verified: (req, res, next) ->
     if req.user and req.user.key and req.user.username and
-    req.user.verified and req.user.verified.date => return next!
-    next(new Error! <<< {name: 'lderror', id: 1021})
+    req.user.verified and req.user.verified.date => return if next => next! else Promise.resolve!
+    e = (new Error! <<< {name: 'lderror', id: 1021})
+    return if next => next(e) else Promise.reject(e)
 
   # deprecated. use lderror.reject instead.
   reject: (code=403,msg="") ->

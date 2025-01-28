@@ -55,11 +55,16 @@
       return next((ref$ = new Error(), ref$.name = 'lderror', ref$.id = 1000, ref$.redirect = "/auth/?nexturl=" + req.originalUrl, ref$));
     },
     verified: function(req, res, next){
-      var ref$;
+      var e, ref$;
       if (req.user && req.user.key && req.user.username && req.user.verified && req.user.verified.date) {
-        return next();
+        return next
+          ? next()
+          : Promise.resolve();
       }
-      return next((ref$ = new Error(), ref$.name = 'lderror', ref$.id = 1021, ref$));
+      e = (ref$ = new Error(), ref$.name = 'lderror', ref$.id = 1021, ref$);
+      return next
+        ? next(e)
+        : Promise.reject(e);
     },
     reject: function(code, msg){
       var e;
