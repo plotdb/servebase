@@ -59,7 +59,9 @@ route: ->
         lc.obj = r.rows.0
         db.query "delete from mailverifytoken where owner = $1", [lc.obj.owner]
       .then ->
-        if new Date!getTime! - new Date(lc.obj.time).getTime! > 1000 * 600 => return lderror.reject 1013
+        tick = parseInt(((config.policy or {}).token-expire or {}).mail-verify)
+        if isNaN(tick) or tick < 0 => tick = 600
+        if new Date!getTime! - new Date(lc.obj.time).getTime! > 1000 * tick => return lderror.reject 1013
         lc.verified = verified = {date: Date.now!}
         db.query "update users set verified = $2 where key = $1", [lc.obj.owner, JSON.stringify(verified)]
       .then ->

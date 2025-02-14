@@ -100,8 +100,12 @@
             lc.obj = r.rows[0];
             return db.query("delete from mailverifytoken where owner = $1", [lc.obj.owner]);
           }).then(function(){
-            var verified;
-            if (new Date().getTime() - new Date(lc.obj.time).getTime() > 1000 * 600) {
+            var tick, verified;
+            tick = parseInt(((config.policy || {}).tokenExpire || {}).mailVerify);
+            if (isNaN(tick) || tick < 0) {
+              tick = 600;
+            }
+            if (new Date().getTime() - new Date(lc.obj.time).getTime() > 1000 * tick) {
               return lderror.reject(1013);
             }
             lc.verified = verified = {

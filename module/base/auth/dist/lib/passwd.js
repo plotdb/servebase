@@ -61,13 +61,17 @@
             return lderror.reject(400);
           }
           return db.query("select owner,time from pwresettoken where token = $1", [token]).then(function(r){
-            var obj;
+            var obj, tick;
             r == null && (r = {});
             if (!(r.rows || (r.rows = [])).length) {
               return lderror.reject(403);
             }
             obj = r.rows[0];
-            if (new Date().getTime() - new Date(obj.time).getTime() > 1000 * 600) {
+            tick = parseInt(((config.policy || {}).tokenExpire || {}).passwordReset);
+            if (isNaN(tick) || tick < 0) {
+              tick = 600;
+            }
+            if (new Date().getTime() - new Date(obj.time).getTime() > 1000 * tick) {
               return res.redirect('/auth/?passwd-expire');
             }
             res.cookie("password-reset-token", token);

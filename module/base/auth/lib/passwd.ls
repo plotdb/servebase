@@ -34,7 +34,9 @@ route: ->
       .then (r={})->
         if !r.[]rows.length => return lderror.reject 403
         obj = r.rows.0
-        if new Date!getTime! - new Date(obj.time).getTime! > 1000 * 600 =>
+        tick = parseInt(((config.policy or {}).token-expire or {}).password-reset)
+        if isNaN(tick) or tick < 0 => tick = 600
+        if new Date!getTime! - new Date(obj.time).getTime! > 1000 * tick =>
           return res.redirect \/auth/?passwd-expire
         res.cookie "password-reset-token", token
         res.redirect "/auth/?passwd-change"
