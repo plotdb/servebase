@@ -74,6 +74,10 @@ module.exports = do
       track:
         count: 1 # amount of password records to keep at most
         day: 540 # records to keep within this amount of days
+    # expiration time of various token
+    token-expire:
+      mail-verify: 600
+      password-reset: 600
   auth:
     # GCP -> API & Services -> Credentials -> OAuth Client ID
     google:
