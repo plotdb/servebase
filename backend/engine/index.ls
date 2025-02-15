@@ -3,7 +3,7 @@ require! <[i18next-http-middleware accepts]>
 require! <[@plotdb/srcbuild @plotdb/block jsdom]>
 require! <[@plotdb/srcbuild/dist/view/pug]>
 require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql]>
-require! <[@servebase/auth @servebase/consent @servebase/captcha]>
+require! <[@servebase/auth @servebase/consent @servebase/captcha @servebase/config]>
 
 libdir = path.dirname fs.realpathSync(__filename.replace(/\(js\)$/,''))
 rootdir = path.join(libdir, '../..')
@@ -30,7 +30,7 @@ cfg-name = argv.c
 try
   # requiring livescript file is only possible if `livescript` is imported.
   # in this case, `livescript` is imported in `ext/pug` in @plotdb/srcbuild.
-  secret = require "../../config/private/#{cfg-name or 'secret'}"
+  secret = config.from "private/#{cfg-name or \secret}"
 catch e
   console.log "failed to load config file `config/private/#{cfg-name or 'secret'}`.".red
   console.log "if this file doesn't exist, you should add one. check config/private/demo.ls for reference"
