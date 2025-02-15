@@ -59,6 +59,7 @@
     e = e$;
     console.log(("failed to load config file `config/private/" + (cfgName || 'secret') + "`.").red);
     console.log("if this file doesn't exist, you should add one. check config/private/demo.ls for reference");
+    console.log("error message: ", e.toString());
     process.exit(-1);
   }
   withDefault = function(cfg, defcfg){

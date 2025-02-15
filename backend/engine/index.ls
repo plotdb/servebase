@@ -34,6 +34,7 @@ try
 catch e
   console.log "failed to load config file `config/private/#{cfg-name or 'secret'}`.".red
   console.log "if this file doesn't exist, you should add one. check config/private/demo.ls for reference"
+  console.log "error message: ", e.toString!
   process.exit -1
 
 with-default = (cfg = {}, defcfg = {}) ->
