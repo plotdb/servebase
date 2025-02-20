@@ -24,7 +24,9 @@ base-imp =
         click:
           oauth: ({node}) ~>
             p = if g.{}policy.{}login.accept-signup != \invite => Promise.resolve!
-            else core.ldcvmgr.get {name: "@servebase/auth", path: "invite-token"}
+            else
+              core.ldcvmgr.get {name: "@servebase/auth", path: "invite-token"}
+                .then (r) -> return if r => r else lderror.reject 999
             p
               .then (r = {}) ~>
                 @_auth.oauth {name: node.getAttribute \data-name, invite-token: r.invite-token}
@@ -33,6 +35,9 @@ base-imp =
                 @form.reset!
                 @ldcv.authpanel.set g
                 ldnotify.send "success", t("login successfully")
+              .catch (e) ->
+                if lderror.id(e) == 999 => return
+                return Promise.reject(e)
           submit: ({node}) ~> @submit!
           switch: ({node}) ~>
             @tab node.getAttribute \data-name

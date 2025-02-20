@@ -51,6 +51,10 @@ baseImp = {
                     : core.ldcvmgr.get({
                       name: "@servebase/auth",
                       path: "invite-token"
+                    }).then(function(r){
+                      return r
+                        ? r
+                        : lderror.reject(999);
                     });
                   return p.then(function(r){
                     r == null && (r = {});
@@ -66,6 +70,11 @@ baseImp = {
                     this$.form.reset();
                     this$.ldcv.authpanel.set(g);
                     return ldnotify.send("success", t("login successfully"));
+                  })['catch'](function(e){
+                    if (lderror.id(e) === 999) {
+                      return;
+                    }
+                    return Promise.reject(e);
                   });
                 },
                 submit: function(arg$){
