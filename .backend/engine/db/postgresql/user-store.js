@@ -185,8 +185,11 @@
             ? Promise.resolve(null)
             : this$.db.query("select * from invitetoken where token = $1 and deleted is not true", [inviteToken]);
         }).then(function(r){
-          var token, detail;
+          var token, ttl, detail;
           if (r && !(token = (r.rows || (r.rows = []))[0])) {
+            return lderror.reject(1043);
+          }
+          if (token.ttl && (isNaN(ttl = new Date(token.ttl).getTime()) || ttl <= Date.now())) {
             return lderror.reject(1043);
           }
           if (!token) {

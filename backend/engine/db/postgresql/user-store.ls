@@ -90,6 +90,8 @@ user-store.prototype = Object.create(Object.prototype) <<< do
             else @db.query """select * from invitetoken where token = $1 and deleted is not true""", [invite-token]
           .then (r) ~>
             if r and !(token = r.[]rows.0) => return lderror.reject 1043 # token required
+            if token.ttl and (isNaN(ttl = new Date(token.ttl).getTime!) or ttl <= Date.now!) =>
+              return lderror.reject 1043 # token expired. consider it as no token so token required
             if !token => return
             detail = token.detail or {}
             if !detail.count => return
