@@ -189,11 +189,11 @@
           if (r && !(token = (r.rows || (r.rows = []))[0])) {
             return lderror.reject(1043);
           }
-          if (token.ttl && (isNaN(ttl = new Date(token.ttl).getTime()) || ttl <= Date.now())) {
-            return lderror.reject(1043);
-          }
           if (!token) {
             return;
+          }
+          if (token.ttl && (isNaN(ttl = new Date(token.ttl).getTime()) || ttl <= Date.now())) {
+            return lderror.reject(1043);
           }
           detail = token.detail || {};
           if (!detail.count) {
