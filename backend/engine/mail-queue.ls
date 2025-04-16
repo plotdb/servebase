@@ -143,12 +143,15 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     if !(name or payload.subject) => return Promise.resolve!
     while recipients.length => batch.push(recipients.splice 0, batch-size)
     ps = batch.map (rs = []) ~>
+      try _payload = JSON.parse(JSON.stringify(payload)) catch e => return Promise.reject e
       if !rs.length => return Promise.resolve!
-      payload <<< (if rs.length > 1 => {to: sender, bcc: rs} else {to: rs})
-      # use site template if payload contains no content fields
-      if name and !(payload.subject and (payload.text or payload.html)) =>
-        return @by-template(name, payload.to, params, ({lng, now: true} <<< payload{from, bcc}))
-      @send payload
+      Promise.resolve!
+        .then ~>
+          _payload <<< (if rs.length > 1 => {to: sender, bcc: rs} else {to: rs})
+          # use site template if payload contains no content fields
+          if name and !(_payload.subject and (_payload.text or payload.html)) =>
+            return @by-template(name, _payload.to, params, ({lng, now: true} <<< _payload{from, bcc}))
+          @send _payload
     Promise.all ps
 
 module.exports = mail-queue

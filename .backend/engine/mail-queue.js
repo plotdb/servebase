@@ -237,26 +237,35 @@
         batch.push(recipients.splice(0, batchSize));
       }
       ps = batch.map(function(rs){
-        var ref$;
+        var _payload, e;
         rs == null && (rs = []);
+        try {
+          _payload = JSON.parse(JSON.stringify(payload));
+        } catch (e$) {
+          e = e$;
+          return Promise.reject(e);
+        }
         if (!rs.length) {
           return Promise.resolve();
         }
-        import$(payload, rs.length > 1
-          ? {
-            to: sender,
-            bcc: rs
+        return Promise.resolve().then(function(){
+          var ref$;
+          import$(_payload, rs.length > 1
+            ? {
+              to: sender,
+              bcc: rs
+            }
+            : {
+              to: rs
+            });
+          if (name && !(_payload.subject && (_payload.text || payload.html))) {
+            return this$.byTemplate(name, _payload.to, params, (ref$ = {
+              lng: lng,
+              now: true
+            }, ref$.from = _payload.from, ref$.bcc = _payload.bcc, ref$));
           }
-          : {
-            to: rs
-          });
-        if (name && !(payload.subject && (payload.text || payload.html))) {
-          return this$.byTemplate(name, payload.to, params, (ref$ = {
-            lng: lng,
-            now: true
-          }, ref$.from = payload.from, ref$.bcc = payload.bcc, ref$));
-        }
-        return this$.send(payload);
+          return this$.send(_payload);
+        });
       });
       return Promise.all(ps);
     }
