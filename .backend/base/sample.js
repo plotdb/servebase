@@ -90,23 +90,28 @@
       });
     });
     return app.get('/trigger-notify', function(req, res, next){
-      var email, recipients, name;
+      var email, recipients, name, payload;
       email = (config.admin || {}).email;
       recipients = Array.isArray(email)
         ? email
         : [email];
       email = recipients.join(',');
-      name = req.query.name || 'notify-test';
       if (!email) {
         return res.send('admin email not set');
       }
-      if (!name) {
-        return res.send('template name not set');
+      name = req.query.name || 'notify-test';
+      if (!name || req.query['default']) {
+        payload = {
+          subject: "notify test",
+          text: "this is a sample notification test",
+          html: "[<script>this should be removed</script>]this is a sample notification test"
+        };
       }
       return backend.mailQueue.batch({
         sender: "\"servebase notifier\" <" + recipients[0] + ">",
         recipients: recipients,
         name: name,
+        payload: payload,
         params: {
           name: name,
           email: email,

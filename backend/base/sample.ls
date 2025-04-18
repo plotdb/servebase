@@ -50,13 +50,18 @@ app.get \/trigger-notify, (req, res, next) ->
   email = (config.admin or {}).email
   recipients = if Array.isArray(email) => email else [email]
   email = recipients.join(\,)
-  name = req.query.name or \notify-test
   if !email => return res.send 'admin email not set'
-  if !name => return res.send 'template name not set'
+  name = req.query.name or \notify-test
+  if !name or req.query.default =>
+    payload =
+      subject: "notify test"
+      text: "this is a sample notification test"
+      html: "[<script>this should be removed</script>]this is a sample notification test"
   backend.mail-queue.batch {
     sender: """\"servebase notifier" <#{recipients.0}>"""
     recipients: recipients
     name: name
+    payload: payload
     params: {name, email, token: Math.random!toString(36)substring(2)}
     batch-size: 1
   }
