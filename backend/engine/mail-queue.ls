@@ -1,6 +1,14 @@
-require! <[fs path @servebase/config @plotdb/colors js-yaml lderror re2 curegex]>
+require! <[fs path @servebase/config @plotdb/colors js-yaml lderror re2 curegex jsdom dompurify]>
 require! <[nodemailer nodemailer-mailgun-transport]>
 require! <[./utils/md]>
+
+# use jsdom to create window/document for dompurify
+jsdom-doc = "<DOCTYPE html><html><body></body></html>"
+jsdom-option =
+  # suppress SecurityError for localStorage availability in opaque origin
+  url: \http://localhost
+dom = new jsdom.JSDOM(jsdom-doc, jsdom-option)
+purify = dompurify (new jsdom.JSDOM '').window
 
 re-email = curegex.tw.get('email', re2)
 is-email = -> return re-email.exec(it)
@@ -89,6 +97,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     else " [cc:#{if Array.isArray(payload.cc) => payload.cc.join(' ') else payload.cc}] "
     bcc = if !payload.bcc => ''
     else "[bcc:#{if Array.isArray(payload.bcc) => payload.bcc.join(' ') else payload.bcc}] "
+    if payload.html => payload.html = purify.sanitize payload.html
     @log.info "#{if @suppress => '(suppressed)'.gray else ''} sending [from:#{payload.from}] [to:#{payload.to}]#cc#bcc[subject:#{payload.subject}]".cyan
     if @suppress => return res!
     (err,i) <~ @api.sendMail payload, _
