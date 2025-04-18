@@ -182,7 +182,7 @@
           payload.subject = payload.subject.replace(re, v);
         }
         payload.text = md.toText(content);
-        payload.html = md.toHtml(content);
+        payload.html = purify.sanitize(md.toHtml(content));
         delete payload.content;
         return this$.send(payload, opt).then(function(){
           return res();

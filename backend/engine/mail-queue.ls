@@ -119,7 +119,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     # We may want to trap unresolved tokens
     # if /\#{[^}]+}/.exec(content) => throw new Error("unresolved token exists when sending from md.")
     payload.text = md.to-text(content)
-    payload.html = md.to-html(content)
+    payload.html = purify.sanitize md.to-html(content)
     delete payload.content
     @send(payload,opt).then -> res!
 
