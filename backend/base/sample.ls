@@ -60,7 +60,7 @@ app.get \/trigger-notify, (req, res, next) ->
   backend.mail-queue.batch {
     sender: """\"servebase notifier" <#{recipients.0}>"""
     recipients: recipients
-    name: name
+    name: name if !req.query.default
     payload: payload
     params: {name, email, token: Math.random!toString(36)substring(2)}
     batch-size: 1

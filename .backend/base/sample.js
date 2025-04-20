@@ -110,7 +110,7 @@
       return backend.mailQueue.batch({
         sender: "\"servebase notifier\" <" + recipients[0] + ">",
         recipients: recipients,
-        name: name,
+        name: !req.query['default'] ? name : void 8,
         payload: payload,
         params: {
           name: name,
