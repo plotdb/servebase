@@ -88,6 +88,9 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
 
   # queued send
   send: (payload, opt = {}) ->
+    if opt.from => payload.from = opt.from
+    if opt.cc => payload.cc = opt.cc
+    if opt.bcc => payload.bcc = opt.bcc
     if opt.now => return @send-directly payload
     new Promise (res, rej) ~> @add {payload, res, rej}
 
@@ -105,37 +108,38 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     @log.error {err}, "send mail failed: api.sendMail failed."
     return res!
 
-  # content -> text / html
+  # markdown stored in `payload.content` and converted into `payload.text` and `payload.html`
   send-from-md: (payload, map = {}, opt={}) ->
-    payload = JSON.parse JSON.stringify payload
-    (res, rej) <~ new Promise _
-    content = (payload.content or '')
-    payload.from = (@info or {}).from or payload.from
-    for k,v of map =>
-      re = new RegExp("\#{#k}", "g")
-      content = content.replace(re, v)
-      payload.from = payload.from.replace(re, v)
-      payload.subject = payload.subject.replace(re, v)
-    # We may want to trap unresolved tokens
-    # if /\#{[^}]+}/.exec(content) => throw new Error("unresolved token exists when sending from md.")
-    payload.text = md.to-text(content)
-    payload.html = purify.sanitize md.to-html(content)
-    delete payload.content
-    @send(payload,opt).then -> res!
+    @get-content {payload, map, lng: opt.lng}
+      .then (payload) ~> @send payload, opt{now, from, cc, bcc}
 
+  # similar to `send-from-md` instead that payload is from template
   by-template: (name, email, map = {}, opt = {}) ->
-    # TODO add i18n support.
-    # we may want to use subfolder (e.g., en/mail/some.yaml) to store mails for different language
-    # and a fallback lng should be considered.
-    config.yaml [\private, @base, \base].map(->path.join(it, "mail/#name.yaml")), opt.lng
-      .then (payload) ~>
-        obj = from: opt.from or payload.from, to: email, subject: payload.subject, content: payload.content
-        if opt.cc => obj.cc = opt.cc
-        if opt.bcc => obj.bcc = opt.bcc
-        @send-from-md(obj, map,{now: opt.now})
+    @get-content {name, map, lng: opt.lng}
+      .then (payload) ~> @send (payload <<< {to: email}), opt{now, from, cc, bcc}
       .catch (err) ~>
         @log.error {err}, "send mail by template failed for name `#name`"
         return Promise.reject(err)
+
+  # (optionally load payload if name is defined and) convert payload with name map.
+  get-content: ({name, payload, map, lng}) ->
+    Promise.resolve!
+      .then ~>
+        if !name => return JSON.parse JSON.stringify(payload or {})
+        config.yaml [\private, @base, \base].map(->path.join(it, "mail/#name.yaml")), lng
+      .then (payload = {}) ~>
+        if !(content = payload.content or '') => return payload
+        for k,v of map =>
+          re = new RegExp("\#{#k}", "g")
+          content = content.replace(re, v)
+          payload.from = (payload.from or '').replace(re, v)
+          payload.subject = (payload.subject or '').replace(re, v)
+        payload.text = md.to-text(content)
+        payload.html = md.to-html(content)
+        return payload
+      .then (payload) ->
+        payload.html = purify.sanitize(payload.html or '')
+        return payload
 
   batch: ({sender, recipients, name, payload, params, batch-size, lng}) ->
     sender = @cfg.default-sender or sender

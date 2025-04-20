@@ -122,6 +122,15 @@
     send: function(payload, opt){
       var this$ = this;
       opt == null && (opt = {});
+      if (opt.from) {
+        payload.from = opt.from;
+      }
+      if (opt.cc) {
+        payload.cc = opt.cc;
+      }
+      if (opt.bcc) {
+        payload.bcc = opt.bcc;
+      }
       if (opt.now) {
         return this.sendDirectly(payload);
       }
@@ -169,23 +178,16 @@
       var this$ = this;
       map == null && (map = {});
       opt == null && (opt = {});
-      payload = JSON.parse(JSON.stringify(payload));
-      return new Promise(function(res, rej){
-        var content, k, ref$, v, re;
-        content = payload.content || '';
-        payload.from = (this$.info || {}).from || payload.from;
-        for (k in ref$ = map) {
-          v = ref$[k];
-          re = new RegExp("#{" + k + "}", "g");
-          content = content.replace(re, v);
-          payload.from = payload.from.replace(re, v);
-          payload.subject = payload.subject.replace(re, v);
-        }
-        payload.text = md.toText(content);
-        payload.html = purify.sanitize(md.toHtml(content));
-        delete payload.content;
-        return this$.send(payload, opt).then(function(){
-          return res();
+      return this.getContent({
+        payload: payload,
+        map: map,
+        lng: opt.lng
+      }).then(function(payload){
+        return this$.send(payload, {
+          now: opt.now,
+          from: opt.from,
+          cc: opt.cc,
+          bcc: opt.bcc
         });
       });
     },
@@ -193,30 +195,53 @@
       var this$ = this;
       map == null && (map = {});
       opt == null && (opt = {});
-      return config.yaml(['private', this.base, 'base'].map(function(it){
-        return path.join(it, "mail/" + name + ".yaml");
-      }), opt.lng).then(function(payload){
-        var obj;
-        obj = {
-          from: opt.from || payload.from,
-          to: email,
-          subject: payload.subject,
-          content: payload.content
-        };
-        if (opt.cc) {
-          obj.cc = opt.cc;
-        }
-        if (opt.bcc) {
-          obj.bcc = opt.bcc;
-        }
-        return this$.sendFromMd(obj, map, {
-          now: opt.now
+      return this.getContent({
+        name: name,
+        map: map,
+        lng: opt.lng
+      }).then(function(payload){
+        return this$.send((payload.to = email, payload), {
+          now: opt.now,
+          from: opt.from,
+          cc: opt.cc,
+          bcc: opt.bcc
         });
       })['catch'](function(err){
         this$.log.error({
           err: err
         }, "send mail by template failed for name `" + name + "`");
         return Promise.reject(err);
+      });
+    },
+    getContent: function(arg$){
+      var name, payload, map, lng, this$ = this;
+      name = arg$.name, payload = arg$.payload, map = arg$.map, lng = arg$.lng;
+      return Promise.resolve().then(function(){
+        if (!name) {
+          return JSON.parse(JSON.stringify(payload || {}));
+        }
+        return config.yaml(['private', this$.base, 'base'].map(function(it){
+          return path.join(it, "mail/" + name + ".yaml");
+        }), lng);
+      }).then(function(payload){
+        var content, k, ref$, v, re;
+        payload == null && (payload = {});
+        if (!(content = payload.content || '')) {
+          return payload;
+        }
+        for (k in ref$ = map) {
+          v = ref$[k];
+          re = new RegExp("#{" + k + "}", "g");
+          content = content.replace(re, v);
+          payload.from = (payload.from || '').replace(re, v);
+          payload.subject = (payload.subject || '').replace(re, v);
+        }
+        payload.text = md.toText(content);
+        payload.html = md.toHtml(content);
+        return payload;
+      }).then(function(payload){
+        payload.html = purify.sanitize(payload.html || '');
+        return payload;
       });
     },
     batch: function(arg$){
