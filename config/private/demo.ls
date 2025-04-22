@@ -5,6 +5,7 @@ module.exports = do
   real-server: false
   # verbose name for user, such as in mail title, etc.
   #  - if omitted, `hostname` below or `aux.hostname(req)` should be used instead.
+  #  - this may be a i18n key so use it with i18n.t unless translation is not necessary.
   sitename: 'servebase'
   # optional domain name.
   #  - dev can still infer domain name in used by `aux.hostname(req)` if omitted,
@@ -16,6 +17,9 @@ module.exports = do
   port: 8901
   limit: '20mb'
   i18n:
+    # by default i18n object is necessary even if we don't need translation.
+    # thus this `enabled` is for srcbuild intl mechanism;
+    # even if this is set to false, i18n object will be constructed and inited.
     enabled: true
     lng: <[en zh-TW]>
     ns: <[default]>
