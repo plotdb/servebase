@@ -7,8 +7,11 @@ require! <[@servebase/backend/throttle @servebase/backend/aux]>
 route: ->
   mdw = throttle: throttle.kit.login, captcha: backend.middleware.captcha
   getmap = (req) ->
-    sitename: config.sitename or config.domain or aux.hostname(req)
-    domain: config.domain or aux.hostname(req)
+    lngs = backend.lngs(req)
+    domain = config.domain or aux.hostname(req)
+    sitename = if config.sitename => backend.i18n.t(config.sitename, {lngs, lng: lngs.0})
+    else config.domain or aux.hostname(req)
+    return {sitename, domain}
 
   route.auth.post \/passwd/reset/:token, mdw.throttle, mdw.captcha, (req, res) ->
     token = req.params.token
@@ -57,7 +60,7 @@ route: ->
           \reset-password
           email
           ({token: obj.hex} <<< getmap(req))
-          {now: true}
+          {now: true, lng: backend.lngs(req).0}
         )
       .then -> res.send ''
 

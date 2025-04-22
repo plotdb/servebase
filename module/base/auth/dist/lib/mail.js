@@ -17,9 +17,18 @@
       captcha: backend.middleware.captcha
     };
     getmap = function(req){
+      var lngs, domain, sitename;
+      lngs = backend.lngs(req);
+      domain = config.domain || aux.hostname(req);
+      sitename = config.sitename
+        ? backend.i18n.t(config.sitename, {
+          lngs: lngs,
+          lng: lngs[0]
+        })
+        : config.domain || aux.hostname(req);
       return {
-        sitename: config.sitename || config.domain || aux.hostname(req),
-        domain: config.domain || aux.hostname(req)
+        sitename: sitename,
+        domain: domain
       };
     };
     return {
@@ -50,7 +59,8 @@
             return backend.mailQueue.byTemplate('mail-verify', email, import$({
               token: obj.hex
             }, getmap(req)), {
-              now: true
+              now: true,
+              lng: backend.lngs(req)[0]
             });
           });
         });
