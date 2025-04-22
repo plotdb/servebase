@@ -39,6 +39,7 @@
             return lderror.reject(500, "mail service not available");
           }
         };
+    this.i18n = opt.i18n;
     this.suppress = opt.suppress;
     this.base = opt.base || 'base';
     this.log = opt.logger;
@@ -245,18 +246,22 @@
       });
     },
     batch: function(arg$){
-      var sender, recipients, name, payload, params, batchSize, lng, batch, ref$, ref1$, ps, this$ = this;
+      var sender, recipients, name, payload, params, batchSize, lng, batch, ref$, ps, this$ = this;
       sender = arg$.sender, recipients = arg$.recipients, name = arg$.name, payload = arg$.payload, params = arg$.params, batchSize = arg$.batchSize, lng = arg$.lng;
       sender = this.cfg.defaultSender || sender;
       if (!sender && !(this.cfg.sitename && this.cfg.domain)) {
         return lderror.reject(1015);
       }
       if (!sender) {
-        sender = "\"" + this.cfg.sitename + "\" <no-reply@" + this.cfg.domain + ">";
+        sender = "\"" + this.i18n.t(this.cfg.sitename, {
+          lng: lng
+        }) + "\" <no-reply@" + this.cfg.domain + ">";
       }
       batch = [];
-      params = (ref1$ = params || {}, ref1$.sitename = (ref$ = this.cfg).sitename, ref1$.domain = ref$.domain, ref1$);
-      payload = (ref1$ = import$({}, payload || {}), ref1$.from = sender, ref1$);
+      params = (ref$ = params || {}, ref$.domain = this.cfg.domain, ref$.sitename = this.i18n.t(this.cfg.sitename, {
+        lng: lng
+      }), ref$);
+      payload = (ref$ = import$({}, payload || {}), ref$.from = sender, ref$);
       batchSize = batchSize || 1;
       recipients = (recipients || []).map(function(it){
         return it;

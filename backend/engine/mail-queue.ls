@@ -35,6 +35,7 @@ mail-queue = (opt={}) ->
     sendMail: ~>
       @log.error "sendMail called while mail gateway is not available"
       return lderror.reject 500, "mail service not available"
+  @i18n = opt.i18n
   @suppress = opt.suppress
   @base = opt.base or 'base'
   @log = opt.logger
@@ -146,9 +147,9 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     if !sender and !(@cfg.sitename and @cfg.domain) => return lderror.reject 1015
     # we may want to make sure sender is a valid recipient
     # since no-reply@xxx probably won't be a correct sender.
-    if !sender => sender = "\"#{@cfg.sitename}\" <no-reply@#{@cfg.domain}>"
+    if !sender => sender = "\"#{@i18n.t(@cfg.sitename, {lng})}\" <no-reply@#{@cfg.domain}>"
     batch = []
-    params = (params or {}) <<< @cfg{sitename, domain}
+    params = (params or {}) <<< {domain: @cfg.domain, sitename: @i18n.t(@cfg.sitename, {lng})}
     payload = {} <<< (payload or {}) <<< from: sender
     batch-size = batch-size or 1
     recipients = (recipients or []).map(-> it).filter(->is-email it)
