@@ -1,8 +1,6 @@
 require! <[fs chokidar i18next i18next-fs-backend i18next-http-middleware js-yaml]>
 
 ret = (opt) ->
-  if !opt or (opt.enabled? and !opt.enabled) => return Promise.resolve!
-
   options = {
     lng: <[zh-TW]>, fallbackLng: \zh-TW, preload: <[zh-TW]>
     ns: 'default', defaultNS: \default, fallbackNS: \default

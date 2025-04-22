@@ -9,9 +9,6 @@
   jsYaml = require('js-yaml');
   ret = function(opt){
     var options, this$ = this;
-    if (!opt || (opt.enabled != null && !opt.enabled)) {
-      return Promise.resolve();
-    }
     options = import$({
       lng: ['zh-TW'],
       fallbackLng: 'zh-TW',
