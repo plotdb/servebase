@@ -137,13 +137,6 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @log-build = @log.child {module: \build}
         @log-mail = @log.child {module: \mail}
         @log-i18n = @log.child {module: \i18n}
-        if @config.mail =>
-          @mail-queue = new mail-queue({
-            logger: @log-mail, base: @config.base
-          } <<< (@config.mail or {}) <<< {
-            sitename: @config.sitename
-            domain: @config.domain
-          })
 
         process.on \uncaughtException, (err, origin) ~>
           @log-server.error {err}, "uncaught exception ocurred, outside express routes".red
@@ -158,6 +151,14 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @config.{}i18n.enabled = i18n-enabled
         i18n.apply @, [@config.i18n]
       .then ~> @i18n = it
+      .then ~>
+        if @config.mail =>
+          @mail-queue = new mail-queue({
+            logger: @log-mail, base: @config.base, i18n: @i18n
+          } <<< (@config.mail or {}) <<< {
+            sitename: @config.sitename
+            domain: @config.domain
+          })
       .then ~>
         if !(@config.redis and @config.redis.enabled) => return
         @log-server.info "initialize redis connection ...".cyan
@@ -277,7 +278,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
           console.log "original error - failed to start server: ".red, err
         process.exit -1
 
-  lng: (req) ->
+  lngs: (req) ->
     fallback = (@config.i18n or {}).fallback-lng
     supported = (@config.i18n or {}).lng or null
     lngs = if req => accepts(req).languages! else []
@@ -295,6 +296,9 @@ backend.prototype = Object.create(Object.prototype) <<< do
       ret.push lng
     ret = ret.filter -> !!/[a-zA-Z-]+/.exec(it)
     return ret
+
+# deprecate lng for better semantics, but keep it for now for backward compatibility
+backend.prototype.lng = backend.prototype.lngs
 
 if require.main == module =>
   backend.create {config: secret}

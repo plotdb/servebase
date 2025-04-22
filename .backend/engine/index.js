@@ -207,7 +207,7 @@
       var this$ = this;
       opt == null && (opt = {});
       return Promise.resolve().then(function(){
-        var ref$, i18nEnabled;
+        var i18nEnabled, ref$;
         this$.logSecurity = this$.log.child({
           module: 'security'
         });
@@ -226,12 +226,6 @@
         this$.logI18n = this$.log.child({
           module: 'i18n'
         });
-        if (this$.config.mail) {
-          this$.mailQueue = new mailQueue((ref$ = import$({
-            logger: this$.logMail,
-            base: this$.config.base
-          }, this$.config.mail || {}), ref$.sitename = this$.config.sitename, ref$.domain = this$.config.domain, ref$));
-        }
         process.on('uncaughtException', function(err, origin){
           this$.logServer.error({
             err: err
@@ -251,6 +245,15 @@
         return i18n.apply(this$, [this$.config.i18n]);
       }).then(function(it){
         return this$.i18n = it;
+      }).then(function(){
+        var ref$;
+        if (this$.config.mail) {
+          return this$.mailQueue = new mailQueue((ref$ = import$({
+            logger: this$.logMail,
+            base: this$.config.base,
+            i18n: this$.i18n
+          }, this$.config.mail || {}), ref$.sitename = this$.config.sitename, ref$.domain = this$.config.domain, ref$));
+        }
       }).then(function(){
         if (!(this$.config.redis && this$.config.redis.enabled)) {
           return;
@@ -401,7 +404,7 @@
         return process.exit(-1);
       });
     },
-    lng: function(req){
+    lngs: function(req){
       var fallback, supported, lngs, hash, ret, i$, len$, lng;
       fallback = (this.config.i18n || {}).fallbackLng;
       supported = (this.config.i18n || {}).lng || null;
@@ -438,6 +441,7 @@
       return ret;
     }
   });
+  backend.prototype.lng = backend.prototype.lngs;
   if (require.main === module) {
     backend.create({
       config: secret
