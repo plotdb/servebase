@@ -17,10 +17,13 @@ module.exports = do
   port: 8901
   limit: '20mb'
   i18n:
+    # we used `enabled` for i18n object, however this behavior is changed.
     # by default i18n object is necessary even if we don't need translation.
-    # thus this `enabled` is for srcbuild intl mechanism;
-    # even if this is set to false, i18n object will be constructed and inited.
-    enabled: true
+    # thus, `enabled` becomes confusion in semantics.
+    # so we deprecated it and add `intl-build`.
+    # `enabled` can still be used but will be removed in the future.
+    # enabled: true
+    intl-build: true
     lng: <[en zh-TW]>
     ns: <[default]>
     fallback-lng: 'en'

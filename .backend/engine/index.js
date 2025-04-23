@@ -193,7 +193,10 @@
         };
       }
       return srcbuild.lsp((ref$ = this.config.build || {}, ref$.logger = logger, ref$.i18n = i18n, ref$.base = Array.from(new Set([this.feroot].concat(this.config.srcbuild || []))), ref$.pug = {
-        locals: {}
+        locals: {},
+        buildIntl: this.config.i18n.buildIntl != null
+          ? this.config.i18n.buildIntl
+          : this.config.i18n.enabled != null ? this.config.i18n.enabled : true
       }, ref$.bundle = {
         configFile: 'bundle.json',
         relativePath: true,
@@ -308,11 +311,9 @@
         if (app.get('env') !== 'development') {
           app.enable('view cache');
         }
-        if (this$.config.i18n.enabled) {
-          app.use(i18nextHttpMiddleware.handle(this$.i18n, {
-            ignoreRoutes: []
-          }));
-        }
+        app.use(i18nextHttpMiddleware.handle(this$.i18n, {
+          ignoreRoutes: []
+        }));
         this$.middleware.captcha = new captcha(this$.config.captcha).middleware;
         app.engine('pug', pug({
           logger: this$.log.child({

@@ -123,7 +123,13 @@ backend.prototype = Object.create(Object.prototype) <<< do
       # however, both are not suitable for static files since this may lead to
       # mix up of dev and production domains and inconsistent versions.
       # thus we remove it for now.
-      pug: locals: {}
+      pug:
+        locals: {}
+        build-intl: (
+          if @config.i18n.build-intl? => @config.i18n.build-intl
+          else if @config.i18n.enabled? => @config.i18n.enabled
+          else true
+        )
       bundle: {configFile: 'bundle.json', relative-path: true, manager: mgr}
       asset: {srcdir: 'src/pug', desdir: 'static'}
     })
@@ -203,7 +209,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
         # TODO invalidate cache after view updated
         if app.get(\env) != \development => app.enable 'view cache'
 
-        if @config.i18n.enabled => app.use i18next-http-middleware.handle @i18n, {ignoreRoutes: <[]>}
+        app.use i18next-http-middleware.handle @i18n, {ignoreRoutes: <[]>}
         @middleware.captcha = new captcha(@config.captcha).middleware
 
         # also, we precompile all view pug into .view folder, which can be used by our custom pug view engine.

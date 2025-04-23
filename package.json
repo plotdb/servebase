@@ -49,7 +49,7 @@
     "@plotdb/block": "^5.2.0",
     "@plotdb/colors": "^0.0.3",
     "@plotdb/express-session": "^1.17.3",
-    "@plotdb/srcbuild": "^0.0.67",
+    "@plotdb/srcbuild": "^0.0.69",
     "@plotdb/suuid": "^0.5.1",
     "accepts": "^1.3.8",
     "bcrypt": "^5.0.0",
