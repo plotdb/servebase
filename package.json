@@ -25,7 +25,8 @@
     "module/base/discuss",
     "module/base/connector",
     "module/base/config",
-    "backend/engine"
+    "backend/engine",
+    "tool/base"
   ],
   "scripts": {
     "setup": "git config core.hooksPath tool/git-hooks",
