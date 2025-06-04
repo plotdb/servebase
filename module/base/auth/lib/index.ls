@@ -20,9 +20,32 @@ if backend.config.{}policy.{}login.accept-signup? =>
 
 limit-session-amount = false
 
+normalize = ({key, username}) ->
+  username = "#{username or ''}".trim!toLowerCase! or null
+  key = if isNaN(+key) or !key => null else (+key or null)
+  if !(key or username) => return lderror.reject 400
+  return {key, username}
+
 @user =
+  set-verified: ({req, key, username, verified = true}) ->
+    # Note: caller (usually admin) cannot update his own verified state,
+    # because session write back, unless we accept `req` and pass to session.sync
+    {key, username} = normalize {key, username}
+    params = [
+      if verified => JSON.stringify({date: Date.now!}) else null
+      key, username
+    ]
+    (r={}) <- db.query """
+    update users set verified = $1
+    where (key = $2 or $2 is null) and (username = $3 or $3 is null)
+    returning key
+    """, params .then _
+    if !(ret = r.[]rows.0) or !ret.key => return lderror.reject 404
+    session.sync {req, user: ret.key}
+
   delete: ({key, username}) ->
-    if !(key or username) => return lderror.rejrect 400
+    # TODO adopt `set-verify` style to simplify query
+    if !(key or username) => return lderror.reject 400
     if username => username = "#username".trim!toLowerCase!
     (r={}) <- db.query """
     select username,key from users
@@ -271,8 +294,23 @@ app.post \/api/auth/clear, aux.signedin, backend.middleware.captcha, (req, res) 
   <-! req.logout _
   res.send!
 
+# it's better to scope admin operations, so auth/clear should be renamed to auth/admin/clear
+# we first deprecate this in favor of /api/auth/admin/clear/:uid below.
 app.post \/api/auth/clear/:uid, aux.is-admin, (req, res) ->
   session.delete {user: req.params.uid} .then -> res.send!
+
+# TODO abstract and support key + username
+app.post \/api/auth/admin/clear/, aux.is-admin, (req, res) ->
+  if !req.body.key => return lderror.reject 400
+  session.delete {user: req.body.key} .then -> res.send!
+
+app.post \/api/auth/admin/set-verified, aux.is-admin, (req, res) ~>
+  @user.set-verified({
+    req,
+    key: req.body.key
+    username: req.body.username
+  } <<< (if req.body.verified? => req.body{verified} else {}))
+    .then -> res.send {}
 
 # this must not be guarded by csrf since it's used to recover csrf token.
 app.post \/api/auth/reset, (req, res) ->

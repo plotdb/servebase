@@ -17,7 +17,7 @@
       return f.call({}, it);
     };
   })(function(backend){
-    var db, app, config, route, session, captcha, k, v, oauth, policy, ref$, ref1$, limitSessionAmount, getUser, strategy, injectInviteToken, x$, this$ = this;
+    var db, app, config, route, session, captcha, k, v, oauth, policy, ref$, ref1$, limitSessionAmount, normalize, getUser, strategy, injectInviteToken, x$, this$ = this;
     db = backend.db, app = backend.app, config = backend.config, route = backend.route, session = backend.session;
     captcha = Object.fromEntries((function(){
       var ref$, results$ = [];
@@ -62,12 +62,51 @@
       (policy.login || (policy.login = {})).acceptSignup = backend.config.policy.login.acceptSignup;
     }
     limitSessionAmount = false;
+    normalize = function(arg$){
+      var key, username;
+      key = arg$.key, username = arg$.username;
+      username = ((username || '') + "").trim().toLowerCase() || null;
+      key = isNaN(+key) || !key
+        ? null
+        : +key || null;
+      if (!(key || username)) {
+        return lderror.reject(400);
+      }
+      return {
+        key: key,
+        username: username
+      };
+    };
     this.user = {
+      setVerified: function(arg$){
+        var req, key, username, verified, ref$, params;
+        req = arg$.req, key = arg$.key, username = arg$.username, verified = (ref$ = arg$.verified) != null ? ref$ : true;
+        ref$ = normalize({
+          key: key,
+          username: username
+        }), key = ref$.key, username = ref$.username;
+        params = [
+          verified ? JSON.stringify({
+            date: Date.now()
+          }) : null, key, username
+        ];
+        return db.query("update users set verified = $1\nwhere (key = $2 or $2 is null) and (username = $3 or $3 is null)\nreturning key", params).then(function(r){
+          var ret;
+          r == null && (r = {});
+          if (!(ret = (r.rows || (r.rows = []))[0]) || !ret.key) {
+            return lderror.reject(404);
+          }
+          return session.sync({
+            req: req,
+            user: ret.key
+          });
+        });
+      },
       'delete': function(arg$){
         var key, username;
         key = arg$.key, username = arg$.username;
         if (!(key || username)) {
-          return lderror.rejrect(400);
+          return lderror.reject(400);
         }
         if (username) {
           username = (username + "").trim().toLowerCase();
@@ -485,6 +524,29 @@
         user: req.params.uid
       }).then(function(){
         return res.send();
+      });
+    });
+    app.post('/api/auth/admin/clear/', aux.isAdmin, function(req, res){
+      if (!req.body.key) {
+        return lderror.reject(400);
+      }
+      return session['delete']({
+        user: req.body.key
+      }).then(function(){
+        return res.send();
+      });
+    });
+    app.post('/api/auth/admin/set-verified', aux.isAdmin, function(req, res){
+      return this$.user.setVerified(import$({
+        req: req,
+        key: req.body.key,
+        username: req.body.username
+      }, req.body.verified != null
+        ? {
+          verified: req.body.verified
+        }
+        : {})).then(function(){
+        return res.send({});
       });
     });
     app.post('/api/auth/reset', function(req, res){
