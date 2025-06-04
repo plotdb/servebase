@@ -130,6 +130,15 @@ block body
               b username
               input.form-control(ld="deluser.username",aria-label="username")
             .btn.btn-primary(ld="deluser") Delete User
+          div
+            h5 Verify User
+            .form-group
+              b username or key
+              input.form-control(ld="verifyuser.username",aria-label="username")
+            .d-flex.g-2
+              .btn.btn-primary(ld="verifyuser",data-toggle="yes") Verify
+              .btn.btn-primary(ld="verifyuser",data-toggle="no") Un-Verify
+
   +nbr(2)
   #pivot
   .w-1024.rwd.mx-auto.p-4.shadow.rounded.border: div(ld="discuss")

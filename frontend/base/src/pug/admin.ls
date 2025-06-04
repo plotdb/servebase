@@ -66,6 +66,14 @@
       ld$.fetch "/api/admin/user/delete", {method: \POST}, {type: \json, json: {username}}
         .then -> alert "user `#username` deleted"
         .then ~> @view.admin.get('deluser.username').value = ''
+    verifyuser: ({node}) ~>
+      key = username = @view.admin.get('verifyuser.username').value
+      toggle = node.dataset.toggle
+      if !username => return
+      verified = (toggle == \yes)
+      ld$.fetch "/api/auth/verify", {method: \POST}, {json: {key,username,verified}}
+        .then -> alert "user `#username` verified state changed"
+        .then ~> @view.admin.get('deluser.username').value = ''
 
     search: ({node}) ~>
       keyword = @view.admin.get('keyword').value or ''
