@@ -129,7 +129,11 @@ auth.prototype = Object.create(Object.prototype) <<< do
       .then (g = {}) ~>
         if g.{}user.key => return g
         # before oauth login
-        @oauth.window = window.open '', 'oauth-login', 'height=640,width=560'
+        @oauth.window = window.open '', '_blank', 'height=640,width=560'
+        try
+          @oauth.window.opener = null
+          @oauth.window.name = 'oauth-login'
+        catch e => return Promise.reject(e)
         @oauth.form = form = ld$.create name: \div
         token = if !invite-token => ""
         else """<input type="hidden" name="inviteToken" value="#{encodeURIComponent invite-token}"/>"""

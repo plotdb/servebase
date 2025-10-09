@@ -213,12 +213,19 @@
         var name, inviteToken, this$ = this;
         name = arg$.name, inviteToken = arg$.inviteToken;
         return this.get().then(function(g){
-          var form, token, login;
+          var e, form, token, login;
           g == null && (g = {});
           if ((g.user || (g.user = {})).key) {
             return g;
           }
-          this$.oauth.window = window.open('', 'oauth-login', 'height=640,width=560');
+          this$.oauth.window = window.open('', '_blank', 'height=640,width=560');
+          try {
+            this$.oauth.window.opener = null;
+            this$.oauth.window.name = 'oauth-login';
+          } catch (e$) {
+            e = e$;
+            return Promise.reject(e);
+          }
           this$.oauth.form = form = ld$.create({
             name: 'div'
           });
