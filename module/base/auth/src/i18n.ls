@@ -4,7 +4,7 @@ i18n-resource =
     signup: 'Sign Up'
     'login successfully': 'login successfully'
     displayname: 'display name'
-    forget: 'forget password'
+    forget: 'Forget password'
     alt: 'or login with'
     or: 'or'
     contact: 'contact us'
