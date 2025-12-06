@@ -1,9 +1,18 @@
-require! <[request lderror @servebase/backend/aux]>
+require! <[axios lderror @servebase/backend/aux]>
 
 captcha = (opt = {}) ->
   @cfg = opt or {}
   @middleware = @_middleware!
   @
+
+fetch = ({url, form}) ->
+  p = axios.post(
+    url, new URLSearchParams(form),
+    headers: 'Content-Type': 'application/x-www-form-urlencoded'
+  )
+  p
+    .then (ret) -> ret.data
+    .catch (e) -> rej e
 
 captcha.prototype = Object.create(Object.prototype) <<<
   verify: (req, res, next) ->
@@ -31,56 +40,44 @@ captcha.prototype = Object.create(Object.prototype) <<<
 
 captcha.verifier =
   hcaptcha: (req, res, config, capobj) ->
-    (resolve,reject) <- new Promise _
-    (e,r,b) <- request {
-      url: \https://hcaptcha.com/siteverify
-      method: \POST
+    p = fetch(
+      url: \https://hcaptcha.com/siteverify,
       form:
         secret: config.secret
         response: capobj.token
         remoteip: aux.ip req # not required by hcaptcha. keep it for simplicity
-    }, _
-    if e => reject(lderror 1010)
-    try
-      data = JSON.parse(b)
-    catch e
-      return reject(lderror.reject 1010)
-    resolve {score: if data.success => 1 else if data.score => that else 0, verified: true}
+    )
+    p
+      .then (data) -> {score: if data.success => 1 else if data.score => that else 0, verified: true}
+      .catch -> return lderror.reject 1010
 
   recaptcha_v2_checkbox: (req, res, config, capobj) ->
-    (resolve,reject) <- new Promise _
-    (e,r,b) <- request {
+    p = fetch(
       url: \https://www.google.com/recaptcha/api/siteverify
-      method: \POST
       form:
         secret: config.secret
         response: capobj.token
         remoteip: aux.ip req
-    }, _
-    if e => return reject(lderror 1010)
-    try
-      data = JSON.parse(b)
-    catch e
-      return reject(lderror 1010)
-    if data.success == false => return reject(lderror 1009)
-    resolve {score: if data.success => 1 else if data.score => that else 0, verified: true}
+    )
+    p
+      .then (data) ->
+        if data.success == false => return reject(lderror 1009)
+        {score: if data.success => 1 else if data.score => that else 0, verified: true}
+      .catch (e) -> return if lderror.id(e) == 1009 => e else lderror.reject 1010
 
   recaptcha_v3: (req, res, config, capobj) ->
-    (resolve,reject) <- new Promise _
-    (e,r,b) <- request {
+    p = fetch(
       url: \https://www.google.com/recaptcha/api/siteverify
-      method: \POST
       form:
         secret: config.secret
         response: capobj.token
         remoteip: aux.ip req
-    }, _
-    if e => return reject(lderror 1010)
-    try
-      data = JSON.parse(b)
-    catch e
-      return reject(lderror 1010)
-    if data.success == false => return reject(lderror 1009)
-    resolve {score: data.score, verified: true}
+    )
+    p
+      .then (data) ->
+        if data.success == false => return reject(lderror 1009)
+        {score: if data.success => 1 else if data.score => that else 0, verified: true}
+        {score: data.score, verified: true}
+      .catch (e) -> return if lderror.id(e) == 1009 => e else lderror.reject 1010
 
 module.exports = captcha
