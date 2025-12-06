@@ -1,5 +1,6 @@
 ({core}) <- ldc.register <[admin core navtop]>, _
 <- core.init!then _
+ldld = core.loader
 <-(->it.apply core) _
 @ldcv = {}
 @bd = {}
