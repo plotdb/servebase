@@ -94,7 +94,7 @@
             return lderror.reject(400);
           }
           obj = {};
-          return db.query("select key from users where username = $1", [email]).then(function(r){
+          return db.query("select key,username from users where username = $1", [email]).then(function(r){
             var time;
             r == null && (r = {});
             if ((r.rows || (r.rows = [])).length === 0) {
@@ -102,13 +102,14 @@
             }
             time = new Date();
             obj.key = r.rows[0].key;
+            obj.email = r.rows[0].username;
             obj.hex = (r.rows[0].key + "") + crypto.randomBytes(30).toString('hex');
             obj.time = time;
             return db.query("delete from pwresettoken where owner=$1", [obj.key]);
           }).then(function(){
             return db.query("insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]);
           }).then(function(){
-            return backend.mailQueue.byTemplate('reset-password', email, import$({
+            return backend.mailQueue.byTemplate('reset-password', obj.email, import$({
               token: obj.hex
             }, getmap(req)), {
               now: true,
