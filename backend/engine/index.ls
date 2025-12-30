@@ -131,7 +131,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
           else true
         )
       bundle: {configFile: 'bundle.json', relative-path: true, manager: mgr}
-      asset: {srcdir: 'src/pug', desdir: 'static'}
+      asset: ({srcdir: 'src/pug', desdir: 'static'} <<< if @config.build.asset?ext => {ext: that} else {})
     })
 
   prepare: (opt={}) ->

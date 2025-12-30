@@ -156,7 +156,7 @@
       });
     },
     watch: function(arg$){
-      var logger, i18n, updateVersion, ref$, mgr, dom, win, this$ = this;
+      var logger, i18n, updateVersion, ref$, mgr, dom, win, that, ref1$, this$ = this;
       logger = arg$.logger, i18n = arg$.i18n;
       this.version = 'na';
       updateVersion = function(it){
@@ -201,10 +201,14 @@
         configFile: 'bundle.json',
         relativePath: true,
         manager: mgr
-      }, ref$.asset = {
+      }, ref$.asset = import$({
         srcdir: 'src/pug',
         desdir: 'static'
-      }, ref$));
+      }, (that = (ref1$ = this.config.build.asset) != null ? ref1$.ext : void 8)
+        ? {
+          ext: that
+        }
+        : {}), ref$));
     },
     prepare: function(opt){
       var this$ = this;

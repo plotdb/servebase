@@ -42,8 +42,11 @@ module.exports = do
       poolSize: 20
   build:
     enabled: true
-    watcher: do
+    watcher:
       ignored: ['\/\..*\.swp$', '^static/assets/img']
+    # support asset copying from src to static by adding additional ext here
+    # note: based on @plotdb/srcbuild, this defaults to image + json
+    asset: ext: <[glb jpg png svg gif mp3 mp4]>
     block:
       # the block manager used to find module files. optional, fallback to default one if omitted.
       manager: 'path/to/block/manager'
