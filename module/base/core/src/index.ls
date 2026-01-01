@@ -24,7 +24,7 @@ servebase =
     if !i18n? => return Promise.resolve!
     block.i18n.use i18n
     i18ncfg = {
-      supportedLng: <[en zh-TW]>, fallbackLng: \en
+      supportedLngs: <[en zh-TW]>
       fallbackNS: '', defaultNS: ''
       # pitfall: Namespaced key with spaces doesn't work
       # workaround: explicitly provide separator
@@ -32,6 +32,17 @@ servebase =
       keySeparator: '.', nsSeparator: ':'
     }
     if @_cfg.i18n.cfg => i18ncfg = i18ncfg <<< @_cfg.i18n.cfg
+    # we have a typo in `supportedLngs` (missing `s`) for a long time, and we fixed it.
+    # `supportedLng` for backward compatibility, we manually copy it.
+    if i18ncfg.supportedLng =>
+      i18ncfg.supportedLngs = i18ncfg.supportedLng
+      delete i18ncfg.supportedLng
+    # auto construct fallbacklng with object-based style if not provided.
+    # fallback order is determined by supportedLngs
+    if !i18ncfg.fallbackLng =>
+      i18ncfg.fallbackLng = Object.fromEntries(
+        i18ncfg.supportedLngs.map (lng) -> [lng, i18ncfg.supportedLngs.filter(-> it != lng)]
+      ) <<< default: i18ncfg.supportedLngs
     Promise.resolve!
       .then -> i18n.init i18ncfg
       .then -> if i18nextBrowserLanguageDetector? => i18n.use i18nextBrowserLanguageDetector
@@ -45,9 +56,9 @@ servebase =
         if httputil? and httputil.qs(\setlng) =>
           lng = httputil.qs(\setlng)
           httputil.cookie \lng, lng, {path: \/}
-        if !(lng in i18ncfg.supportedLng) =>
-          lng = if /-/.exec(lng) and (lng.split(\-).0 in (i18ncfg.supportedLng)) => lng.split(\-).0
-          else i18ncfg.fallbackLng or i18ncfg.supportedLng.0 or \en
+        if !(lng in i18ncfg.supportedLngs) =>
+          lng = if /-/.exec(lng) and (lng.split(\-).0 in (i18ncfg.supportedLngs)) => lng.split(\-).0
+          else i18ncfg.supportedLngs.0 or \en
         console.log "[@servebase/core][i18n] use language: ", lng
         i18n.changeLanguage lng
       .then ->

@@ -36,8 +36,7 @@
       }
       block.i18n.use(i18n);
       i18ncfg = {
-        supportedLng: ['en', 'zh-TW'],
-        fallbackLng: 'en',
+        supportedLngs: ['en', 'zh-TW'],
         fallbackNS: '',
         defaultNS: '',
         keySeparator: '.',
@@ -45,6 +44,19 @@
       };
       if (this._cfg.i18n.cfg) {
         i18ncfg = import$(i18ncfg, this._cfg.i18n.cfg);
+      }
+      if (i18ncfg.supportedLng) {
+        i18ncfg.supportedLngs = i18ncfg.supportedLng;
+        delete i18ncfg.supportedLng;
+      }
+      if (!i18ncfg.fallbackLng) {
+        i18ncfg.fallbackLng = (ref$ = Object.fromEntries(i18ncfg.supportedLngs.map(function(lng){
+          return [
+            lng, i18ncfg.supportedLngs.filter(function(it){
+              return it !== lng;
+            })
+          ];
+        })), ref$['default'] = i18ncfg.supportedLngs, ref$);
       }
       return Promise.resolve().then(function(){
         return i18n.init(i18ncfg);
@@ -68,10 +80,10 @@
             path: '/'
           });
         }
-        if (!in$(lng, i18ncfg.supportedLng)) {
-          lng = /-/.exec(lng) && in$(lng.split('-')[0], i18ncfg.supportedLng)
+        if (!in$(lng, i18ncfg.supportedLngs)) {
+          lng = /-/.exec(lng) && in$(lng.split('-')[0], i18ncfg.supportedLngs)
             ? lng.split('-')[0]
-            : i18ncfg.fallbackLng || i18ncfg.supportedLng[0] || 'en';
+            : i18ncfg.supportedLngs[0] || 'en';
         }
         console.log("[@servebase/core][i18n] use language: ", lng);
         return i18n.changeLanguage(lng);
