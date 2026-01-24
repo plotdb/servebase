@@ -40,6 +40,16 @@ module.exports = do
       user: \servebase
       password: \servebase
       poolSize: 20
+      # alternatively, you can use profile / profiles pair,
+      # which makes it easier to switch db frequently
+      # all fields under `profiles[profile]` are optional,
+      # and db.postgresql will be used as default value.
+      /*
+      profile: \mydb
+      profiles:
+        mydb: database: \mydb, user: \mydb, password: \mydb
+        otherdb: host: \some.host, database: \otherdb, user: \otherdb, password: \otherdb
+      */
   build:
     enabled: true
     watcher:

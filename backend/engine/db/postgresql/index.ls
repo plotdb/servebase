@@ -5,12 +5,13 @@ pg.defaults.poolSize = 30
 database = (backend, opt = {}) ->
   @config = config = backend.config
   @log = log = backend.log.child {module: 'db'}
-  {user, password, host, database, port} = config.db.postgresql
+  {user, password, host, database, port, poolSize} = if !config.db.postgresql.profile => config.db.postresql
+  else {} <<< config.db.postgresql <<< (config.db.postgresql?profiles[config.db.postgresql.profile] or {})
   @uri = "postgres://#{user}:#{password}@#{host}#{if port => ':' + port else ''}/#{database}"
 
   @pool = new pg.Pool do
     connectionString: @uri
-    max: config.db.postgresql.poolSize or 20
+    max: poolSize or 20
     idleTimeoutMillis: 30000
     connectionTimeoutMillis: 2000
 

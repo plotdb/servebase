@@ -7,17 +7,19 @@
   userStore = require('./user-store');
   pg.defaults.poolSize = 30;
   database = function(backend, opt){
-    var config, log, ref$, user, password, host, database, port;
+    var config, log, ref$, ref1$, user, password, host, database, port, poolSize;
     opt == null && (opt = {});
     this.config = config = backend.config;
     this.log = log = backend.log.child({
       module: 'db'
     });
-    ref$ = config.db.postgresql, user = ref$.user, password = ref$.password, host = ref$.host, database = ref$.database, port = ref$.port;
+    ref1$ = !config.db.postgresql.profile
+      ? config.db.postresql
+      : import$(import$({}, config.db.postgresql), ((ref$ = config.db.postgresql) != null ? ref$.profiles[config.db.postgresql.profile] : void 8) || {}), user = ref1$.user, password = ref1$.password, host = ref1$.host, database = ref1$.database, port = ref1$.port, poolSize = ref1$.poolSize;
     this.uri = "postgres://" + user + ":" + password + "@" + host + (port ? ':' + port : '') + "/" + database;
     this.pool = new pg.Pool({
       connectionString: this.uri,
-      max: config.db.postgresql.poolSize || 20,
+      max: poolSize || 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000
     });
