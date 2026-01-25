@@ -5,7 +5,7 @@ pg.defaults.poolSize = 30
 database = (backend, opt = {}) ->
   @config = config = backend.config
   @log = log = backend.log.child {module: 'db'}
-  {user, password, host, database, port, poolSize} = if !config.db.postgresql.profile => config.db.postresql
+  {user, password, host, database, port, poolSize} = if !config.db.postgresql.profile => config.db.postgresql
   else {} <<< config.db.postgresql <<< (config.db.postgresql?profiles[config.db.postgresql.profile] or {})
   @uri = "postgres://#{user}:#{password}@#{host}#{if port => ':' + port else ''}/#{database}"
 
