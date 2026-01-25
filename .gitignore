@@ -24,3 +24,4 @@ module/version/index.pug
 config/**/local.*
 dev/srcbuild/static/
 .bundle-dep
+context
