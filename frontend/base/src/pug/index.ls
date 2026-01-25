@@ -73,6 +73,8 @@ ldld = core.loader
     "hcaptcha-done": ~>
       console.log "done..."
       #@capobj.get!then -> console.log ">", it
+    "audit-test": ({node}) ~>
+      ld$.fetch "/demo/audit-test", {method: \GET} .then -> alert \ok
     captcha: ({node}) ~>
       type = node.getAttribute(\data-type)
       console.log "test captcha.guard /api/demo/post ..."

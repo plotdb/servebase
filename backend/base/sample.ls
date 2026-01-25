@@ -66,3 +66,15 @@ app.get \/trigger-notify, (req, res, next) ->
     batch-size: 1
   }
     .then -> res.send "mail request sent to #email"
+
+app.get \/audit-test, (req, res, next) ->
+  if !db.query-audited =>
+    console.error "query-audited isn't implemented."
+    return res.send!
+  <- db.query-audited """
+  insert into consent (consent_id, owner, ip) values ($1,$2,$3)
+  """, [Math.random!toString(36)substring(2), 11, ''], {
+    audit: atomic: true, req: req
+  } .then _
+  console.log "[dev] test audited."
+  res.send {}

@@ -89,7 +89,7 @@
         view: true
       });
     });
-    return app.get('/trigger-notify', function(req, res, next){
+    app.get('/trigger-notify', function(req, res, next){
       var email, recipients, name, payload;
       email = (config.admin || {}).email;
       recipients = Array.isArray(email)
@@ -120,6 +120,21 @@
         batchSize: 1
       }).then(function(){
         return res.send("mail request sent to " + email);
+      });
+    });
+    return app.get('/audit-test', function(req, res, next){
+      if (!db.queryAudited) {
+        console.error("query-audited isn't implemented.");
+        return res.send();
+      }
+      return db.queryAudited("insert into consent (consent_id, owner, ip) values ($1,$2,$3)", [Math.random().toString(36).substring(2), 11, ''], {
+        audit: {
+          atomic: true,
+          req: req
+        }
+      }).then(function(){
+        console.log("[dev] test audited.");
+        return res.send({});
       });
     });
   });
