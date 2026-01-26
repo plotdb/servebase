@@ -1,4 +1,4 @@
-require! <[pg lderror ./session-store ./user-store]>
+require! <[pg lderror ./session-store ./user-store @servebase/backend/aux]>
 
 pg.defaults.poolSize = 30
 
@@ -24,6 +24,39 @@ database = (backend, opt = {}) ->
   @
 
 database.prototype = Object.create(Object.prototype) <<< do
+  query-audit: (q, p, c) ->
+    audit = c?audit
+    [do-audit, is-atomic] = [!!audit, (audit?atomic or !(audit?atomic?))]
+    @pool.connect!
+      .then (client) ->
+        if !do-audit => return (
+          <- client.query q, p .finally _
+          client.release!
+        )
+        req = audit.req
+        Promise.resolve!
+          .then -> if is-atomic => client.query 'BEGIN'
+          .then ->
+            (query-result) <- client.query q, p .then _
+            detail = audit{action, user} <<< {
+              data: ({ new: (audit.new or p)
+              } <<< ( if audit.old? => {old: audit.old} else {}  # old
+              ) <<< ( if req?query => {query: req.query} else {} # query
+              ))
+            } <<< (if req => path: req.path, ip: aux.ip req else {})
+            client.query """
+            insert into auditlog (action,option,session,ip,owner,detail) values ($1,$2,$3,$4,$5,$6)
+            """, [audit.action, audit.option, req?sessionID, detail.ip, audit.user, detail]
+            return if !is-atomic => query-result
+            else client.query 'COMMIT' .then -> query-result
+          .catch (e) ->
+            return if !is-atomic => Promise.reject e
+            else client.query 'ROLLBACK' .finally -> Promise.reject e
+          .finally -> client.release!
+
+      .catch (e) ->
+        Promise.reject new lderror {err: e, id: 0, query: q, message: "database query error"}
+
   query: (q, p) ->
     @pool.connect!
       .then (client) -> 
