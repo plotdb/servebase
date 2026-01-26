@@ -123,11 +123,11 @@
       });
     });
     return app.get('/audit-test', function(req, res, next){
-      if (!db.queryAudited) {
+      if (!db.queryAudit) {
         console.error("query-audited isn't implemented.");
-        return res.send();
+        return lderror.reject(1020);
       }
-      return db.queryAudited("insert into consent (consent_id, owner, ip) values ($1,$2,$3)", [Math.random().toString(36).substring(2), 11, ''], {
+      return db.queryAudit("insert into consent (consent_id, owner, ip) values ($1,$2,$3)", [Math.random().toString(36).substring(2), 11, ''], {
         audit: {
           atomic: true,
           req: req

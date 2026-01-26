@@ -74,7 +74,9 @@ ldld = core.loader
       console.log "done..."
       #@capobj.get!then -> console.log ">", it
     "audit-test": ({node}) ~>
-      ld$.fetch "/demo/audit-test", {method: \GET} .then -> alert \ok
+      random-token = Math.random!toString 36 .substring 2
+      url = "/demo/audit-test?param=1&random-token=#random-token"
+      ld$.fetch url, {method: \GET} .then -> ldnotify.send \success, "Audit Test OK"
     captcha: ({node}) ~>
       type = node.getAttribute(\data-type)
       console.log "test captcha.guard /api/demo/post ..."

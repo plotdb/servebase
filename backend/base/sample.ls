@@ -68,10 +68,10 @@ app.get \/trigger-notify, (req, res, next) ->
     .then -> res.send "mail request sent to #email"
 
 app.get \/audit-test, (req, res, next) ->
-  if !db.query-audited =>
+  if !db.query-audit =>
     console.error "query-audited isn't implemented."
-    return res.send!
-  <- db.query-audited """
+    return lderror.reject 1020
+  <- db.query-audit """
   insert into consent (consent_id, owner, ip) values ($1,$2,$3)
   """, [Math.random!toString(36)substring(2), 11, ''], {
     audit: atomic: true, req: req
