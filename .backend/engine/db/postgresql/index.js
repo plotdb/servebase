@@ -41,10 +41,19 @@
     return this;
   };
   database.prototype = import$(Object.create(Object.prototype), {
+    audit: function(c){
+      return this.queryAudit(q);
+    },
     queryAudit: function(q, p, c){
-      var audit, ref$, doAudit, isAtomic;
+      var ref$, audit, hasQuery, doAudit, isAtomic;
+      if (typeof q === 'object' && q.audit) {
+        ref$ = [q, undefined, undefined], c = ref$[0], q = ref$[1], p = ref$[2];
+      }
       audit = c != null ? c.audit : void 8;
-      ref$ = [!!audit, (audit != null ? audit.atomic : void 8) || !((audit != null ? audit.atomic : void 8) != null)], doAudit = ref$[0], isAtomic = ref$[1];
+      ref$ = [!!q, !!audit, (audit != null ? audit.atomic : void 8) || !((audit != null ? audit.atomic : void 8) != null)], hasQuery = ref$[0], doAudit = ref$[1], isAtomic = ref$[2];
+      if (!(hasQuery || doAudit)) {
+        return lderror.reject(1015);
+      }
       return this.pool.connect().then(function(client){
         var req;
         if (!doAudit) {
@@ -58,7 +67,9 @@
             return client.query('BEGIN');
           }
         }).then(function(){
-          return client.query(q, p).then(function(queryResult){
+          return (hasQuery
+            ? client.query(q, p)
+            : Promise.resolve({})).then(function(queryResult){
             var detail, ref$;
             detail = import$((ref$ = {
               action: audit.action,

@@ -24,9 +24,12 @@ database = (backend, opt = {}) ->
   @
 
 database.prototype = Object.create(Object.prototype) <<< do
+  audit: (c) -> @query-audit q
   query-audit: (q, p, c) ->
+    if typeof(q) == \object and q.audit => [c, q, p] = [q, undefined, undefined]
     audit = c?audit
-    [do-audit, is-atomic] = [!!audit, (audit?atomic or !(audit?atomic?))]
+    [has-query, do-audit, is-atomic] = [!!q, !!audit, (audit?atomic or !(audit?atomic?))]
+    if !(has-query or do-audit) => return lderror.reject 1015
     @pool.connect!
       .then (client) ->
         if !do-audit => return (
@@ -37,7 +40,7 @@ database.prototype = Object.create(Object.prototype) <<< do
         Promise.resolve!
           .then -> if is-atomic => client.query 'BEGIN'
           .then ->
-            (query-result) <- client.query q, p .then _
+            (query-result) <- (if has-query => client.query(q, p) else Promise.resolve {}).then _
             detail = audit{action, user} <<< {
               data: ({ new: (audit.new or p)
               } <<< ( if audit.old? => {old: audit.old} else {}  # old
@@ -59,7 +62,7 @@ database.prototype = Object.create(Object.prototype) <<< do
 
   query: (q, p) ->
     @pool.connect!
-      .then (client) -> 
+      .then (client) ->
         (ret) <- client.query q, p .then _
         client.release!
         return ret
