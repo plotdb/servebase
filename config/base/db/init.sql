@@ -75,6 +75,7 @@ create table if not exists invitetoken (
 create table if not exists auditlog (
   key serial primary key,
   action text,
+  option jsonb,
   owner int, -- no cascade and foreign key since we should keep it even if owner is gone.
   session text,
   ip text,
