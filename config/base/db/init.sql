@@ -71,3 +71,12 @@ create table if not exists invitetoken (
   detail jsonb,
   deleted boolean default false
 );
+
+create table if not exists auditlog (
+  key serial primary key,
+  action text,
+  owner int, -- no cascade and foreign key since we should keep it even if owner is gone.
+  session text,
+  ip text,
+  detail jsonb
+);
