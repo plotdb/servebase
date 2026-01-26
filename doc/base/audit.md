@@ -11,7 +11,7 @@ Without `audit` field, `database.query-audit` acts the same with `database.query
 
 The `audit` field of the thrid parameter in `batabase supports follow fields:
 
- - `atomic`: boolean, default false. when true, the actual query and the audit log query will be atomic.
+ - `atomic`: boolean, default true. when true, the actual query and the audit log query will be atomic.
    - That is, the actual query will only work if audit is successful, otherwise will be rolled back.
  - `req`: the request object from express router.
    - Informations such as path, sessionID and IP will be retrieved and stored if available.
