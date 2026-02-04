@@ -29,9 +29,10 @@ ret = (opt) ->
         .on \add, -> _load {file: it, type: \add}
         .on \change, -> _load {file: it, type: \change}
         .on \unlink, -> _load {file: it, type: \unlink}
-      # extension due to @plotdb/block confusing design.
-      # (while `add-resource-bundles` is useful for scoping.)
-      # before we have better solution, we extend it here and mark `get-language` as deprecated.
+      # we hardcode the i18n extended APIs in @plotdb/block here for ease of consistency.
+      # `getLanguage` is a deprecated feature,
+      # and `addReourceBundles` only makes sense inside block (for local namespace)
+      # yet here it's just a polyfill for potential out of scope access
       i18next <<<
         get-language: -> it.language # deprecated and legacy
         add-resource-bundles: (resources = {}) ~>
