@@ -44,6 +44,9 @@ module.exports = do
       # which makes it easier to switch db frequently
       # all fields under `profiles[profile]` are optional,
       # and db.postgresql will be used as default value.
+      # note: migrating to this syntax may be a breaking change,
+      # since your code may use the old schema, which is beyond servebase's control
+      # be sure to check places such as sharedb-wrapper before switching to profile-based config.
       /*
       profile: \mydb
       profiles:
