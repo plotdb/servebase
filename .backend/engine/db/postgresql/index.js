@@ -10,13 +10,15 @@
   database = function(backend, opt){
     var config, log, ref$, ref1$, user, password, host, database, port, poolSize;
     opt == null && (opt = {});
+    this._ = {};
     this.config = config = backend.config;
     this.log = log = backend.log.child({
       module: 'db'
     });
-    ref1$ = !config.db.postgresql.profile
+    this._.settings = !config.db.postgresql.profile
       ? config.db.postgresql
-      : import$(import$({}, config.db.postgresql), ((ref$ = config.db.postgresql) != null ? ref$.profiles[config.db.postgresql.profile] : void 8) || {}), user = ref1$.user, password = ref1$.password, host = ref1$.host, database = ref1$.database, port = ref1$.port, poolSize = ref1$.poolSize;
+      : import$(import$({}, config.db.postgresql), ((ref$ = config.db.postgresql) != null ? ref$.profiles[config.db.postgresql.profile] : void 8) || {});
+    ref1$ = this._.settings, user = ref1$.user, password = ref1$.password, host = ref1$.host, database = ref1$.database, port = ref1$.port, poolSize = ref1$.poolSize;
     this.uri = "postgres://" + user + ":" + password + "@" + host + (port ? ':' + port : '') + "/" + database;
     this.pool = new pg.Pool({
       connectionString: this.uri,
@@ -41,6 +43,9 @@
     return this;
   };
   database.prototype = import$(Object.create(Object.prototype), {
+    settings: function(){
+      return this._.settings;
+    },
     audit: function(c){
       return this.queryAudit(q);
     },

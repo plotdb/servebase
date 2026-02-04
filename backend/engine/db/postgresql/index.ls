@@ -3,10 +3,12 @@ require! <[pg lderror ./session-store ./user-store @servebase/backend/aux]>
 pg.defaults.poolSize = 30
 
 database = (backend, opt = {}) ->
+  @_ = {}
   @config = config = backend.config
   @log = log = backend.log.child {module: 'db'}
-  {user, password, host, database, port, poolSize} = if !config.db.postgresql.profile => config.db.postgresql
+  @_.settings = if !config.db.postgresql.profile => config.db.postgresql
   else {} <<< config.db.postgresql <<< (config.db.postgresql?profiles[config.db.postgresql.profile] or {})
+  {user, password, host, database, port, poolSize} = @_.settings
   @uri = "postgres://#{user}:#{password}@#{host}#{if port => ':' + port else ''}/#{database}"
 
   @pool = new pg.Pool do
@@ -24,6 +26,7 @@ database = (backend, opt = {}) ->
   @
 
 database.prototype = Object.create(Object.prototype) <<< do
+  settings: -> @_.settings
   audit: (c) -> @query-audit q
   query-audit: (q, p, c) ->
     if typeof(q) == \object and q.audit => [c, q, p] = [q, undefined, undefined]
