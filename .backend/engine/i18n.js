@@ -61,6 +61,18 @@
           type: 'unlink'
         });
       });
+      i18next.getLanguage = function(it){
+        return it.language;
+      };
+      i18next.addResourceBundles = function(resources){
+        var lng, res, results$ = [];
+        resources == null && (resources = {});
+        for (lng in resources) {
+          res = resources[lng];
+          results$.push(i18next.addResourceBundle(lng, '', res, true, true));
+        }
+        return results$;
+      };
       return i18next;
     });
   };

@@ -29,6 +29,14 @@ ret = (opt) ->
         .on \add, -> _load {file: it, type: \add}
         .on \change, -> _load {file: it, type: \change}
         .on \unlink, -> _load {file: it, type: \unlink}
+      # extension due to @plotdb/block confusing design.
+      # (while `add-resource-bundles` is useful for scoping.)
+      # before we have better solution, we extend it here and mark `get-language` as deprecated.
+      i18next <<<
+        get-language: -> it.language # deprecated and legacy
+        add-resource-bundles: (resources = {}) ~>
+          for lng, res of resources =>
+            i18next.add-resource-bundle lng, '', res, true, true
       return i18next
 
 module.exports = ret
