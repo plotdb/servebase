@@ -42,6 +42,7 @@
     "docker-stop": "docker-compose -f config/base/docker/compose.yaml down",
     "docker-build": "docker-compose -f config/base/docker/compose.yaml build",
     "docker-db": "docker-compose -f config/base/docker/compose.yaml up -d db",
+    "trivy": "trivy fs --skip-files \"*.log\" --skip-dirs config/private -f template --template \"@tool/security/trivy/html.tpl\" -o trivy-report.html .",
     "cannon": "cd tool; ./cannon",
     "test": "npx mocha --require livescript ./test/index.ls",
     "coverage": "npx nyc --reporter=text npm run test"
