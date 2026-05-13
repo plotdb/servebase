@@ -1,0 +1,3 @@
+[submodule "guides"]
+	path = context/shared
+	url = https://github.com/plotdb/guides
