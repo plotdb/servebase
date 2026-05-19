@@ -323,12 +323,15 @@ baseImp = {
         }).then(function(ret){
           ret == null && (ret = {});
           return this$._auth.fetch().then(function(g){
-            if (!ret.passwordShouldRenew) {
+            var type;
+            if (!(type = ret.passwordShouldRenew)) {
               return g;
             }
             return core.ldcvmgr.get({
               name: "@servebase/auth",
               path: "passwd-renew"
+            }, {
+              type: type
             }).then(function(){
               return g;
             });

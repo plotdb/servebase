@@ -438,12 +438,16 @@
           db.userStore.passwordDue({
             user: user
           }).then(function(span){
-            return res.send(span > 0
-              ? {
-                passwordDue: span,
-                passwordShouldRenew: span > 0
-              }
-              : {});
+            var payload, ref$, ref1$;
+            payload = {};
+            if (span > 0) {
+              payload.passwordDue = span;
+              payload.passwordShouldRenew = 'suggest';
+            }
+            if (user != null && ((ref$ = user.config) != null && ((ref1$ = ref$.authinfo) != null && ref1$.renewpw))) {
+              payload.passwordShouldRenew = 'force';
+            }
+            return res.send(payload);
           });
         });
       })(req, res, next);

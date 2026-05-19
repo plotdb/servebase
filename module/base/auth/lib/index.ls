@@ -258,7 +258,13 @@ route.auth
     if err => return next err
     # check if we should notify user to update password
     (span) <- db.user-store.password-due {user} .then _
-    res.send if span > 0 => {password-due: span, password-should-renew: (span > 0)} else {}
+    payload = {}
+    # TODO we can add a policy to force update
+    if span > 0 => payload <<< {password-due: span, password-should-renew: \suggest}
+    # TODO we may also do this before login and redirect user to a dedicate page,
+    #      so reload to skip won't work to skip this force check
+    if user?config?authinfo?renewpw => payload.password-should-renew = \force
+    res.send payload
     )(req, res, next)
   ..post \/logout, (req, res) -> req.logout(!-> res.send!)
 

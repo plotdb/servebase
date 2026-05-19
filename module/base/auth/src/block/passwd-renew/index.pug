@@ -1,8 +1,12 @@
 .ldcv.d-flex.align-items-center.justify-content-center.scroll.autogap: .base.w-480.rwd: .inner
   include @/ldview/index.pug
   script(type="@plotdb/block"): include:lsc index.ls
-  h3.text-center(t) title
-  p(t) desc
+  .d-none(ld="type", data-type="force")
+    h3.text-center(t="force.title")
+    p(t="force.desc")
+  .d-none(ld="type", data-type="suggest")
+    h3.text-center(t="suggest.title")
+    p(t="suggest.desc")
   form.form.text-left.m-auto
     .form-group
       label(t) enter.old
@@ -25,7 +29,8 @@
       label.text-capitalize.mb-0(t="strength") &nbsp;
       .flex-grow-1.progress(style="height:18px"): .progress-bar.progress-bar-striped(style="width:0%")
     .d-flex.g-2.my-4
-      .btn.btn-lg.btn-outline-secondary.flex-grow-1.text-nowrap(t,data-ldcv-set="") skip
+      .btn.btn-lg.btn-outline-secondary.flex-grow-1.text-nowrap(
+      ld="type",data-type="suggest",t="skip",data-ldcv-set="")
       .btn.btn-lg.btn-success.disabled.ld-ext-right.flex-grow-1.text-nowrap(ld="submit")
         span(t="setup")
         .ld.ldld.bare.em-1

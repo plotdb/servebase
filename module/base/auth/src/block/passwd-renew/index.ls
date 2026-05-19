@@ -3,8 +3,12 @@ module.exports =
     dependencies: [{name: \ldform}]
     i18n:
       en:
-        title: "Update Your Password"
-        desc: "You haven't updated your password for a while. We would like to ask you to perform regular password updates."
+        force:
+          title: "Password Update Required"
+          desc: "For security or account management reasons, you must update your password before continuing to use this system."
+        suggest:
+          title: "Update Your Password"
+          desc: "You haven't updated your password for a while. We would like to ask you to perform regular password updates."
         skip: "Skip This Time"
         strength: "Password Strength"
         enter:
@@ -32,8 +36,12 @@ module.exports =
         ok: "Okay"
         good: "Good"
       "zh-TW":
-        title: "定期密碼更新"
-        desc: "您已經有一段時間未更新密碼了，我們要請您進行定期的密碼更新。"
+        force:
+          title: "需要更新密碼"
+          desc: "基於安全性或帳號管理需求，您需要先更新密碼後才能繼續使用本系統。"
+        suggest:
+          title: "定期密碼更新"
+          desc: "您已經有一段時間未更新密碼了，我們要請您進行定期的密碼更新。"
         skip: "這次先略過"
         strength: "密碼強度"
         enter:
@@ -66,10 +74,15 @@ module.exports =
     <~ core.init!then _
     {auth, loader, ldcvmgr, captcha, error} = core
     {ldform} = ctx
-    @ldcv = new ldcover root: root, zmgr: core.zmgr
+    @ldcv = new ldcover root: root, zmgr: core.zmgr, lock: true
+    @ldcv.on \data, ({type} = {}) ->
+      lc.type = if type in <[suggest force]> => type else \force
+      view.render!
+    lc = type: \suggest
     view = new ldview do
       root: root
       init: submit: ({node, local}) -> local.ldld = new ldloader root: node
+      handler: type: ({node}) -> node.classList.toggle \d-none, node.dataset.type != lc.type
       action: click:
         submit: ({local, node}) ~>
           if node.classList.contains(\disabled) => return

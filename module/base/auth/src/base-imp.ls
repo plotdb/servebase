@@ -137,8 +137,8 @@ base-imp =
               ld$.fetch "#{@_auth.api-root!}#{@_tab}", {method: \POST}, {json: body, type: \json}
         .then (ret = {}) ~>
           (g) <~ @_auth.fetch!then _
-          if !ret.password-should-renew => return g
-          <~ core.ldcvmgr.get {name: "@servebase/auth", path: "passwd-renew"} .then _
+          if !(type = ret.password-should-renew) => return g
+          <~ core.ldcvmgr.get {name: "@servebase/auth", path: "passwd-renew"}, {type} .then _
           return g
         .finally ~> @ldld.off!
         .then (g) ~>
