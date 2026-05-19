@@ -48,19 +48,18 @@
     },
     audit: function(c){
       if (typeof c === 'object') {
-        return this.queryAudit(c);
+        return this.queryAudit(null, null, {
+          audit: c
+        });
       } else {
         return lderror.reject(400);
       }
     },
     queryAudit: function(q, p, c){
-      var ref$, audit, hasQuery, doAudit, isAtomic;
-      if (typeof q === 'object' && q.audit) {
-        ref$ = [q, undefined, undefined], c = ref$[0], q = ref$[1], p = ref$[2];
-      }
+      var audit, ref$, hasQuery, doAudit, isAtomic;
       audit = c != null ? c.audit : void 8;
       ref$ = [!!q, !!audit, (audit != null ? audit.atomic : void 8) || !((audit != null ? audit.atomic : void 8) != null)], hasQuery = ref$[0], doAudit = ref$[1], isAtomic = ref$[2];
-      if (!(hasQuery || doAudit)) {
+      if ((hasQuery && typeof q !== 'string') || !(hasQuery || doAudit)) {
         return lderror.reject(1015);
       }
       return this.pool.connect().then(function(client){

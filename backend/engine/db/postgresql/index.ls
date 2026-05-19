@@ -27,14 +27,11 @@ database = (backend, opt = {}) ->
 
 database.prototype = Object.create(Object.prototype) <<< do
   settings: -> @_.settings
-  # provide better semantics but seems redundant?
-  audit: (c) -> if typeof(c) == \object => @query-audit c else lderror.reject 400
+  audit: (c) -> if typeof(c) == \object => @query-audit(null, null, {audit: c}) else lderror.reject 400
   query-audit: (q, p, c) ->
-    # without q - audit only mode. either q or c is required, otherwise error 1015
-    if typeof(q) == \object and q.audit => [c, q, p] = [q, undefined, undefined]
     audit = c?audit
     [has-query, do-audit, is-atomic] = [!!q, !!audit, (audit?atomic or !(audit?atomic?))]
-    if !(has-query or do-audit) => return lderror.reject 1015
+    if (has-query and (typeof(q) != \string)) or !(has-query or do-audit) => return lderror.reject 1015
     @pool.connect!
       .then (client) ->
         # no audit - return query directly.

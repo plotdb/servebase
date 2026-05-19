@@ -9,8 +9,8 @@ You can log / track database queries via `database.query-audit` api. It's the sa
 
 or
 
-    db.query-audit {audit: { ... }} /* audit only */
-    db.audit {audit: { ... }} /* equivalent to audit only db.query-audit above */
+    db.audit { ... } /* audit only. the only parameter is `audit` object in `query-audit` api. */
+
 
 Without `audit` field, `database.query-audit` acts the same with `database.query`; we can consider merge these 2 APIs but for now we use a separated name to make it clear that we are using an audited version of query API.
 
