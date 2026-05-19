@@ -52,7 +52,7 @@ database.prototype = Object.create(Object.prototype) <<< do
               data: (
                 {} <<< if (audit.new? or p?) => {new: (if audit.new? => audit.new else p)}
               ) <<< ( if audit.old? => {old: audit.old} else {}  # old
-              ) <<< ( if req?query? => {query: req.query} else {} # query
+              ) <<< ( if req?query? and audit.query => {query: req.query} else {} # query
               )
             } <<< (if req => path: req.path, ip: aux.ip req else {})
             client.query """

@@ -88,7 +88,7 @@
               ? {
                 old: audit.old
               }
-              : {}), (req != null ? req.query : void 8) != null
+              : {}), (req != null ? req.query : void 8) != null && audit.query
               ? {
                 query: req.query
               }

@@ -26,6 +26,7 @@ The `audit` field of the thrid parameter in `batabase supports follow fields:
  - `new`: data to be written. optional, query params will be used if omitted.
  - `old`: data to be replaced. optional, left empty if omitted
    - `new` and `old` field will be put into the params field of the object to be stored in the `data` field.
+ - `query`: boolean, default false. when true, req.query will be stored automatically
 
 By default, user session ID, IP, user key will be kept directly in auditlog table along with its local log time.
 
