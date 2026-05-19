@@ -79,11 +79,11 @@
           return (hasQuery
             ? client.query(q, p)
             : Promise.resolve({})).then(function(queryResult){
-            var detail, ref$;
-            detail = import$((ref$ = {
-              action: audit.action,
-              user: audit.user
-            }, ref$.data = import$(import$({
+            var user, ref$, ref1$, detail, ref2$;
+            user = ((ref$ = audit.user) != null ? ref$.key : void 8) || audit.user || ((ref1$ = req.user) != null ? ref1$.key : void 8);
+            detail = import$((ref2$ = {
+              action: audit.action
+            }, ref2$.user = user, ref2$.data = import$(import$({
               'new': audit['new'] || p
             }, audit.old != null
               ? {
@@ -93,13 +93,13 @@
               ? {
                 query: req.query
               }
-              : {}), ref$), req
+              : {}), ref2$), req
               ? {
                 path: req.path,
                 ip: aux.ip(req)
               }
               : {});
-            client.query("insert into auditlog (action,option,session,ip,owner,detail) values ($1,$2,$3,$4,$5,$6)", [audit.action, audit.option, req != null ? req.sessionID : void 8, detail.ip, audit.user, detail]);
+            client.query("insert into auditlog (action,option,session,ip,owner,detail) values ($1,$2,$3,$4,$5,$6)", [audit.action, audit.option, req != null ? req.sessionID : void 8, detail.ip, user, detail]);
             return !isAtomic
               ? queryResult
               : client.query('COMMIT').then(function(){

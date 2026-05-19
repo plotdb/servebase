@@ -87,7 +87,11 @@
         username: username,
         displayname: displayname
       };
-      config = {};
+      config = {
+        authinfo: {
+          renewpw: true
+        }
+      };
       method = 'local';
       return db.userStore.create({
         username: username,

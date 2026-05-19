@@ -19,10 +19,10 @@ The `audit` field of the thrid parameter in `batabase supports follow fields:
  - `atomic`: boolean, default true. when true, the actual query and the audit log query will be atomic.
    - That is, the actual query will only work if audit is successful, otherwise will be rolled back.
  - `req`: the request object from express router.
-   - Informations such as path, sessionID and IP will be retrieved and stored if available.
+   - Informations such as user, path, sessionID and IP will be retrieved and stored if available.
  - `action`: purpose of the logged action. The naming structure is defined in below section.
  - `option`: object of additional information about this action. optional. Empty if omitted.
- - `user`: user key who conducts this action.
+ - `user`: user object or key who conducts this action. if omitted, `req.user` will be checked in turn.
  - `new`: data to be written. optional, query params will be used if omitted.
  - `old`: data to be replaced. optional, left empty if omitted
    - `new` and `old` field will be put into the params field of the object to be stored in the `data` field.

@@ -49,7 +49,9 @@ database.prototype = Object.create(Object.prototype) <<< do
           .then ->
             # only if it's not audit only (!has-query)
             (query-result) <- (if has-query => client.query(q, p) else Promise.resolve {}).then _
-            detail = audit{action, user} <<< {
+            user = audit.user?key or audit.user or req.user?key
+            detail = audit{action} <<< {
+              user: user
               data: ({ new: (audit.new or p)
               } <<< ( if audit.old? => {old: audit.old} else {}  # old
               ) <<< ( if req?query => {query: req.query} else {} # query
@@ -57,7 +59,7 @@ database.prototype = Object.create(Object.prototype) <<< do
             } <<< (if req => path: req.path, ip: aux.ip req else {})
             client.query """
             insert into auditlog (action,option,session,ip,owner,detail) values ($1,$2,$3,$4,$5,$6)
-            """, [audit.action, audit.option, req?sessionID, detail.ip, audit.user, detail]
+            """, [audit.action, audit.option, req?sessionID, detail.ip, user, detail]
             return if !is-atomic => query-result
             else client.query 'COMMIT' .then -> query-result
           .catch (e) ->
