@@ -49,10 +49,11 @@ database.prototype = Object.create(Object.prototype) <<< do
             user = audit.user?key or audit.user or req.user?key
             detail = audit{action} <<< {
               user: user
-              data: ({ new: (audit.new or p)
-              } <<< ( if audit.old? => {old: audit.old} else {}  # old
-              ) <<< ( if req?query => {query: req.query} else {} # query
-              ))
+              data: (
+                {} <<< if (audit.new? or p?) => {new: (if audit.new? => audit.new else p)}
+              ) <<< ( if audit.old? => {old: audit.old} else {}  # old
+              ) <<< ( if req?query? => {query: req.query} else {} # query
+              )
             } <<< (if req => path: req.path, ip: aux.ip req else {})
             client.query """
             insert into auditlog (action,option,session,ip,owner,detail) values ($1,$2,$3,$4,$5,$6)

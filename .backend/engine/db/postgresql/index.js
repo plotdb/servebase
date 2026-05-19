@@ -82,13 +82,13 @@
             user = ((ref$ = audit.user) != null ? ref$.key : void 8) || audit.user || ((ref1$ = req.user) != null ? ref1$.key : void 8);
             detail = import$((ref2$ = {
               action: audit.action
-            }, ref2$.user = user, ref2$.data = import$(import$({
-              'new': audit['new'] || p
-            }, audit.old != null
+            }, ref2$.user = user, ref2$.data = import$(import$(import$({}, audit['new'] != null || p != null ? {
+              'new': audit['new'] != null ? audit['new'] : p
+            } : void 8), audit.old != null
               ? {
                 old: audit.old
               }
-              : {}), req != null && req.query
+              : {}), (req != null ? req.query : void 8) != null
               ? {
                 query: req.query
               }
