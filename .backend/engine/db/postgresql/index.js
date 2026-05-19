@@ -47,7 +47,11 @@
       return this._.settings;
     },
     audit: function(c){
-      return this.queryAudit(q);
+      if (typeof c === 'object') {
+        return this.queryAudit(c);
+      } else {
+        return lderror.reject(400);
+      }
     },
     queryAudit: function(q, p, c){
       var ref$, audit, hasQuery, doAudit, isAtomic;
