@@ -7,6 +7,11 @@ You can log / track database queries via `database.query-audit` api. It's the sa
     {db} = backend
     db.query-audit "update ....", [...], {audit: { ... }}
 
+or
+
+    db.query-audit {audit: { ... }} /* audit only */
+    db.audit {audit: { ... }} /* equivalent to audit only db.query-audit above */
+
 Without `audit` field, `database.query-audit` acts the same with `database.query`; we can consider merge these 2 APIs but for now we use a separated name to make it clear that we are using an audited version of query API.
 
 The `audit` field of the thrid parameter in `batabase supports follow fields:
@@ -21,7 +26,6 @@ The `audit` field of the thrid parameter in `batabase supports follow fields:
  - `new`: data to be written. optional, query params will be used if omitted.
  - `old`: data to be replaced. optional, left empty if omitted
    - `new` and `old` field will be put into the params field of the object to be stored in the `data` field.
-
 
 By default, user session ID, IP, user key will be kept directly in auditlog table along with its local log time.
 
