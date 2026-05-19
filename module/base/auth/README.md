@@ -16,7 +16,7 @@ User information is stored in an object called `global`, passed by an API by req
    - `key`: positive integer if user is logged in. otherwise 0, null or undefined.
    - `displayname`: verbose name
    - `username`: email
-   - `staff`: true if this is staff user. 
+   - `staff`: true if this is staff user.
    - `verified`: if this account if verified.
  - `captcha`: captcha configuration. an object of key(captcha provider) / config (sitekey / enabled) mapping.
  - `oauth`: additional oauth methods, as an object with oauth name to `{enabled}` mapping.
@@ -25,7 +25,7 @@ User information is stored in an object called `global`, passed by an API by req
  - `policy`: server policy information (partially). see `lib/index.ls` for detail.
 
 
-## Frontend 
+## Frontend
 
 Frontend related codes are defined under `module/auth`. It includes two parts:
 
@@ -261,7 +261,7 @@ engine/auth.ls. API endpoints:
 In order to reduce bundle size, you may want to construct the authpanel without extending `auth` block. This is experimenting but you can include `base-imp.js` and construct block module manually, similar to what has been done in `src/base-def.ls` and `src/base.pug`:
 
 
-base.pug: 
+base.pug:
 
     script(type="module"): :lsc
       include base-imp.js
@@ -285,3 +285,22 @@ base-def.ls:
         ]
     } <<< base-imp
 
+
+## User Object
+
+### Config
+
+User object contains a configuration object `config` in db schema definition, which is application-based; for now we have following fields defined in various modules:
+
+ - consent: for tracking time of consent
+   - cookie: timestamp when user accept cookie usage.
+   - custom: should be an object. add your own consent here.
+ - invitetoken: track if this account is created with invitetoken. it's an object with [token,timestamp] pairs, where:
+   - token: invite token used on this account
+   - timestamp: time when consuming this invite token
+ - auth: information about authentication.
+   - renewpw: true if user should renew password immediately
+
+possibly custom and deprecated fields:
+
+ - tos, legal, newsletter
