@@ -48,7 +48,7 @@ route.post \/user/, (req, res) ->
   if password.length < 8 => return lderror.reject 400
   # TODO verify password based on customized rules, if needed.
   detail = {username, displayname}
-  config = {}
+  config = {authinfo: renewpw: true}
   method = \local
   db.user-store.create {username, password, method, detail, config}
     .then ->
