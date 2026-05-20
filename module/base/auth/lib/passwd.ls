@@ -25,7 +25,12 @@ route: ->
         if !r.[]rows.length => return lderror.reject 403
         user = r.rows.0
         user.password = password.hashed
-        db.query "update users set (password,method) = ($2,$3) where key = $1", [user.key, user.password, \local]
+        db.query """
+        update users
+          set (password,method) = ($2,$3),
+          config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'
+        where key = $1
+        """, [user.key, user.password, \local]
           .then -> db.user-store.password-track {user, hash: password.hashed}
       .then -> db.query "delete from pwresettoken where pwresettoken.token=$1", [token]
       .then -> res.send!
@@ -85,7 +90,12 @@ route: ->
       .then -> db.user-store.hashing n
       .then (password) ->
         req.user <<< {password}
-        db.query "update users set (password,method) = ($1,'local') where key = $2", [password, req.user.key]
+        db.query """
+        update users
+          set (password,method) = ($1,'local'),
+          config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'
+        where key = $2
+        """, [password, req.user.key]
           .then -> db.user-store.password-track {user: req.user, hash: password}
       .then -> session.sync {req, user: req.user.key, obj: req.user}
       .then -> res.send!

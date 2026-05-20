@@ -51,7 +51,7 @@
             }
             user = r.rows[0];
             user.password = password.hashed;
-            return db.query("update users set (password,method) = ($2,$3) where key = $1", [user.key, user.password, 'local']).then(function(){
+            return db.query("update users\n  set (password,method) = ($2,$3),\n  config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'\nwhere key = $1", [user.key, user.password, 'local']).then(function(){
               return db.userStore.passwordTrack({
                 user: user,
                 hash: password.hashed
@@ -154,7 +154,7 @@
             return db.userStore.hashing(n);
           }).then(function(password){
             req.user.password = password;
-            return db.query("update users set (password,method) = ($1,'local') where key = $2", [password, req.user.key]).then(function(){
+            return db.query("update users\n  set (password,method) = ($1,'local'),\n  config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'\nwhere key = $2", [password, req.user.key]).then(function(){
               return db.userStore.passwordTrack({
                 user: req.user,
                 hash: password
