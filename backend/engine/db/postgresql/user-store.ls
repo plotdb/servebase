@@ -1,4 +1,4 @@
-require! <[crypto bcrypt lderror re2 curegex @loadingio/debounce.js]>
+require! <[crypto bcrypt argon2 lderror re2 curegex @loadingio/debounce.js]>
 
 re-email = curegex.tw.get('email', re2)
 is-email = -> return re-email.exec(it)
@@ -14,6 +14,10 @@ user-store = (opt = {}) ->
     pw.track.count = if !pw.track.count or isNaN(pw.track.count) => 0 else (+pw.track.count >?= 1)
   else
     pw.track = {day: if !pw.track or isNaN(pw.track) => 0 else (+pw.track >?= 1)}
+  # validate and cache pepper at init time so misconfiguration fails fast on startup
+  @pepper = (@config?auth?pepper or {}){keys or {}, current or null}
+  if @pepper.current and !@pepper.keys[@pepper.current]
+    throw new Error "pepper key '#{ @pepper.current }' not found in config.auth.pepper.keys"
   @db = opt.db
   @
 
@@ -22,29 +26,33 @@ user-store.prototype = Object.create(Object.prototype) <<< do
   serialize: (u = {}) -> Promise.resolve u
   deserialize: (v = {}) -> Promise.resolve v
 
-  # md5 is bad, because
-  #  - it's really fast - thus, also really fast for brute force cracking.
-  #  - it loses entropy for information > 128bits
-  # however, we actually double hash md5 by bcrypt and:
-  #  - bcrypt.hash is way much slower
-  #  - password is not common with more than 128bits entropy. 128bits is usually enough.
-  # additionally:
-  #  - md5 minimizes the risk of DDoS attacks with extremely long password.
-  # while double hashing is kinda useless but it's generally equivalent secure:
-  #  - https://stackoverflow.com/questions/348109
-  # ref:
-  #  - `chaining md5 and bcrypt`, https://security.stackexchange.com/questions/119680/
-  #  - `fb also does this`, wbl, https://news.ycombinator.com/item?id=19171957
-  hashing: (password, doMD5 = true, doBcrypt = true) -> new Promise (res, rej) ->
-    # ensure maximal while unreasonably long password length so no computational DDoS will happen.
-    pw = "#password".substring(0, 256)
-    ret = if doMD5 => crypto.createHash(\md5).update(pw).digest(\hex) else pw
-    if doBcrypt => bcrypt.genSalt 12, (e, salt) -> bcrypt.hash ret, salt, (e, hash) -> res hash
-    else res ret
+  hashing: (password) ->
+    pw = "#password".substring(0, 1024)
+    opts = type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4, hashLength: 32
+    if @pepper.current and (p = @pepper.keys[@pepper.current]) => opts.secret = Buffer.from p
+    (hash) <~ argon2.hash pw, opts .then _
+    if @pepper.current => "#{ @pepper.current }:#hash" else hash
 
-  compare: (password='', hash) -> new Promise (res, rej) ->
-    md5 = crypto.createHash(\md5).update(password).digest(\hex)
-    bcrypt.compare md5, hash, (e, ret) -> if ret => res! else rej new lderror(1012)
+  compare: (password='', hash) ->
+    m = /^([^:]+):(\$argon2id\$.+)$/.exec hash
+    if m
+      [_, name, argon-hash] = m
+      if !@pepper.keys[name] => return Promise.reject new Error "pepper key '#name' not found in config"
+      opts = {secret: Buffer.from @pepper.keys[name]}
+      current = @pepper.current
+      (ok) <- argon2.verify argon-hash, password, opts .then _
+      if ok => {legacy: name != current}
+      else Promise.reject new lderror 1012
+    else if hash and hash.indexOf(\$argon2id$) == 0
+      # no pepper argon2id → legacy
+      (ok) <- argon2.verify hash, password, {} .then _
+      if ok => {legacy: true} else Promise.reject new lderror 1012
+    else
+      # legacy scheme: MD5 + bcrypt
+      md5 = crypto.createHash(\md5).update(password).digest(\hex)
+      (res, rej) <- new Promise _
+      (e, ret) <- bcrypt.compare md5, hash, _
+      if ret => res {legacy: true} else rej new lderror 1012
 
   get: ({username, password, method, detail, create, invite-token}) ->
     username = username.toLowerCase!
@@ -56,7 +64,12 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         if !(method == \local or user.method == \local) =>
           delete user.password
           return user
-        @compare password, user.password .then ~> user
+        @compare password, user.password .then ({legacy}) ~>
+          if legacy =>
+            (new-hash) <~ @hashing password .then _
+            # update user with latest hash algorithm. silently fail in case of service interruption
+            @db.query "update users set password = $2 where key = $1", [user.key, new-hash] .catch -> void
+          user
       .then (user) ~>
         if user.{}config.{}consent.cookie => return user
         user.config.consent.cookie = new Date!getTime!
