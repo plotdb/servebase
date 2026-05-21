@@ -300,6 +300,7 @@ User object contains a configuration object `config` in db schema definition, wh
    - timestamp: time when consuming this invite token
  - auth: information about authentication.
    - renewpw: true if user should renew password immediately
+ - custom: should be an object. add your own customized fields here.
 
 possibly custom and deprecated fields:
 
