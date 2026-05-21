@@ -9,8 +9,9 @@ require! <[@servebase/backend/aux ./passwd ./mail]>
 
 captcha = Object.fromEntries [[k,v] for k,v of config.captcha].map ->
   if it.0 == \enabled => [it.0, it.1] else [it.0, it.1{sitekey, enabled}]
+providers = config.auth.providers or config.auth
 oauth = Object.fromEntries(
-  [[k,v] for k,v of config.auth]
+  [[k,v] for k,v of providers]
     .map -> return if it.0 == \local => null else [it.0, {enabled: !(it.1.enabled?) or it.1.enabled }]
     .filter -> it
 )
@@ -183,12 +184,12 @@ inject-invite-token = (req, res, next) ->
   next!
 
 <[local google facebook line]>.for-each (name) ->
-  if !config{}auth[name] => return
-  strategy[name](config.auth[name])
+  if !providers[name] => return
+  strategy[name](providers[name])
   route.auth
     ..post(
       "/#name", inject-invite-token,
-      passport.authenticate(name, {scope: config.auth[name].scope or <[profile openid email]>})
+      passport.authenticate(name, {scope: providers[name].scope or <[profile openid email]>})
     )
     ..get "/#name/callback", ((name) -> (req, res, next) ->
       (

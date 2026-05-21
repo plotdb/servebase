@@ -102,20 +102,27 @@ module.exports = do
       mail-verify: 600
       password-reset: 600
   auth:
-    # GCP -> API & Services -> Credentials -> OAuth Client ID
-    google:
-      clientID: '...'
-      clientSecret: '...'
-    facebook:
-      clientID: '...'
-      clientSecret: '...'
-      scope: <[public_profile openid email]>
-    line:
-      channelID: '...'
-      channelSecret: '...'
-    local:
-      usernameField: \email
-      passwordField: \passwd
+    # we used to store provider under auth (e.g., auth.google), which is still supported but deprecated.
+    # pepper for password hashing (argon2id). use a random, high-entropy string.
+    # store this in an environment variable or secret manager, never in source control.
+    pepper:
+      current: \fancy
+      fancy: \some-random-pepper
+    providers:
+      # GCP -> API & Services -> Credentials -> OAuth Client ID
+      google:
+        clientID: '...'
+        clientSecret: '...'
+      facebook:
+        clientID: '...'
+        clientSecret: '...'
+        scope: <[public_profile openid email]>
+      line:
+        channelID: '...'
+        channelSecret: '...'
+      local:
+        usernameField: \email
+        passwordField: \passwd
   mail:
     # to suppress outgoing mail, enable `suppress` option.
     suppress: false

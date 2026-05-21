@@ -17,7 +17,7 @@
       return f.call({}, it);
     };
   })(function(backend){
-    var db, app, config, route, session, captcha, k, v, oauth, policy, ref$, ref1$, limitSessionAmount, normalize, getUser, strategy, injectInviteToken, x$, this$ = this;
+    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, normalize, getUser, strategy, injectInviteToken, x$, this$ = this;
     db = backend.db, app = backend.app, config = backend.config, route = backend.route, session = backend.session;
     captcha = Object.fromEntries((function(){
       var ref$, results$ = [];
@@ -39,9 +39,10 @@
         ];
       }
     }));
+    providers = config.auth.providers || config.auth;
     oauth = Object.fromEntries((function(){
       var ref$, results$ = [];
-      for (k in ref$ = config.auth) {
+      for (k in ref$ = providers) {
         v = ref$[k];
         results$.push([k, v]);
       }
@@ -301,13 +302,13 @@
     };
     ['local', 'google', 'facebook', 'line'].forEach(function(name){
       var x$;
-      if (!(config.auth || (config.auth = {}))[name]) {
+      if (!providers[name]) {
         return;
       }
-      strategy[name](config.auth[name]);
+      strategy[name](providers[name]);
       x$ = route.auth;
       x$.post("/" + name, injectInviteToken, passport.authenticate(name, {
-        scope: config.auth[name].scope || ['profile', 'openid', 'email']
+        scope: providers[name].scope || ['profile', 'openid', 'email']
       }));
       x$.get("/" + name + "/callback", function(name){
         return function(req, res, next){
