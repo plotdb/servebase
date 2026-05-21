@@ -3,7 +3,7 @@ create extension if not exists pg_trgm;
 create table if not exists users (
   key serial primary key,
   username text not null unique constraint users_username_len check (char_length(username) <= 100),
-  password text constraint users_password_len check (char_length(password) <= 100),
+  password text constraint users_password_len check (char_length(password) <= 256),
   method text,
   verified jsonb,
   displayname text, constraint users_displayname_length check (char_length(displayname) <= 64),
@@ -25,7 +25,7 @@ create index if not exists idx_user_displayname on users (lower(displayname) var
 create table if not exists password (
   key serial primary key,
   owner int references users(key),
-  hash text constraint password_hash_len check (char_length(hash) <= 100),
+  hash text constraint password_hash_len check (char_length(hash) <= 256),
   createdtime timestamp default now(),
   snooze timestamp default now()
 );
