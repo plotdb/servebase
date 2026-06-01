@@ -22,7 +22,8 @@ verify: ({req, user}) ->
     .then ->
       time = new Date!
       obj <<< {key: user.key, hex: "#{user.key}-" + (crypto.randomBytes(30).toString \hex), time: time }
-      db.query "delete from mailverifytoken where owner=$1", [obj.key]
+      # dont delete other tokens so users can still verify with earlier tokens (if received later)
+      #db.query "delete from mailverifytoken where owner=$1", [obj.key]
     .then -> db.query "insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]
     .then ->
       email = user.username
@@ -60,13 +61,14 @@ route: ->
       .then (r={})->
         if !r.[]rows.length => return lderror.reject 1013
         lc.obj = r.rows.0
-        db.query "delete from mailverifytoken where owner = $1", [lc.obj.owner]
-      .then ->
         tick = parseInt(((config.policy or {}).token-expire or {}).mail-verify)
         if isNaN(tick) or tick < 0 => tick = 600
         if new Date!getTime! - new Date(lc.obj.time).getTime! > 1000 * tick => return lderror.reject 1013
         lc.verified = verified = {date: Date.now!}
         db.query "update users set verified = $2 where key = $1", [lc.obj.owner, JSON.stringify(verified)]
+      .then ->
+        # delete tokens after we make sure user is verified so it won't accidentally delete other tokens.
+        db.query "delete from mailverifytoken where owner = $1", [lc.obj.owner]
       .then ->
         db.query "select * from users where key = $1", [lc.obj.owner]
           .then (r={}) ->

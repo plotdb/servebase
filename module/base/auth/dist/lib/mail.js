@@ -43,10 +43,7 @@
           return Promise.resolve().then(function(){
             var time;
             time = new Date();
-            obj.key = user.key;
-            obj.hex = (user.key + "-") + crypto.randomBytes(30).toString('hex');
-            obj.time = time;
-            return db.query("delete from mailverifytoken where owner=$1", [obj.key]);
+            return obj.key = user.key, obj.hex = (user.key + "-") + crypto.randomBytes(30).toString('hex'), obj.time = time, obj;
           }).then(function(){
             return db.query("insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]);
           }).then(function(){
@@ -103,14 +100,12 @@
             return lderror.reject(400);
           }
           return db.query("select owner,time from mailverifytoken where token = $1", [token]).then(function(r){
+            var tick, verified;
             r == null && (r = {});
             if (!(r.rows || (r.rows = [])).length) {
               return lderror.reject(1013);
             }
             lc.obj = r.rows[0];
-            return db.query("delete from mailverifytoken where owner = $1", [lc.obj.owner]);
-          }).then(function(){
-            var tick, verified;
             tick = parseInt(((config.policy || {}).tokenExpire || {}).mailVerify);
             if (isNaN(tick) || tick < 0) {
               tick = 600;
@@ -122,6 +117,8 @@
               date: Date.now()
             };
             return db.query("update users set verified = $2 where key = $1", [lc.obj.owner, JSON.stringify(verified)]);
+          }).then(function(){
+            return db.query("delete from mailverifytoken where owner = $1", [lc.obj.owner]);
           }).then(function(){
             return db.query("select * from users where key = $1", [lc.obj.owner]).then(function(r){
               var u;
