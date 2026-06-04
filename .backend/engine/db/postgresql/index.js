@@ -123,6 +123,28 @@
         }));
       });
     },
+    transaction: function(fn){
+      return this.pool.connect().then(function(tx){
+        return tx.query('BEGIN').then(function(){
+          return fn(tx);
+        }).then(function(result){
+          return tx.query('COMMIT').then(function(){
+            return result;
+          });
+        })['catch'](function(e){
+          tx.query('ROLLBACK')['catch'](function(){});
+          return Promise.reject(e);
+        })['finally'](function(){
+          return tx.release();
+        });
+      })['catch'](function(e){
+        return Promise.reject(new lderror({
+          err: e,
+          id: 0,
+          message: "database transaction error"
+        }));
+      });
+    },
     query: function(q, p){
       return this.pool.connect().then(function(client){
         return client.query(q, p).then(function(ret){

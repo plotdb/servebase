@@ -68,6 +68,19 @@ database.prototype = Object.create(Object.prototype) <<< do
       .catch (e) ->
         Promise.reject new lderror {err: e, id: 0, query: q, message: "database query error"}
 
+  transaction: (fn) ->
+    @pool.connect!
+      .then (tx) ->
+        tx.query \BEGIN
+          .then -> fn tx
+          .then (result) -> tx.query(\COMMIT).then -> result
+          .catch (e) ->
+            tx.query(\ROLLBACK).catch ->
+            Promise.reject e
+          .finally -> tx.release!
+      .catch (e) ->
+        Promise.reject new lderror {err: e, id: 0, message: "database transaction error"}
+
   query: (q, p) ->
     @pool.connect!
       .then (client) ->
