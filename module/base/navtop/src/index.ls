@@ -62,12 +62,12 @@ core.init!then ->
   if !(bar = view.get \root) => return {}
   dotst = (bar.getAttribute(\data-classes) or "").split(';').map(->it.split(' ').filter(->it))
   tst-tgt = if bar.getAttribute(\data-pivot) => ld$.find(document, that, 0) else null
-  if !(dotst.length and tst-tgt) => return
+  if !(dotst.length >= 2 and tst-tgt) => return
   (new IntersectionObserver (->
     if !(n = it.0) => return
     # always toggle off first so we won't remove classes that in both before and after.
     (d,i) <- (if n.isIntersecting => [1,0] else [0,1]).for-each _
-    dotst[d].map (c) -> bar.classList.toggle c, (i != 0)
+    if dotst[d] => dotst[d].map (c) -> bar.classList.toggle c, (i != 0)
   ), {threshold: 0.1}).observe tst-tgt
 
   return {}

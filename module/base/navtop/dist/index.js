@@ -158,7 +158,7 @@
           });
         });
         tstTgt = (that = bar.getAttribute('data-pivot')) ? ld$.find(document, that, 0) : null;
-        if (!(dotst.length && tstTgt)) {
+        if (!(dotst.length >= 2 && tstTgt)) {
           return;
         }
         new IntersectionObserver(function(it){
@@ -169,9 +169,11 @@
           return (n.isIntersecting
             ? [1, 0]
             : [0, 1]).forEach(function(d, i){
-            return dotst[d].map(function(c){
-              return bar.classList.toggle(c, i !== 0);
-            });
+            if (dotst[d]) {
+              return dotst[d].map(function(c){
+                return bar.classList.toggle(c, i !== 0);
+              });
+            }
           });
         }, {
           threshold: 0.1
