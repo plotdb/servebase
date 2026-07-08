@@ -101,5 +101,8 @@
     "uglify-js": "^3.13.1",
     "uglifycss": "^0.0.29",
     "yargs": "^17.3.1"
+  },
+  "devDependencies": {
+    "@plotdb/guides": "github:plotdb/guides#master"
   }
 }
