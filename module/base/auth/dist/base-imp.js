@@ -244,6 +244,10 @@ baseImp = {
         if (!this.form.ready()) {
           return;
         }
+        if (this._submitting) {
+          return;
+        }
+        this._submitting = true;
         this._failedHint = false;
         this.view.render('signin-failed-hint');
         val = this.form.values();
@@ -337,7 +341,8 @@ baseImp = {
             });
           });
         })['finally'](function(){
-          return this$.ldld.off();
+          this$.ldld.off();
+          return this$._submitting = false;
         }).then(function(g){
           debounce(350, function(){
             return this$.info('default');

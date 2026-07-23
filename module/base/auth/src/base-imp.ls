@@ -100,6 +100,8 @@ base-imp =
 
     submit: ->
       if !@form.ready! => return
+      if @_submitting => return
+      @_submitting = true
       @_failed-hint = false
       @view.render \signin-failed-hint
       val = @form.values!
@@ -140,7 +142,7 @@ base-imp =
           if !(type = ret.password-should-renew) => return g
           <~ core.ldcvmgr.get {name: "@servebase/auth", path: "passwd-renew"}, {type} .then _
           return g
-        .finally ~> @ldld.off!
+        .finally ~> @ldld.off!; @_submitting = false
         .then (g) ~>
           debounce 350, ~> @info \default
           @_failed-hint = false
