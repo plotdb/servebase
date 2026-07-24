@@ -375,6 +375,10 @@
         app.get("/d/health", function(req, res){
           return res.json({});
         });
+        this$.route['public'] = aux.routecatch(express.Router({
+          mergeParams: true
+        }));
+        app.use('/', this$.route['public']);
         app.use('/extapi/', this$.route.extapi);
         app.use('/ext/', this$.route.extapp);
         if (exts) {

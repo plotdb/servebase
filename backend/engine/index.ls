@@ -249,6 +249,14 @@ backend.prototype = Object.create(Object.prototype) <<< do
         # health check endpoint
         app.get "/d/health", (req, res) -> res.json {}
 
+        # cookie-free zone: root-level router for cacheable resources
+        # ( e.g. @plotdb/registry assets ) that must never carry per-user semantics.
+        # mounted before `auth` below, so session middleware never runs and
+        # no Set-Cookie is attached - otherwise nginx proxy_cache would refuse
+        # to cache these responses. routes mounted here must stay session-free.
+        @route.public = aux.routecatch express.Router {mergeParams: true}
+        app.use \/, @route.public
+
         # ext related APIs used to be after `auth @` (which enables session)
         # however, cookie setting other than `{SameSite: 'none', Secure: true}`
         # won't make session work correctly because `connect.sid` can't be set.
