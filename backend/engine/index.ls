@@ -2,7 +2,7 @@ require! <[fs yargs express @plotdb/colors path pino lderror pino-http body-pars
 require! <[i18next-http-middleware accepts]>
 require! <[@plotdb/srcbuild @plotdb/block jsdom]>
 require! <[@plotdb/srcbuild/dist/view/pug]>
-require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql]>
+require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql ./localctl]>
 require! <[@servebase/auth @servebase/consent @servebase/captcha @servebase/config]>
 
 libdir = path.dirname fs.realpathSync(__filename.replace(/\(js\)$/,''))
@@ -84,9 +84,11 @@ backend <<< do
     b.start!then -> return b
 
 backend.prototype = Object.create(Object.prototype) <<< do
-  listen: -> new Promise (res, rej) ~>
-    if !@server => @server = @app.listen @config.port, ((e) ~> if e => rej e else res @server)
-    else @server.listen @config.port, ((e) -> if e => rej e else res @server)
+  listen: ->
+    p = new Promise (res, rej) ~>
+      if !@server => @server = @app.listen @config.port, ((e) ~> if e => rej e else res @server)
+      else @server.listen @config.port, ((e) -> if e => rej e else res @server)
+    p.then (server) ~> @localctl.init!then -> server
 
   watch: ({logger, i18n}) ->
     @version = 'na'
@@ -239,6 +241,10 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @route.api = aux.routecatch express.Router {mergeParams: true}
         @route.auth = aux.routecatch express.Router {mergeParams: true}
         @route.consent = aux.routecatch express.Router {mergeParams: true}
+
+        # local control channel ( unix domain socket, see ./localctl.ls ).
+        # sets up `@route.localctl` for modules to register handlers.
+        @localctl = localctl @
 
         # health check endpoint
         app.get "/d/health", (req, res) -> res.json {}

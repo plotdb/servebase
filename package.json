@@ -33,6 +33,7 @@
     "start": "NODE_ENV=production ./start",
     "dev": "./start",
     "demo": "./start base",
+    "cachestamp": "curl -s --unix-socket .localctl.sock -X POST http://localhost/cachestamp && echo ' <- new cachestamp'",
     "try": "./node_modules/.bin/lsc log.ls",
     "prebuild": "rm -rf .backend; node_modules/.bin/lsc -co .backend backend",
     "pug-rebuild": "./tool/build.sh",
