@@ -12,7 +12,7 @@ fetch = ({url, form}) ->
   )
   p
     .then (ret) -> ret.data
-    .catch (e) -> rej e
+    .catch (e) -> Promise.reject e
 
 captcha.prototype = Object.create(Object.prototype) <<<
   verify: (req, res, next) ->
@@ -61,7 +61,7 @@ captcha.verifier =
     )
     p
       .then (data) ->
-        if data.success == false => return reject(lderror 1009)
+        if data.success == false => return lderror.reject 1009
         {score: if data.success => 1 else if data.score => that else 0, verified: true}
       .catch (e) -> return if lderror.id(e) == 1009 => e else lderror.reject 1010
 
@@ -75,9 +75,8 @@ captcha.verifier =
     )
     p
       .then (data) ->
-        if data.success == false => return reject(lderror 1009)
+        if data.success == false => return lderror.reject 1009
         {score: if data.success => 1 else if data.score => that else 0, verified: true}
-        {score: data.score, verified: true}
       .catch (e) -> return if lderror.id(e) == 1009 => e else lderror.reject 1010
 
 module.exports = captcha

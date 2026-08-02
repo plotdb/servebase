@@ -21,7 +21,7 @@
     return p.then(function(ret){
       return ret.data;
     })['catch'](function(e){
-      return rej(e);
+      return Promise.reject(e);
     });
   };
   captcha.prototype = (ref$ = Object.create(Object.prototype), ref$.verify = function(req, res, next){
@@ -106,7 +106,7 @@
       return p.then(function(data){
         var that;
         if (data.success === false) {
-          return reject(lderror(1009));
+          return lderror.reject(1009);
         }
         return {
           score: data.success
@@ -133,16 +133,12 @@
       return p.then(function(data){
         var that;
         if (data.success === false) {
-          return reject(lderror(1009));
+          return lderror.reject(1009);
         }
-        ({
+        return {
           score: data.success
             ? 1
             : (that = data.score) ? that : 0,
-          verified: true
-        });
-        return {
-          score: data.score,
           verified: true
         };
       })['catch'](function(e){
