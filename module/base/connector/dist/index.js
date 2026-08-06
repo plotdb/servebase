@@ -2,15 +2,48 @@
 (function(){
   var connector, ref$;
   connector = function(opt){
+    var ldcv, pending, i$, ref$, len$, k, this$ = this;
     opt == null && (opt = {});
     this.ws = null;
     this._running = false;
     this._tag = "[@servebase/connector]";
     this._init = opt.init;
-    this._ldcv = opt.ldcv || function(){};
+    ldcv = opt.ldcv || function(){};
+    this._ldcv = typeof ldcv === 'function'
+      ? {
+        offline: function(v, ctx){
+          return ldcv.call(this$, v, ctx);
+        }
+      }
+      : ldcv.toggle
+        ? {
+          offline: function(v){
+            return ldcv.toggle(v);
+          }
+        }
+        : {
+          offline: ldcv.offline || function(){},
+          hint: ldcv.unstable
+        };
     this._error = opt.error || null;
     this._reconnect = opt.reconnect;
     this._path = opt.path || '/ws';
+    this._peekcfg = {
+      threshold: 3000,
+      interval: 1000
+    };
+    pending = opt.pending || null;
+    this._pending = typeof pending === 'function'
+      ? pending
+      : (pending || {}).check || null;
+    if (pending && typeof pending !== 'function') {
+      for (i$ = 0, len$ = (ref$ = ['threshold', 'interval']).length; i$ < len$; ++i$) {
+        k = ref$[i$];
+        if (pending[k] != null) {
+          this._peekcfg[k] = pending[k];
+        }
+      }
+    }
     this._evthdr = {};
     this.hub = {};
     return this;
@@ -62,24 +95,50 @@
       return;
     }
     this._running = true;
-    if (this._ldcv.toggle) {
-      this._ldcv.toggle(true);
-    } else {
-      this._ldcv(true);
-    }
+    this._ldcv.offline(true, {
+      ws: this.ws
+    });
     return debounce(1000).then(function(){
       return this$.open();
     }).then(function(){
       return debounce(350);
     }).then(function(){
-      if (this$._ldcv.toggle) {
-        return this$._ldcv.toggle(false);
-      } else {
-        return this$._ldcv(false);
-      }
+      return this$._ldcv.offline(false, {
+        ws: this$.ws
+      });
     }).then(function(){
       return this$._running = false;
     });
+  }, ref$._peek = function(){
+    var pending, e, now, waited, this$ = this;
+    pending = false;
+    try {
+      pending = !!this._pending();
+    } catch (e$) {
+      e = e$;
+      pending = false;
+    }
+    now = Date.now();
+    if (!pending || !(this._peekcfg.last != null)) {
+      this._peekcfg.last = now;
+    }
+    waited = now - this._peekcfg.last;
+    if (this.ws && this.ws.status() === 2 && waited >= this._peekcfg.threshold) {
+      if (!this._hintOn) {
+        this._hintOn = true;
+        this._ldcv.hint(true, {
+          ws: this.ws
+        });
+      }
+    } else if (this._hintOn) {
+      this._hintOn = false;
+      this._ldcv.hint(false, {
+        ws: this.ws
+      });
+    }
+    return setTimeout(function(){
+      return this$._peek();
+    }, this._peekcfg.interval);
   }, ref$.init = function(){
     var this$ = this;
     this.ws = new ews({
@@ -93,6 +152,10 @@
     });
     if (this._init) {
       this._init();
+    }
+    if (this._pending && this._ldcv.hint) {
+      this._peekcfg.last = Date.now();
+      this._peek();
     }
     return this.open();
   }, ref$);
