@@ -105,5 +105,8 @@
   },
   "optionalDependencies": {
     "@plotdb/guides": "github:plotdb/guides#master"
+  },
+  "volta": {
+    "node": "20.17.0"
   }
 }
