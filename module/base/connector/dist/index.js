@@ -28,6 +28,9 @@
     this._error = opt.error || null;
     this._reconnect = opt.reconnect;
     this._path = opt.path || '/ws';
+    this._grace = opt.grace != null ? opt.grace : 2000;
+    this._covered = false;
+    this._hintOn = false;
     this._peekcfg = {
       threshold: 3000,
       interval: 1000
@@ -36,12 +39,16 @@
     this._pending = typeof pending === 'function'
       ? pending
       : (pending || {}).check || null;
+    this._guard = true;
     if (pending && typeof pending !== 'function') {
       for (i$ = 0, len$ = (ref$ = ['threshold', 'interval']).length; i$ < len$; ++i$) {
         k = ref$[i$];
         if (pending[k] != null) {
           this._peekcfg[k] = pending[k];
         }
+      }
+      if (pending.guard != null) {
+        this._guard = !!pending.guard;
       }
     }
     this._evthdr = {};
@@ -89,52 +96,72 @@
     })['catch'](function(e){
       return Promise.reject(e);
     });
+  }, ref$._hint = function(v){
+    if (!this._ldcv.hint || this._hintOn === !!v) {
+      return;
+    }
+    this._hintOn = !!v;
+    return this._ldcv.hint(!!v, {
+      ws: this.ws
+    });
   }, ref$.reopen = function(){
-    var this$ = this;
+    var summon, hold, this$ = this;
     if (this._running) {
       return;
     }
     this._running = true;
-    this._ldcv.offline(true, {
-      ws: this.ws
-    });
-    return debounce(1000).then(function(){
-      return this$.open();
-    }).then(function(){
-      return debounce(350);
-    }).then(function(){
-      return this$._ldcv.offline(false, {
+    this._covered = false;
+    this._hint(true);
+    summon = function(){
+      if (this$.ws && this$.ws.status() === 2) {
+        return;
+      }
+      this$._covered = true;
+      this$._hint(false);
+      return this$._ldcv.offline(true, {
         ws: this$.ws
       });
+    };
+    hold = this._grace > 0
+      ? debounce(summon, this._grace)()
+      : (summon(), null);
+    return debounce(200).then(function(){
+      return this$.open();
     }).then(function(){
+      if (hold) {
+        hold.cancel();
+      }
+      this$._hint(false);
+      if (!this$._covered) {
+        return;
+      }
+      return debounce(350).then(function(){
+        return this$._ldcv.offline(false, {
+          ws: this$.ws
+        });
+      });
+    }).then(function(){
+      this$._covered = false;
       return this$._running = false;
     });
   }, ref$._peek = function(){
     var pending, e, now, waited, this$ = this;
-    pending = false;
-    try {
-      pending = !!this._pending();
-    } catch (e$) {
-      e = e$;
+    if (this._running) {
+      this._peekcfg.last = Date.now();
+    } else {
       pending = false;
-    }
-    now = Date.now();
-    if (!pending || !(this._peekcfg.last != null)) {
-      this._peekcfg.last = now;
-    }
-    waited = now - this._peekcfg.last;
-    if (this.ws && this.ws.status() === 2 && waited >= this._peekcfg.threshold) {
-      if (!this._hintOn) {
-        this._hintOn = true;
-        this._ldcv.hint(true, {
-          ws: this.ws
-        });
+      try {
+        pending = !!this._pending();
+      } catch (e$) {
+        e = e$;
+        pending = false;
       }
-    } else if (this._hintOn) {
-      this._hintOn = false;
-      this._ldcv.hint(false, {
-        ws: this.ws
-      });
+      now = Date.now();
+      if (!pending || !(this._peekcfg.last != null)) {
+        this._peekcfg.last = now;
+      }
+      waited = now - this._peekcfg.last;
+      this._hint(this.ws && this.ws.status() === 2 && waited >= this._peekcfg.threshold);
     }
     return setTimeout(function(){
       return this$._peek();
@@ -156,6 +183,25 @@
     if (this._pending && this._ldcv.hint) {
       this._peekcfg.last = Date.now();
       this._peek();
+    }
+    if (this._pending && this._guard && typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', function(e){
+        var p, err;
+        p = false;
+        try {
+          p = !!this$._pending();
+        } catch (e$) {
+          err = e$;
+          p = false;
+        }
+        if (!p) {
+          return;
+        }
+        e.preventDefault();
+        if (!e.returnValue) {
+          return e.returnValue = true;
+        }
+      });
     }
     return this.open();
   }, ref$);

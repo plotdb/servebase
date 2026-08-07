@@ -11,6 +11,14 @@ with following constructor options:
  - `reconnect()`: customized function called when (re)connected. optional.
  - `error(e)`: customized error handler for connecting failures. optional.
  - `path`: websocket server path. default `/ws`.
+ - `grace`: delay (ms) between disconnection confirmed and `ldcv.offline`
+   actually summoned. reconnection starts right away regardless; if it
+   completes within the window the blocking cover never shows - no cover
+   flash for transient outages. `ldcv.unstable` (if provided) is summoned
+   immediately instead, so the window is not silent. safe as long as the
+   sync layer queues and resends unacknowledged ops (e.g. sharedb
+   pendingOps); set `0` to summon the cover immediately (the pre-grace
+   behavior). default 2000.
  - `ldcv`: ui hooks, named after connection states. accepts following forms:
    - `{offline, unstable}`: an object with callbacks per connection state:
      - `offline(v, ctx)`: disconnection is confirmed. toggle the blocking
@@ -41,6 +49,12 @@ with following constructor options:
    - `threshold`: report unstable when pending lasts longer than this (ms).
      default 3000.
    - `interval`: polling interval (ms). default 1000.
+   - `guard`: warn when leaving the page while `check()` is truthy - data
+     entered may not have reached the server yet. browsers only allow their
+     own generic confirm dialog here, no custom message. registered with
+     `addEventListener` and acts only when pending, so it coexists with any
+     other `beforeunload` handler on the page. default true; set `false` to
+     opt out.
 
 A typical modern setup:
 
@@ -80,11 +94,13 @@ Disconnection can never be known immediately - a half-open socket accepts
 writes that silently go nowhere until heartbeat timeouts declare it dead.
 connector thus reports two escalating states:
 
- - `unstable`: `pending()` stays truthy beyond `threshold` while the socket
-   still looks connected. data may not have been delivered; the ui should
-   warn without blocking (e.g., a small banner).
- - `offline`: the socket is declared dead and reconnection is in progress;
-   the blocking cover takes over. `unstable` is dismissed automatically at
-   this point.
+ - `unstable`: summoned in two situations - (a) `pending()` stays truthy
+   beyond `threshold` while the socket still looks connected: data may not
+   have been delivered; (b) disconnection just got confirmed and
+   reconnection is in progress, through the `grace` window. either way the
+   ui should warn without blocking (e.g., a small banner).
+ - `offline`: reconnection did not complete within the `grace` window; the
+   blocking cover takes over and `unstable` yields. a transient outage thus
+   shows at most the non-blocking hint.
 
 Both are dismissed once reconnection completes and pending drains.
