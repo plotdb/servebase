@@ -8,8 +8,30 @@ Node server should run as a Daemon with auto-restart mechanism. This can be done
  - as a service - outside container
    - use `sysvinit` or `systemd`:
      - systemd: https://nodesource.com/blog/running-your-node-js-app-with-systemd-part-1
+   - with systemd, run `./start --noloop` so restart is handled by systemd
+     ( `Restart=always` ) instead of the inner bash loop. example unit:
+
+         [Unit]
+         Description=<project-name> server
+         After=network.target
+
+         [Service]
+         Type=simple
+         WorkingDirectory=/path/to/project
+         Environment=NODE_ENV=production
+         ExecStart=/path/to/project/start --noloop
+         Restart=always
+         RestartSec=1
+
+         [Install]
+         WantedBy=multi-user.target
+
+     stdout goes to journald; follow it live with `journalctl -u <unit> -f`,
+     or use `npm run log` ( tail + pino-pretty on server.log ).
  - as a process, through `screen` - not reboot-proof but it's acceptable.
    - auto restart when process crashed with bash while loop.
+   - identify process by `ps` ( argv carries `start:<dirname>` / `--home <pwd>` );
+     stop with `npm stop` ( kills pid in `.server.pid`, trap takes down the group ).
 
 
 ## Note

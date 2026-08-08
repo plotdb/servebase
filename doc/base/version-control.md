@@ -32,6 +32,32 @@ This document describes how we manage versions, releases and different customiza
  - only branch when we need hotfix. otherwise simply use tag.
 
 
+## versioning: servebase vs derived projects
+
+servebase and each derived project keep their own versions, independently:
+
+ - servebase version:
+   - tracked by git tags + `doc/base/CHANGELOG.md` ( `## master` section for unreleased changes )
+   - servebase does NOT bump the `version` field in `package.json` — that file is shared,
+     and bumping it would create a merge conflict for every derived project.
+     the `version` field belongs to derived projects.
+ - derived project version:
+   - tracked by its own git tags + root-level `CHANGELOG.md` + `package.json` version field.
+   - root-level `CHANGELOG.md` is reserved for derived projects; servebase must not create one.
+ - which servebase version a derived project is based on:
+   - `doc/base/CHANGELOG.md` comes along when merging from servebase — its topmost
+     version section tells the current base version. no extra marker file needed.
+   - machine-readable alternative: `git merge-base HEAD servebase/master` + `git describe --tags`
+ - upgrading across servebase versions:
+   - breaking changes are documented per version in `doc/base/migration-note.md`.
+     when an upgrade spans multiple versions, walk through the notes version by version.
+
+in general, servebase keeps its own files under its own namespace
+( `doc/base/`, `backend/base/`, `frontend/base/`, `config/base/`, `module/base/`,
+`context/servebase/` ) so derived projects can add their own files
+( e.g. `context/project/`, root-level `CHANGELOG.md` ) without merge conflicts.
+
+
 ## private files
 
 Following files will (and should) be ignored, and thus won't be committed to version control system, based on the  `.gitignore` settings:
