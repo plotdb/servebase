@@ -50,10 +50,14 @@
     alias: 'c',
     description: "config file name. `secret` if omitted. for accessing `config/private/[config].ls`",
     type: 'string'
+  }).option('home', {
+    description: "project home directory. identity hint for ps / process.title",
+    type: 'string'
   }).help('help').alias('help', 'h').check(function(argv, options){
     return true;
   }).argv;
   cfgName = argv.c;
+  process.title = "servebase:" + path.basename(argv.home || process.cwd());
   try {
     secret = config.from("private/" + (cfgName || 'secret'));
   } catch (e$) {
@@ -62,6 +66,9 @@
     console.log("if this file doesn't exist, you should add one. check config/private/demo.ls for reference");
     console.log("error message: ", e.toString());
     process.exit(-1);
+  }
+  if (secret.sitename) {
+    process.title += ":" + secret.sitename;
   }
   withDefault = function(cfg, defcfg){
     var _;

@@ -33,6 +33,8 @@
     "start": "NODE_ENV=production ./start",
     "dev": "./start",
     "demo": "./start base",
+    "stop": "if [ -f .server.pid ]; then PID=$(cat .server.pid); kill $PID 2>/dev/null; pkill -TERM -P $PID 2>/dev/null; echo 'server stopped.'; else echo 'no .server.pid found; server not running?'; fi",
+    "log": "tail -f server.log | ./node_modules/.bin/pino-pretty -c -o '[{module}] {msg} {responseTime}' -i req,res,hostname,pid,module,responseTime -t 'yy/mm/dd HH:MM:sso'",
     "cachestamp": "curl -s --unix-socket .localctl.sock -X POST http://localhost/cachestamp && echo ' <- new cachestamp'",
     "try": "./node_modules/.bin/lsc log.ls",
     "prebuild": "rm -rf .backend; node_modules/.bin/lsc -co .backend backend",

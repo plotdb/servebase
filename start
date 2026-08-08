@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
-trap "kill 0" exit # killing all process on current group on exit
+
+# re-exec with an identifiable argv[0] ( `start:<dirname>` ) so derived projects
+# are distinguishable in `ps` output.
+if [ -z "$SB_START_NAMED" ]; then
+  SB_START_NAMED=1 exec -a "start:$(basename "$PWD")" bash "$0" "$@"
+fi
+
+trap "rm -f .server.pid; kill 0" exit # killing all process on current group on exit
 trap "echo server loop stopped; exit" SIGINT SIGTERM # on ctrl-c, exit script.
+
+# --noloop: run server once without auto-restart loop,
+# for service managers ( e.g., systemd with Restart=always ) that restart on their own.
+LOOP=1
+CFG=""
+for a in "$@"; do
+  case "$a" in
+    --noloop|-n) LOOP=0 ;;
+    *) CFG="$a" ;;
+  esac
+done
+
+echo $$ > .server.pid # for `npm stop`; killing this pid takes down the whole group.
 
 # pino-pretty params
 #  -i : ignore
@@ -12,18 +32,22 @@ while [ 1 ]; do
 
   if [[ $NODE_ENV == "production" ]]; then
     # production - use prebuilt js files
-    CMD="node ./.backend/engine/index.js -c $1"
+    CMD=(node ./.backend/engine/index.js)
   else
     # dev - use livescript files
-    CMD="./node_modules/.bin/lsc ./backend/engine/index -c $1"
+    CMD=(./node_modules/.bin/lsc ./backend/engine/index)
   fi
+  ARGS=(--home "$PWD") # identity hint; also sets process.title in engine
+  if [ -n "$CFG" ]; then ARGS+=(-c "$CFG"); fi
 
-  $CMD | \
+  "${CMD[@]}" "${ARGS[@]}" | \
      tee -a server.log | \
      ./node_modules/.bin/pino-pretty \
        -c -o "[{module}] {msg} {responseTime}" \
        -i req,res,hostname,pid,module,responseTime \
        -t "yy/mm/dd HH:MM:sso"
+
+  if [ "$LOOP" = "0" ]; then break; fi
 
   echo "server down; try to auto restart after 1s."
   sleep 1;
