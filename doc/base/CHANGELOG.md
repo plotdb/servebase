@@ -16,6 +16,14 @@
  - tweaks:
    - start: build server command with bash arrays so paths with spaces are safe;
      omit `-c` when no config name is given.
+ - security:
+   - deps: `npm audit fix` ( 46 -> 24 advisories; axios, ws, shell-quote,
+     i18next-http-middleware, babel, body-parser among others )
+   - pin `re2` to `~1.23.0`: 1.26.x pulls node-gyp 13 / undici 7, which needs
+     `worker_threads.markAsUncloneable` ( Node >= 22.10 ) and fails to build on
+     Node 20. revert to `^1.26.1` after Node 22 upgrade.
+     see `context/servebase/todo/node22-and-remaining-vulns.md` for the rest.
+   - volta: pin node 20.17.0 -> 20.20.2
  - docs:
    - add `doc/base/CHANGELOG.md` ( this file ) - servebase changelog lives here,
      not in root, which is reserved for derived projects.
