@@ -1,4 +1,4 @@
-require! <[fs path @servebase/config @plotdb/colors js-yaml lderror re2 curegex jsdom dompurify]>
+require! <[fs path @servebase/config @plotdb/colors js-yaml lderror re2js curegex jsdom dompurify]>
 require! <[nodemailer nodemailer-mailgun-transport]>
 require! <[./utils/md]>
 
@@ -10,7 +10,7 @@ jsdom-option =
 dom = new jsdom.JSDOM(jsdom-doc, jsdom-option)
 purify = dompurify (new jsdom.JSDOM '').window
 
-re-email = curegex.tw.get('email', re2)
+re-email = curegex.tw.get('email', re2js.RE2JS)
 is-email = -> return re-email.exec(it)
 
 # # sample code for sending mail

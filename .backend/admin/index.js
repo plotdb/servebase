@@ -3,14 +3,14 @@
   (function(it){
     return module.exports = it;
   })(function(backend){
-    var db, config, api, session, express, lderror, re2, curegex, suuid, aux, throttle, route, reEmail, isEmail;
+    var db, config, api, session, express, lderror, re2js, curegex, suuid, aux, throttle, route, reEmail, isEmail;
     db = backend.db, config = backend.config, api = backend.route.api, session = backend.session;
     if (config.base !== 'base') {
       return;
     }
     express = require('express');
     lderror = require('lderror');
-    re2 = require('re2');
+    re2js = require('re2js');
     curegex = require('curegex');
     suuid = require('@plotdb/suuid');
     aux = require('@servebase/backend/aux');
@@ -51,7 +51,7 @@
         return res.send(rows);
       });
     });
-    reEmail = curegex.tw.get('email', re2);
+    reEmail = curegex.tw.get('email', re2js.RE2JS);
     isEmail = function(it){
       return reEmail.exec(it);
     };

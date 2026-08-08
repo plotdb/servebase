@@ -24,6 +24,9 @@
      Node 20. revert to `^1.26.1` after Node 22 upgrade.
      see `context/servebase/todo/node22-and-remaining-vulns.md` for the rest.
    - volta: pin node 20.17.0 -> 20.20.2
+   - replace native `re2` with `re2js` ( pure-JS RE2 port ) via curegex 0.1.0
+     engine support - no more native compilation issues, works on any Node
+     version; also clears re2's own moderate advisory ( 24 -> 23 )
  - docs:
    - add `doc/base/CHANGELOG.md` ( this file ) - servebase changelog lives here,
      not in root, which is reserved for derived projects.

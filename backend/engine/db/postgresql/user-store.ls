@@ -1,6 +1,6 @@
-require! <[crypto bcrypt argon2 lderror re2 curegex @loadingio/debounce.js]>
+require! <[crypto bcrypt argon2 lderror re2js curegex @loadingio/debounce.js]>
 
-re-email = curegex.tw.get('email', re2)
+re-email = curegex.tw.get('email', re2js.RE2JS)
 is-email = -> return re-email.exec(it)
 
 user-store = (opt = {}) ->

@@ -13,12 +13,13 @@
 
 ## 待辦（依優先序）
 
-1. server 環境升 Node 22 LTS 後：
-   - volta pin node@22
-   - re2 改回 `^1.26.1`，跑 `npm audit fix`
-2. 剩餘 critical（都是 major bump，各需一輪測試）：
+1. ~~re2~~ 已解決（2026/08/08）：curegex 0.1.0 支援 re2js（RE2 純 JS port），
+   servebase 已改用 `curegex.tw.get('email', RE2JS)` 並移除 re2 依賴，
+   native 編譯問題與 re2 的 moderate advisory 一併消失
+2. server 環境升 Node 22 LTS 後：volta pin node@22
+3. 剩餘 critical（都是 major bump，各需一輪測試）：
    - `i18next-fs-backend` → 2.6.7（測 i18n）
    - `argon2` → 0.45.1（測 auth 登入；順帶清掉舊 tar 那串 critical/high）
-3. 剩餘 high：`nodemailer` → 9（測寄信）、`canvas` → 3、`@plotdb/srcbuild` → 0.0.70
-4. 自家套件：`@plotdb/suuid` 升 uuid 後發版（清 moderate）
-5. dev deps 低優先：`mocha` → 11、`nyc` → 18
+4. 剩餘 high：`nodemailer` → 9（測寄信）、`canvas` → 3、`@plotdb/srcbuild` → 0.0.70
+5. 自家套件：`@plotdb/suuid` 升 uuid 後發版（清 moderate）
+6. dev deps 低優先：`mocha` → 11、`nyc` → 18

@@ -2,7 +2,7 @@
 {db,config,route:{api},session} = backend
 if config.base != \base => return
 
-require! <[express lderror re2 curegex @plotdb/suuid]>
+require! <[express lderror re2js curegex @plotdb/suuid]>
 require! <[@servebase/backend/aux @servebase/backend/throttle]>
 
 route = aux.routecatch express.Router {mergeParams: true}
@@ -33,7 +33,7 @@ route.post \/users/, (req, res, next) ->
       rows.map -> delete it.password
       res.send rows
 
-re-email = curegex.tw.get('email', re2)
+re-email = curegex.tw.get('email', re2js.RE2JS)
 is-email = -> return re-email.exec(it)
 
 route.post \/user/delete, (req, res) ->
