@@ -105,9 +105,16 @@ module.exports = do
     # we used to store provider under auth (e.g., auth.google), which is still supported but deprecated.
     # pepper for password hashing (argon2id). use a random, high-entropy string.
     # store this in an environment variable or secret manager, never in source control.
+    #  - `keys` holds every pepper ever used, named; `current` selects the one to
+    #    hash with. old keys must stay so that existing hashes still verify -
+    #    they carry their key name as a `<name>:` prefix.
+    #  - a `current` with no matching entry in `keys` throws at startup
+    #    ( backend/engine/db/postgresql/user-store.ls ).
+    #  - omit `current` entirely to hash without a pepper.
     pepper:
       current: \fancy
-      fancy: \some-random-pepper
+      keys:
+        fancy: \some-random-pepper
     providers:
       # GCP -> API & Services -> Credentials -> OAuth Client ID
       google:
