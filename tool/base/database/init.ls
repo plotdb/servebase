@@ -6,7 +6,14 @@ fs = require \fs-extra
 root    = path.join __dirname, \../../..
 sql-dir = path.join root, \config/base/db
 
-secret = require path.join(root, \config/private/secret)
+# same `-c <name>` convention as `./start`, so a repo holding several site
+# configs can init the matching database instead of only `secret`.
+cfg-name = do ->
+  argv = process.argv.slice 2
+  idx = argv.findIndex -> it in <[-c --config-name]>
+  if idx >= 0 and argv[idx + 1] => argv[idx + 1] else \secret
+
+secret = require path.join(root, "config/private/#cfg-name")
 cfg      = secret.db.postgresql
 dbname   = cfg.database
 username = cfg.user
