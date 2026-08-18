@@ -27,7 +27,8 @@ Node server should run as a Daemon with auto-restart mechanism. This can be done
          WantedBy=multi-user.target
 
      stdout goes to journald; follow it live with `journalctl -u <unit> -f`,
-     or use `npm run log` ( tail + pino-pretty on server.log ).
+     or use `npm run log` ( pretty view over server.log, with tail / filter /
+     date-range options - see `doc/base/index.md` -> Log ).
  - as a process, through `screen` - not reboot-proof but it's acceptable.
    - auto restart when process crashed with bash while loop.
    - identify process by `ps` ( argv carries `start:<dirname>` / `--home <pwd>` );

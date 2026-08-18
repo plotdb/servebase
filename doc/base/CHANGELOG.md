@@ -8,8 +8,12 @@
    - `npm stop`: stop server as a unit. start script writes `.server.pid` ( gitignored,
      removed on exit ); stop kills both the start script and its pipeline children,
      since bash defers traps while waiting on a foreground pipeline.
-   - `npm run log`: live pretty log window ( `tail -f server.log | pino-pretty` ),
-     decoupled from the server process.
+   - `npm run log`: pretty log window over `server.log`, decoupled from the server
+     process. now backed by `tool/base/logview`, so it takes arguments
+     ( `npm run log -- <opt>` ): `-n`/`-a` line window in a pager instead of follow,
+     `-f` follow, `-m` module, `-l` min level, `-g` regex, `-s`/`-e` date range and
+     `-d` dayspan ( yyyymmdd, UTC ), plus an alternate log path. bare `npm run log`
+     still follows, as before. see `doc/base/index.md` -> Log.
    - `./start --noloop` ( or `-n` ): run once without auto-restart loop, for service
      managers that restart on their own ( e.g. systemd `Restart=always` ).
      example systemd unit added in `infrastructure.md`.

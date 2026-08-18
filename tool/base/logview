@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# viewer for server.log ( pino ndjson ). see `npm run log`.
+#
+#   npm run log                     follow, like `tail -f` ( default when no option given )
+#   npm run log -- -n 500           last 500 lines, pretty, in less ( starts at bottom )
+#   npm run log -- -a               whole file
+#   npm run log -- -f -n 500        follow, starting from the last 500 lines
+#   npm run log -- -m db            only module `db`
+#   npm run log -- -l 40            only level >= 40 ( 30 info / 40 warn / 50 error )
+#   npm run log -- -g 'timeout'     only lines matching regex ( raw json, before format )
+#   npm run log -- -s 20260810      from 2026-08-10 00:00 ( UTC, inclusive )
+#   npm run log -- -e 20260817      until 2026-08-17 23:59:59 ( UTC, inclusive )
+#   npm run log -- -d 3             last 3 days ( dayspan; shorthand for -s )
+#   npm run log -- other.log        read another file
+#
+# any date option scans the whole file unless -n / -a is also given,
+# and drops non-json lines ( they carry no timestamp ).
+# dates are UTC, matching the timestamps pino-pretty prints.
+#
+# in less: / search, n/N next-prev, G end, g top, q quit, -S toggle line wrap.
+
+set -o pipefail
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+LOG=${LOG:-server.log}
+N=2000; N_SET=0; FOLLOW=0; MOD=""; LVL=""; PAT=""; FROM=0; TO=0
+
+# no option at all: behave as the old `npm run log`, i.e. plain follow.
+if [ $# = 0 ]; then FOLLOW=1; N=200; fi
+
+# yyyymmdd [HH:MM:SS] -> epoch seconds, UTC. works on both gnu and bsd date.
+epoch() {
+  local d=$1 t=${2:-00:00:00}
+  case "$d" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+    *) echo "logview: bad date '$d', expect yyyymmdd" >&2; exit 1 ;;
+  esac
+  local s="${d:0:4}-${d:4:2}-${d:6:2} $t"
+  date -u -d "$s" +%s 2>/dev/null || date -j -u -f "%Y-%m-%d %H:%M:%S" "$s" +%s 2>/dev/null || {
+    echo "logview: cannot parse date '$d'" >&2; exit 1; }
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -n) N=$2; N_SET=1; shift 2 ;;
+    -a) N=0; N_SET=1; shift ;;
+    -f) FOLLOW=1; shift ;;
+    -m) MOD=$2; shift 2 ;;
+    -l) LVL=$2; shift 2 ;;
+    -g) PAT=$2; shift 2 ;;
+    -s) FROM=$(epoch "$2") || exit 1; FROM=$(( FROM * 1000 )); shift 2 ;;
+    -e) TO=$(epoch "$2" 23:59:59) || exit 1; TO=$(( TO * 1000 + 999 )); shift 2 ;;
+    -d) FROM=$(( ( $(date -u +%s) - $2 * 86400 ) * 1000 )); shift 2 ;;
+    -h|--help) grep '^#' "$0" | grep -v '^#!' | cut -c 3-; exit 0 ;;
+    *) LOG=$1; shift ;;
+  esac
+done
+
+[ -f "$LOG" ] || { echo "logview: no such log file: $LOG" >&2; exit 1; }
+
+# a date range is meaningless against a `tail -n` window; widen unless told otherwise.
+# under follow we keep the window, since the point there is to watch what comes next.
+if [ "$N_SET" = 0 ] && [ "$FOLLOW" = 0 ] && { [ "$FROM" != 0 ] || [ "$TO" != 0 ]; }; then N=0; fi
+
+pretty() {
+  "$ROOT/node_modules/.bin/pino-pretty" \
+    -c -o "[{module}] {msg} {responseTime}" \
+    -i req,res,hostname,pid,module,responseTime \
+    -t "yy/mm/dd HH:MM:sso"
+}
+
+# json-aware filters; non-json lines ( e.g. `[dev] deploy code ...` ) pass through,
+# except under a date filter, where they cannot be placed in time.
+filter() {
+  if [ -z "$MOD" ] && [ -z "$LVL" ] && [ "$FROM" = 0 ] && [ "$TO" = 0 ]; then cat; return; fi
+  if ! command -v jq >/dev/null; then
+    echo "logview: -m / -l / -s / -e / -d need jq installed." >&2; exit 1
+  fi
+  jq -R -r --arg m "$MOD" --arg l "${LVL:-0}" --argjson f "$FROM" --argjson t "$TO" '
+    (fromjson? ) as $o
+    | if $o == null then (if ($f > 0 or $t > 0) then empty else . end)
+      elif ($m != "" and ($o.module // "") != $m) then empty
+      elif (($o.level // 0) < ($l|tonumber)) then empty
+      elif ($f > 0 and ($o.time // 0) < $f) then empty
+      elif ($t > 0 and ($o.time // 0) > $t) then empty
+      else . end'
+}
+
+src() {
+  if [ "$FOLLOW" = 1 ]; then tail -n "${N:-200}" -f "$LOG"
+  elif [ "$N" = 0 ]; then cat "$LOG"
+  else tail -n "$N" "$LOG"; fi
+}
+
+if [ -n "$PAT" ]; then GREP=(grep -E --line-buffered "$PAT"); else GREP=(cat); fi
+
+if [ "$FOLLOW" = 1 ]; then
+  src | "${GREP[@]}" | filter | pretty
+else
+  src | "${GREP[@]}" | filter | pretty | less -R +G
+fi
