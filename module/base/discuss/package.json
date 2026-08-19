@@ -10,7 +10,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@plotdb/srcbuild": "^0.0.55",
+    "@plotdb/srcbuild": "^0.0.71",
     "livescript": "^1.6.0",
     "uglify-js": "^3.13.1"
   }
