@@ -42,10 +42,14 @@ ldld = core.loader
       core.loader.on!
       core.captcha
         .guard cb: (captcha) ->
-          ld$.fetch \/api/auth/mail/verify, {method: \POST}, {json: {captcha}}
-        .then -> debounce 1000
+          ld$.fetch \/api/auth/mail/verify, {method: \POST}, {json: {captcha}, type: \json}
+        .then (ret = {}) -> debounce 1000 .then -> ret
         .finally -> core.loader.off!
-        .then -> ldnotify.send \success, \sent.
+        .then (ret = {}) ->
+          switch ret.result
+          | \verified => ldnotify.send \warning, 'mail already verified.'
+          | \skipped => ldnotify.send \warning, 'mail skipped: address blacklisted.'
+          | otherwise => ldnotify.send \success, 'verification mail sent.'
         .catch -> core.ldcvmgr.toggle \error
 
     reauth: ~> @auth.logout!then ~> update! .then ~> @auth.prompt true, {tab: \login} .then -> update!
