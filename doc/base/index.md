@@ -45,6 +45,40 @@ To run most of the Servebase backend code you will need a corresponding database
 You may need a corresponding database configuration in your private config file.
 
 
+### Ping
+
+With several terminals or coding agents on one machine it is easy to lose track
+of which of them is running the server. `npm run ping` answers that for the
+current project:
+
+    npm run ping           # human readable status
+    npm run ping -- -j     # raw json, for scripts and agents
+    npm run ping -- -q     # no output, exit code only
+
+    server running:
+      title    servebase:servebase:demo
+      pid      90256
+      home     /Users/me/projects/servebase
+      config   config/private/secret.ls
+      port     8901
+      mode     development
+      version  rand-w4pfjuxk438
+      uptime   3h 12m 40s
+
+It exits 0 when a server is up and 1 when none is, so `npm run ping -q || npm run dev`
+is a safe way to start one only if needed.
+
+Liveness is decided by whether `.localctl.sock` accepts a connection ( the socket
+serves `/info`, see `backend/engine/localctl.ls` ), not by `.server.pid`: a pidfile
+survives `SIGKILL` and its pid may later be reused, while a leftover socket file
+refuses connection and is reported as stale. Each project root has its own socket,
+so ping never reports another project's server.
+
+`./start` runs the same check on startup and refuses to launch a second server for
+the same project, printing the running one's info instead. Pass `--force` ( `-F` )
+to start anyway.
+
+
 ### Log
 
 `./start` output logs into a log file `server.log`, with the `pino` log format.

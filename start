@@ -6,19 +6,35 @@ if [ -z "$SB_START_NAMED" ]; then
   SB_START_NAMED=1 exec -a "start:$(basename "$PWD")" bash "$0" "$@"
 fi
 
-trap "rm -f .server.pid; kill 0" exit # killing all process on current group on exit
-trap "echo server loop stopped; exit" SIGINT SIGTERM # on ctrl-c, exit script.
-
 # --noloop: run server once without auto-restart loop,
 # for service managers ( e.g., systemd with Restart=always ) that restart on their own.
+# --force: start even if another server already answers on .localctl.sock.
 LOOP=1
+FORCE=0
 CFG=""
 for a in "$@"; do
   case "$a" in
     --noloop|-n) LOOP=0 ;;
+    --force|-F) FORCE=1 ;;
     *) CFG="$a" ;;
   esac
 done
+
+# refuse to start a second server for the same project. with several terminals /
+# agents on one machine this is easy to do by accident, and the loser is whoever
+# gets EADDRINUSE. checked before the traps below are installed, so that bailing
+# out here never touches the running server's .server.pid.
+if [ "$FORCE" = 0 ] && ./tool/base/ping -q; then
+  echo "a server is already running in this project:"
+  ./tool/base/ping
+  echo
+  echo "run 'npm run log' to watch it, 'npm run stop' to stop it,"
+  echo "or './start --force' to start anyway."
+  exit 1
+fi
+
+trap "rm -f .server.pid; kill 0" exit # killing all process on current group on exit
+trap "echo server loop stopped; exit" SIGINT SIGTERM # on ctrl-c, exit script.
 
 echo $$ > .server.pid # for `npm stop`; killing this pid takes down the whole group.
 

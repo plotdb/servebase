@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# ping the server running in this project, through its local control socket.
+# see `npm run ping`.
+#
+#   npm run ping              human readable status of this project's server
+#   npm run ping -- -j        json ( for scripts / agents ). always valid json on
+#                             stdout: the server info plus `running: true`, or
+#                             `{"running":false}`. messages go to stderr.
+#   npm run ping -- -q        no output, exit code only
+#
+# exit code: 0 = a server is running for this project, 1 = none.
+#
+# liveness is decided by whether `.localctl.sock` accepts a connection, not by
+# `.server.pid`: a pidfile survives SIGKILL and its pid may later be reused,
+# while a leftover socket file refuses connection and is thus self-correcting.
+#
+# each project root has its own socket, so this never reports another project's
+# server ( see backend/engine/localctl.ls ).
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+cd "$ROOT" || exit 1
+SOCK=.localctl.sock
+PIDFILE=.server.pid
+MODE=human
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -j|--json) MODE=json; shift ;;
+    -q|--quiet) MODE=quiet; shift ;;
+    -h|--help) grep '^#' "$0" | grep -v '^#!' | cut -c 3-; exit 0 ;;
+    *) echo "ping: unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+
+# under -j, stdout is reserved for json; explanations go to stderr.
+say() {
+  case "$MODE" in
+    quiet) ;;
+    json) echo "$@" >&2 ;;
+    *) echo "$@" ;;
+  esac
+}
+down() { [ "$MODE" = json ] && echo '{"running":false}'; exit 1; }
+
+if [ ! -S "$SOCK" ]; then
+  say "no server running in $ROOT ( no $SOCK )"
+  if [ -f "$PIDFILE" ]; then
+    say "note: $PIDFILE exists without a socket - likely a stale pidfile from a crash."
+  fi
+  down
+fi
+
+# -q first: ignore ~/.curlrc, whose -w / -v style settings would corrupt the json.
+JSON=$(curl -q -s --max-time 3 --unix-socket "$SOCK" http://localhost/info 2>/dev/null)
+if [ $? != 0 ] || [ -z "$JSON" ]; then
+  say "no server running in $ROOT ( $SOCK is stale )"
+  down
+fi
+
+[ "$MODE" = quiet ] && exit 0
+if [ "$MODE" = json ]; then
+  node -e 'var d; try { d = JSON.parse(process.argv[1]) } catch (e) { d = {} }
+d.running = true; console.log(JSON.stringify(d))' "$JSON"
+  exit 0
+fi
+
+echo "server running:"
+node -e '
+var d; try { d = JSON.parse(process.argv[1]) } catch (e) { console.log(process.argv[1]); process.exit(0) }
+var s = Math.floor((d.uptime || 0) / 1000);
+var up = [[86400,"d"],[3600,"h"],[60,"m"],[1,"s"]].reduce(function(a, u) {
+  var v = Math.floor(s / u[0]); s -= v * u[0];
+  if (v || a.length || u[0] === 1) a.push(v + u[1]);
+  return a;
+}, []).join(" ");
+[ ["title", d.title], ["pid", d.pid], ["home", d.home],
+  ["config", "config/private/" + d.cfgName + ".ls"], ["port", d.port],
+  ["mode", d.mode], ["version", d.version], ["uptime", up]
+].forEach(function(r) { console.log("  " + (r[0] + "        ").slice(0, 9) + r[1]) });
+' "$JSON"

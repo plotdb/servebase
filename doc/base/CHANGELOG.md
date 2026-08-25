@@ -17,9 +17,22 @@
    - `./start --noloop` ( or `-n` ): run once without auto-restart loop, for service
      managers that restart on their own ( e.g. systemd `Restart=always` ).
      example systemd unit added in `infrastructure.md`.
+   - `npm run ping` ( `tool/base/ping` ): report whether a server is running for
+     this project, and which one - title, pid, home, config name, port, mode,
+     version, uptime. `-j` for raw json, `-q` for exit code only ( 0 up / 1 down ),
+     so agents and scripts can branch on it. liveness is decided by connecting to
+     `.localctl.sock`, not by `.server.pid`, which survives SIGKILL and whose pid
+     may be reused. backed by a new engine-level localctl handler `GET /info`.
+     see `doc/base/index.md` -> Ping.
+   - `./start` refuses to launch a second server for the same project ( prints the
+     running one's info and exits 1 ); `--force` / `-F` overrides. checked before
+     the exit traps are installed, so bailing out never removes the running
+     server's `.server.pid`.
  - tweaks:
    - start: build server command with bash arrays so paths with spaces are safe;
      omit `-c` when no config name is given.
+   - localctl callers pass `curl -q` so a user's `~/.curlrc` ( e.g. a `-w` timing
+     format ) cannot corrupt the response. affects `npm run cachestamp` too.
  - security:
    - deps: `npm audit fix` ( 46 -> 24 advisories; axios, ws, shell-quote,
      i18next-http-middleware, babel, body-parser among others )

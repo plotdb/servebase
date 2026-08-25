@@ -20,6 +20,22 @@ module.exports = (backend) ->
   backend.route.localctl.post \/cachestamp, (req, res, next) ->
     res.send "#{backend.cachestamp = new Date!getTime!}"
 
+  # identity of this running server. answering at all already proves liveness
+  # ( a stale socket file refuses connection ), so `tool/base/ping` uses this
+  # to tell whether a server is up and which project / config it belongs to.
+  backend.route.localctl.get \/info, (req, res, next) ->
+    addr = if backend.server => backend.server.address! else null
+    res.json do
+      pid: process.pid
+      title: process.title
+      home: backend.root
+      cfg-name: backend.cfg-name
+      port: (addr or {}).port or backend.config.port
+      mode: backend.mode or \development
+      version: backend.version
+      cachestamp: backend.cachestamp
+      uptime: new Date!getTime! - backend.start-time
+
   server = null
   init: -> new Promise (res, rej) ->
     if server => return res!

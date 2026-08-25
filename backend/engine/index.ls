@@ -63,6 +63,8 @@ backend = (opt = {}) ->
     production: process.env.NODE_ENV == \production
     version: 'na' # current software version.
     cachestamp: new Date!getTime! # timestamp hint for cache. by default server startup time
+    cfg-name: opt.cfg-name or \secret # private config in use. reported by localctl `/info`.
+    start-time: new Date!getTime! # for uptime reporting. see ./localctl.ls
     middleware: {} # middleware that are dynamically created with certain config, such as csurf, etc
     config: with-default(opt.config, default-config) # backend configuration
     feroot: if opt.config.base => "frontend/#{opt.config.base}" else 'frontend/base'
@@ -326,6 +328,6 @@ backend.prototype = Object.create(Object.prototype) <<< do
 backend.prototype.lng = backend.prototype.lngs
 
 if require.main == module =>
-  backend.create {config: secret}
+  backend.create {config: secret, cfg-name: cfg-name or \secret}
 
 module.exports = backend
