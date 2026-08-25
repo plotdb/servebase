@@ -1,5 +1,8 @@
 ## master
 
+
+## 0.0.1 - 2026-08-25
+
  - features:
    - start script: process identification, three-fold ( see `doc/base/infrastructure.md` -> Daemon ):
      - re-exec with argv[0] as `start:<dirname>`

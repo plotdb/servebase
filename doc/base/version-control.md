@@ -48,6 +48,11 @@ servebase and each derived project keep their own versions, independently:
    - `doc/base/CHANGELOG.md` comes along when merging from servebase — its topmost
      version section tells the current base version. no extra marker file needed.
    - machine-readable alternative: `git merge-base HEAD servebase/master` + `git describe --tags`
+ - cutting a servebase version:
+   - rename the `## master` section in `doc/base/CHANGELOG.md` to `## x.y.z - yyyy-mm-dd`
+     and open a fresh, empty `## master` above it.
+   - `git tag vx.y.z` on that commit, so `git describe --tags` works for derived projects.
+   - do NOT touch `package.json`'s `version` field ( see above ).
  - upgrading across servebase versions:
    - breaking changes are documented per version in `doc/base/migration-note.md`.
      when an upgrade spans multiple versions, walk through the notes version by version.
