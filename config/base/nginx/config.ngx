@@ -23,6 +23,13 @@ server {
     return 490;
   }
 
+  # default avatar - redirect any /assets/avatar/* to the fallback avatar image.
+  # navtop handler avatar selector by using /assets/avatar/<userid> yet demo site don't support this.
+  # put before the static-file location so *.png under this path still redirects.
+  location ~ ^/assets/avatar/ {
+    return 302 /assets/img/avatar/1.png;
+  }
+
   location ~ ^/ws$ {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header Host $host;
