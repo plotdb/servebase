@@ -105,6 +105,8 @@
       production: process.env.NODE_ENV === 'production',
       version: 'na',
       cachestamp: new Date().getTime(),
+      cfgName: opt.cfgName || 'secret',
+      startTime: new Date().getTime(),
       middleware: {},
       config: withDefault(opt.config, defaultConfig),
       feroot: opt.config.base ? "frontend/" + opt.config.base : 'frontend/base',
@@ -467,7 +469,8 @@
   backend.prototype.lng = backend.prototype.lngs;
   if (require.main === module) {
     backend.create({
-      config: secret
+      config: secret,
+      cfgName: cfgName || 'secret'
     });
   }
   module.exports = backend;

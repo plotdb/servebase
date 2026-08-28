@@ -14,6 +14,21 @@
     backend.route.localctl.post('/cachestamp', function(req, res, next){
       return res.send((backend.cachestamp = new Date().getTime()) + "");
     });
+    backend.route.localctl.get('/info', function(req, res, next){
+      var addr;
+      addr = backend.server ? backend.server.address() : null;
+      return res.json({
+        pid: process.pid,
+        title: process.title,
+        home: backend.root,
+        cfgName: backend.cfgName,
+        port: (addr || {}).port || backend.config.port,
+        mode: backend.mode || 'development',
+        version: backend.version,
+        cachestamp: backend.cachestamp,
+        uptime: new Date().getTime() - backend.startTime
+      });
+    });
     server = null;
     return {
       init: function(){
