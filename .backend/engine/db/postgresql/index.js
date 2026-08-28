@@ -147,9 +147,8 @@
     },
     query: function(q, p){
       return this.pool.connect().then(function(client){
-        return client.query(q, p).then(function(ret){
-          client.release();
-          return ret;
+        return client.query(q, p)['finally'](function(){
+          return client.release();
         });
       })['catch'](function(it){
         return Promise.reject(new lderror({

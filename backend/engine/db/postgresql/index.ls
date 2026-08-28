@@ -84,9 +84,9 @@ database.prototype = Object.create(Object.prototype) <<< do
   query: (q, p) ->
     @pool.connect!
       .then (client) ->
-        (ret) <- client.query q, p .then _
+        # release with `finally` - a rejected query leaks the client otherwise.
+        <- client.query q, p .finally _
         client.release!
-        return ret
       .catch ->
         Promise.reject new lderror {err: it, id: 0, query: q, message: "database query error"}
 
