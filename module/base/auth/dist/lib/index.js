@@ -265,6 +265,8 @@
     route.auth.get('/info', function(req, res){
       var payload, ref$;
       res.setHeader('content-type', 'application/json');
+      res.setHeader('cache-control', 'no-store');
+      res.setHeader('vary', 'Cookie');
       payload = JSON.stringify({
         csrfToken: req.csrfToken(),
         production: backend.production,

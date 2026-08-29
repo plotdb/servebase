@@ -163,6 +163,13 @@ strategy = do
 #   so if we want to prevent user from editing our code, we have to go backend for the generation.
 route.auth.get \/info, (req, res) ~>
   res.setHeader \content-type, \application/json
+  # this response carries a csrfToken and user data, so it must be explicitly
+  # marked as uncacheable. without Cache-Control we were relying on whatever each
+  # cache layer happens to default to - and those settings ( CDN / proxy ) aren't
+  # necessarily ours to control. any layer caching this would hand one user's
+  # csrfToken and personal data to another.
+  res.setHeader \cache-control, 'no-store'
+  res.setHeader \vary, 'Cookie'
   payload = JSON.stringify({
     csrfToken: req.csrfToken!
     production: backend.production
