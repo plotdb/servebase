@@ -220,6 +220,8 @@ route.auth.get \/info, (req, res) ~>
   res.setHeader \cache-control, 'no-store'
   res.setHeader \vary, 'Cookie'
   payload = JSON.stringify global-payload req
+  # TODO phasing out cookie-based session info
+  # the reader side is already disabled - see auth.fetch in this module's src/auth.ls
   res.cookie 'global', payload, { path: '/', secure: true }
   res.send payload
 

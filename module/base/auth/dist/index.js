@@ -151,7 +151,7 @@
         });
       },
       fetch: function(opt){
-        var ret, promise, this$ = this;
+        var useCookie, ret, promise, this$ = this;
         opt == null && (opt = {
           renew: true
         });
@@ -167,7 +167,11 @@
             return this$.fetch();
           });
         })();
-        ret = !opt.renew && /global=/.exec(document.cookie) ? document.cookie.split(';').map(function(it){
+        useCookie = false;
+        if (!opt.renew) {
+          console.warn("[@servebase/auth] fetch: renew:false currently has no effect - data is still fetched from the server. avoid it until the behaviour is defined again");
+        }
+        ret = useCookie && !opt.renew && /global=/.exec(document.cookie) ? document.cookie.split(';').map(function(it){
           return /^global=(.+)/.exec(it.trim());
         }).filter(function(it){
           return it;

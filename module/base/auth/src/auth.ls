@@ -84,9 +84,21 @@ auth.prototype = Object.create(Object.prototype) <<< do
         .then ~> @fetch!
     )!
 
+    # TODO phasing out cookie-based session info
+    # disabled outright rather than left to depend on `opt.renew` never being false.
+    # the writer side is still there - see /api/auth/info in this module's lib/index.ls
+    use-cookie = false
+
+    # `renew: false` currently has no effect: the data is still fetched from the
+    # server. serving a cached copy is not ruled out for the future, but the cookie
+    # it used to come from is on its way out and nothing has replaced it yet, so
+    # what renew:false should mean is undefined for now.
+    if !opt.renew =>
+      console.warn "[@servebase/auth] fetch: renew:false currently has no effect - data is still fetched from the server. avoid it until the behaviour is defined again"
+
     # if we don't force renew and there is a cache in cookie
     # otherwise we fetch data from server
-    ret = if !opt.renew and /global=/.exec(document.cookie) =>
+    ret = if use-cookie and !opt.renew and /global=/.exec(document.cookie) =>
       document.cookie
         .split \;
         .map -> /^global=(.+)/.exec(it.trim!)
