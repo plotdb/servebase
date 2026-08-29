@@ -161,6 +161,55 @@ strategy = do
 # * user could still alter cookie's content, so it's necessary to force ajax call for important action
 #   there is no way to prevent user from altering client side content,
 #   so if we want to prevent user from editing our code, we have to go backend for the generation.
+# this payload has two outlets, sharing one builder so the two can't drift apart:
+#  1. GET /api/auth/info - used by purely static pages on boot.
+#  2. server rendered pages - embedded into the html with pugutil's +register-global,
+#     so booting doesn't need an extra api call.
+@global-payload = global-payload = (req) ->
+  # not every route goes through csurf ( e.g. ext apis ), so don't assume it's there.
+  csrfToken: if req.csrfToken => req.csrfToken! else null
+  production: backend.production
+  ip: aux.ip(req)
+  user: if req.user => req.user{key, config, plan, displayname, verified, username, staff} else {}
+  captcha: captcha
+  oauth: oauth
+  policy: policy
+  version: backend.version
+  cachestamp: backend.cachestamp
+  config: backend.config.client or {}
+
+# expose the payload to every render without each call site having to pass it:
+# express merges res.locals into the render options, so a server rendered page only
+# needs `+register-global()` in its layout ( see @servebase/pugutil ).
+#
+# exposed as a function rather than a value on purpose. express merges res.locals
+# with a for-in copy, so a getter would fire on every render whether or not the page
+# actually embeds anything - and we'd have no way to tell the two apart. a function
+# is only invoked by the mixin, which gives us exactly one hook for the pages that do
+# embed user data:
+#
+#  * marking the response uncacheable is mandatory here, not hygiene. the html now
+#    carries a csrfToken and the user's own data; a shared cache would hand it to
+#    another user, and a browser cache would replay a stale plan / login state after
+#    the user changed it elsewhere.
+#  * `private` keeps it out of shared caches, `no-cache` forces revalidation on every
+#    use. we avoid `no-store` so the browser's back / forward cache still works.
+#
+# being a function also means the payload is only built for pages that need it, and
+# ordering against csurf doesn't matter - by the time a render calls this, csurf has
+# long since provided req.csrfToken.
+#
+# note nothing consumes the embedded copy on the frontend yet - see auth.fetch. the
+# mechanism is here and ready, but until the boot flow gains a real notion of
+# "look for a local copy first", enabling the mixin costs a page its cacheability
+# and buys nothing.
+app.use (req, res, next) ->
+  res.locals.{}servebase.global = ->
+    res.set \cache-control, 'private, no-cache'
+    res.set \vary, 'Cookie'
+    global-payload req
+  next!
+
 route.auth.get \/info, (req, res) ~>
   res.setHeader \content-type, \application/json
   # this response carries a csrfToken and user data, so it must be explicitly
@@ -170,18 +219,7 @@ route.auth.get \/info, (req, res) ~>
   # csrfToken and personal data to another.
   res.setHeader \cache-control, 'no-store'
   res.setHeader \vary, 'Cookie'
-  payload = JSON.stringify({
-    csrfToken: req.csrfToken!
-    production: backend.production
-    ip: aux.ip(req)
-    user: if req.user => req.user{key, config, plan, displayname, verified, username, staff} else {}
-    captcha: captcha
-    oauth: oauth
-    policy: policy
-    version: backend.version
-    cachestamp: backend.cachestamp
-    config: backend.config.client or {}
-  })
+  payload = JSON.stringify global-payload req
   res.cookie 'global', payload, { path: '/', secure: true }
   res.send payload
 

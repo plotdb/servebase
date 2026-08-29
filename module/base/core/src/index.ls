@@ -165,4 +165,7 @@ ldc.register \core, <[corecfg]>, ({corecfg}) ->
   init: proxise.once (o) -> servebase._init.apply @, [o]
 
 if module? => module.exports = servebase
-else if window? => window.servebase = servebase
+# merge rather than replace: this bundle is loaded with `defer`, so anything the page
+# put on window.servebase from an inline script ( e.g. pugutil's +register-global )
+# ran earlier and would otherwise be wiped out here.
+else if window? => window.servebase = (window.servebase or {}) <<< servebase

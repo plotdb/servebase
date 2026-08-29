@@ -4,6 +4,29 @@ mixin register-locals(name = "exports")
       ldc.register("viewlocals", [], function() {
         return !{escjson(locals[name] || null)}
       });
+
+//- embed auth's global payload ( user / csrfToken / frontend config ) into the html,
+//- so a server rendered page can hand it to the client without an /api/auth/info call.
+//- the payload comes from @servebase/auth, which puts it on res.locals.servebase.
+//-
+//- NOT WIRED UP YET: nothing on the frontend reads window.servebase.global ( see
+//- auth.fetch in @servebase/auth for why ). calling this mixin today marks the page
+//- uncacheable - which is correct, since it now carries user data - without anything
+//- taking advantage of it. it is here so the plumbing is ready and reviewed.
+//-
+//- note this is a plain script, not `type="module"` like register-locals above.
+//- the bundle is loaded with `defer`, and module scripts are deferred too - so a
+//- module here would run in document order relative to the bundle, and would come
+//- too late whenever the layout places this after the bundle's script tag. a plain
+//- script runs during parsing, so it always wins regardless of placement.
+//- note also that @servebase/core merges rather than replaces window.servebase, so
+//- what we set here survives the bundle loading afterwards.
+mixin register-global()
+  - var g = locals.servebase && locals.servebase.global && locals.servebase.global()
+  if g
+    script.
+      window.servebase = window.servebase || {};
+      window.servebase.global = !{escjson(g)};
 mixin meta(meta)
   -
     if(!meta) { meta = {} }

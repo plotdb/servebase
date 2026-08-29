@@ -17,7 +17,7 @@
       return f.call({}, it);
     };
   })(function(backend){
-    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, normalize, getUser, strategy, injectInviteToken, x$, this$ = this;
+    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, normalize, getUser, strategy, globalPayload, injectInviteToken, x$, this$ = this;
     db = backend.db, app = backend.app, config = backend.config, route = backend.route, session = backend.session;
     captcha = Object.fromEntries((function(){
       var ref$, results$ = [];
@@ -262,13 +262,10 @@
         }));
       }
     };
-    route.auth.get('/info', function(req, res){
-      var payload, ref$;
-      res.setHeader('content-type', 'application/json');
-      res.setHeader('cache-control', 'no-store');
-      res.setHeader('vary', 'Cookie');
-      payload = JSON.stringify({
-        csrfToken: req.csrfToken(),
+    this.globalPayload = globalPayload = function(req){
+      var ref$;
+      return {
+        csrfToken: req.csrfToken ? req.csrfToken() : null,
         production: backend.production,
         ip: aux.ip(req),
         user: req.user
@@ -288,7 +285,23 @@
         version: backend.version,
         cachestamp: backend.cachestamp,
         config: backend.config.client || {}
-      });
+      };
+    };
+    app.use(function(req, res, next){
+      var ref$;
+      ((ref$ = res.locals).servebase || (ref$.servebase = {})).global = function(){
+        res.set('cache-control', 'private, no-cache');
+        res.set('vary', 'Cookie');
+        return globalPayload(req);
+      };
+      return next();
+    });
+    route.auth.get('/info', function(req, res){
+      var payload;
+      res.setHeader('content-type', 'application/json');
+      res.setHeader('cache-control', 'no-store');
+      res.setHeader('vary', 'Cookie');
+      payload = JSON.stringify(globalPayload(req));
       res.cookie('global', payload, {
         path: '/',
         secure: true

@@ -253,7 +253,7 @@
   if (typeof module != 'undefined' && module !== null) {
     module.exports = servebase;
   } else if (typeof window != 'undefined' && window !== null) {
-    window.servebase = servebase;
+    window.servebase = import$(window.servebase || {}, servebase);
   }
   function import$(obj, src){
     var own = {}.hasOwnProperty;
