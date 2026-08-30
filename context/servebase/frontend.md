@@ -25,45 +25,17 @@ frontend/[site]/
 
 ## 編譯流程 (@plotdb/srcbuild)
 
-### 編譯器類型
-- **lsc** - LiveScript → JavaScript
-- **stylus** - Stylus → CSS
-- **pug** - Pug → Render Function
-- **bundle** - 合併多個檔案
-- **asset** - 複製靜態資源
+    src/ls/index.ls      ->  static/js/index.js  與  index.min.js
+    src/styl/style.styl  ->  static/css/style.css  與  style.min.css
+    src/pug/index.pug    ->  .view/index.js ( render function ) 與 static/index.html
 
-### 編譯規則
+Pug 檔第一行決定產出什麼：`//- module` 什麼都不產（純 mixin 檔），`//- view` 只產
+render function 不產 html，其餘兩者都產。
 
-#### LiveScript
-```
-src/ls/index.ls
-    ↓ srcbuild
-static/js/index.js
-```
+開發時由 `backend/engine/index.ls` 啟動監看，設定放在 `config.build`。接法、設定、
+以及這個專案才會踩到的坑（尤其 `lib.pug` 的版本解析），見
+[tools/srcbuild.md](tools/srcbuild.md)。工具本身的完整文件在 srcbuild 的 `README.md`。
 
-#### Stylus
-```
-src/styl/style.styl
-    ↓ srcbuild
-static/css/style.css
-```
-
-#### Pug
-```
-src/pug/index.pug
-    ↓ srcbuild
-.view/index.js (render function)
-```
-
-### 監控模式
-開發時 srcbuild 自動監控檔案變化並重新編譯：
-```livescript
-# backend/engine/index.ls
-srcbuild.lsp do
-  base: ['base', 'web']  # 監控的站點
-  logger: backend.log
-  i18n: backend.i18n
-```
 
 ## 資源打包 (bundle.json)
 
@@ -422,14 +394,27 @@ ln -s /mnt/storage/uploads frontend/base/static/s
 
 ## 快取策略
 
-### 版本號
-使用 cachestamp 避免快取：
-```pug
-script(src=`/assets/js/core.min.js?v=${cachestamp}`)
-```
+`+script` / `+css` 產生的 URL 分三種，快取行為完全不同：
 
-### Service Worker
-可自行實作 Service Worker 進行快取控制。
+    /assets/lib/<name>/<精確版本>/...   內容不會變      可以 immutable
+    /assets/lib/<name>/main|local/...   fedep 符號連結  必須 no-cache
+    /js /css /assets/bundle 的產出      每次 build 會變 見下
+
+第三種是重點。這些 URL 名字不變而內容會變，所以**預設只能 no-cache**（會走 ETag 拿
+304，不是不快取）。要讓它們能被長期快取，得開 content addressing——srcbuild 會依內容
+算 hash，給同一個檔第二個名字（`site.<hash>.min.js` 或 `site.min.js?v=<hash>`），
+那個名字才能設 immutable。
+
+    config.build.hash.enabled = true
+
+**注意 `cachestamp` 不是拿來做這件事的。**它是執行期的值，static HTML 在建置期就烘好
+了，塞不進去；它只用在 block registry 執行期組出來的 URL。同理 `libLoader._v` 是建置
+期的手寫 token，不隨內容改變——那正是「改了東西但跑的是舊的」的來源之一。
+
+開關與模式選擇見 [tools/srcbuild.md](tools/srcbuild.md)，nginx 規則與驗證方式見
+`doc/base/infrastructure.md` 的 Asset Cache Policy（`npm run cachecheck -- <origin>`
+可以直接驗證線上設定是否正確）。
+
 
 ## 開發建議
 

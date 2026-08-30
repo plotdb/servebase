@@ -1,432 +1,96 @@
 # @plotdb/srcbuild - 前端編譯工具
 
-## 概述
-
-srcbuild 是一個前端資源編譯與打包工具，專為 servebase 設計。負責編譯 LiveScript, Stylus, Pug 並管理資源打包。
-
-## 核心功能
-
-- **LiveScript 編譯** - .ls → .js
-- **Stylus 編譯** - .styl → .css
-- **Pug 編譯** - .pug → render function
-- **資源打包** - 合併多個檔案為 bundle
-- **監控模式** - 檔案變更自動重編譯
-- **i18n 整合** - 多語系支援
-
-## 安裝
-
-```bash
-npm install @plotdb/srcbuild
-```
-
-## 使用方式
-
-### 程式化使用（servebase 模式）
-
-```livescript
-srcbuild = require '@plotdb/srcbuild'
-
-# 初始化並啟動監控
-watcher = srcbuild.lsp do
-  base: ['base', 'web']        # 前端站點目錄
-  logger: backend.log          # Logger 實例
-  i18n: backend.i18n           # i18n 實例
-  ignored: [/node_modules/]    # 忽略的路徑
-```
-
-### 命令列使用
-
-```bash
-# 編譯
-srcbuild build
-
-# 監控模式
-srcbuild watch
-
-# 編譯 Pug
-srcbuild pug
-```
-
-## 目錄結構要求
-
-每個前端站點需遵循以下結構：
-
-```
-frontend/[site]/
-├─ src/              # 源碼
-│  ├─ ls/            # LiveScript
-│  ├─ styl/          # Stylus
-│  └─ pug/           # Pug
-├─ static/           # 輸出目錄
-│  ├─ css/           # 編譯後的 CSS
-│  └─ js/            # 編譯後的 JS
-├─ .view/            # Pug 編譯輸出
-└─ bundle.json       # 打包設定
-```
-
-## 編譯器 (Adapters)
-
-### LSC Adapter - LiveScript 編譯
-
-#### 功能
-- 編譯 .ls 檔案為 .js
-- 支援 Source Map（開發模式）
-- 壓縮（生產模式，使用 uglify-js）
-
-#### 檔案對應
-```
-src/ls/index.ls → static/js/index.js
-src/ls/auth/login.ls → static/js/auth/login.js
-```
-
-#### 選項
-```livescript
-lsc:
-  minify: true    # 壓縮輸出
-  sourcemap: true # 生成 source map
-```
-
-### Stylus Adapter - Stylus 編譯
-
-#### 功能
-- 編譯 .styl 檔案為 .css
-- 支援變數、mixin、函數
-- 壓縮（生產模式，使用 uglifycss）
-
-#### 檔案對應
-```
-src/styl/style.styl → static/css/style.css
-src/styl/components/button.styl → static/css/components/button.css
-```
-
-#### 選項
-```livescript
-stylus:
-  compress: true  # 壓縮輸出
-```
-
-#### Stylus 特性
-```stylus
-# 變數
-primary-color = #007bff
-
-# Mixin
-border-radius(n)
-  border-radius n
-
-# 使用
-.button
-  background primary-color
-  border-radius(5px)
-```
-
-### Pug Adapter - Pug 編譯
-
-#### 功能
-- 編譯 .pug 檔案為 render function
-- 支援 layout, include, mixin
-- 整合 i18n
-- 模組 include (`@/module/...`)
-
-#### 檔案對應
-```
-src/pug/index.pug → .view/index.js
-```
-
-#### Pug 編譯輸出
-```javascript
-// .view/index.js
-module.exports = function(locals) {
-  // render function
-  return html;
-};
-```
-
-#### 模組 Include
-```pug
-//- 使用 @ 表示 module 目錄
-include @/auth/web/login.pug
-include @/consent/web/banner.pug
-```
-
-實際解析為：
-```
-@/auth/web/login.pug
-  ↓
-module/base/auth/web/login.pug
-```
-
-#### Plugin 系統
-```livescript
-# 自訂 resolve
-plugins = [
-  resolve: (fn, src, opt) ->
-    if /^@\//.exec(fn) =>
-      path.resolve fn.replace(/^@\//, 'module/base/')
-    else fn
-]
-
-pug.render code, {plugins}
-```
-
-### Bundle Adapter - 資源打包
-
-#### 功能
-- 合併多個 CSS/JS 檔案
-- 壓縮輸出
-- 打包 Web Components (block)
-- 版本控制
-
-#### 設定檔 (bundle.json)
-```json
-{
-  "block": {
-    "auth": [
-      {"name": "@servebase/auth", "path": "base.html"},
-      {"name": "@servebase/auth", "path": "index.html"}
-    ]
-  },
-  "css": {
-    "vendor": [
-      "static/assets/lib/bootstrap/dist/css/bootstrap.min.css",
-      "static/assets/lib/ldloader/main/index.min.css"
-    ],
-    "core": [
-      "static/css/main.css"
-    ]
-  },
-  "js": {
-    "vendor": [
-      "static/assets/lib/bootstrap.native/dist/bootstrap-native.min.js",
-      "static/assets/lib/proxise/main/index.min.js"
-    ],
-    "core": [
-      "static/js/main.js"
-    ]
-  }
-}
-```
-
-#### 輸出
-```
-static/assets/css/vendor.min.css
-static/assets/css/core.min.css
-static/assets/js/vendor.min.js
-static/assets/js/core.min.js
-static/assets/block/auth.html
-```
-
-#### Block 打包
-```json
-{
-  "block": {
-    "auth": [
-      {"name": "@servebase/auth", "path": "base.html"}
-    ]
-  }
-}
-```
-
-從 node_modules/@servebase/auth/web/base.html 打包為 static/assets/block/auth.html。
-
-### Asset Adapter - 靜態資源
-
-#### 功能
-- 複製不需編譯的資源
-- 保持目錄結構
-
-#### 檔案類型
-- 圖片（.png, .jpg, .svg）
-- 字型（.woff, .ttf）
-- 其他靜態檔案
-
-## 監控系統 (Watch)
-
-### 功能
-- 監控檔案變更
-- 自動重新編譯
-- 增量編譯（只編譯變更的檔案）
-- 錯誤處理
-
-### 運作原理
-```livescript
-# 使用 chokidar 監控檔案
-chokidar.watch ['src/**/*'], {ignored: /node_modules/}
-  .on 'change', (path) ->
-    adapter = find-adapter-for path
-    adapter.compile path
-```
-
-### 監控範圍
-- `src/ls/**/*.ls`
-- `src/styl/**/*.styl`
-- `src/pug/**/*.pug`
-- `bundle.json` 變更時重新打包
-
-## i18n 整合
-
-### Pug 模板中使用
-```pug
-h1= t('welcome')
-p= t('description', {name: user.name})
-```
-
-### 編譯時注入
-srcbuild 將 i18n 函數注入 Pug 編譯環境：
-```livescript
-pug:
-  i18n: backend.i18n
-```
-
-## 開發 vs 生產
-
-### 開發模式
-- 保留 source map
-- 不壓縮（易讀）
-- 詳細錯誤訊息
-- 啟用監控
-
-### 生產模式
-- 移除 source map
-- 壓縮 CSS/JS
-- 精簡錯誤訊息
-- 預編譯所有檔案
-
-## 錯誤處理
-
-### 編譯錯誤
-srcbuild 捕獲編譯錯誤並記錄：
-```
-[srcbuild] Error compiling src/ls/index.ls:
-  Line 10: Unexpected token
-```
-
-### 繼續運行
-即使某個檔案編譯失敗，監控繼續運行。
-
-## 擴展性
-
-### 自訂 Adapter
-可建立自訂編譯器：
-```livescript
-class MyAdapter extends base
-  @srcdir = 'src/my'
-  @desdir = 'static/my'
-  @extname = '.myext'
-
-  compile: (file) ->
-    # 編譯邏輯
-```
-
-### Plugin 系統
-Pug 支援 plugin：
-```livescript
-plugins = [
-  resolve: (filename, source, options) ->
-    # 自訂路徑解析
-]
-```
-
-## 原始碼結構
-
-位於 context/srcbuilcd/dist/：
-
-### 核心檔案
-- **main.js** - 主入口
-- **watch.js** - 監控系統
-- **adapter.js** - Adapter 基類
-- **aux.js** - 輔助函數
-- **i18n.js** - i18n 工具
-
-### 編譯器
-- **ext/lsc.js** - LiveScript
-- **ext/stylus.js** - Stylus
-- **ext/pug.js** - Pug
-- **ext/bundle.js** - 打包
-- **ext/asset.js** - 靜態資源
-- **ext/base.js** - 基類
-
-### CLI
-- **cli.js** - 命令列介面
-- **pug-cli.js** - Pug 專用 CLI
-
-## API 參考
-
-### srcbuild.lsp(options)
-啟動監控模式。
-
-#### 參數
-- **base** - 前端站點目錄（字串或陣列）
-- **logger** - Logger 實例
-- **i18n** - i18n 實例
-- **ignored** - 忽略的路徑（正則陣列）
-- **bundle** - bundle 選項
-- **lsc** - LSC 選項
-- **stylus** - Stylus 選項
-- **pug** - Pug 選項
-- **asset** - Asset 選項
-
-#### 回傳
-Watch 實例。
-
-### srcbuild.base(options)
-基礎功能。
-
-## 整合到 servebase
-
-### 啟動時載入
-```livescript
-# backend/engine/index.ls
-if !@production =>
-  srcbuild.lsp do
-    base: [@base]
-    logger: @log
-    i18n: i18n
-    ignored: [/node_modules/, /\.git/]
-```
-
-### 只在開發模式啟用
-生產環境應預先編譯：
-```bash
-npm run prebuild  # 編譯後端
-# srcbuild 在前端部署前手動執行
-```
-
-## 最佳實踐
-
-### 目錄組織
-- 源碼按功能分類（auth/, user/, admin/）
-- 避免過深的目錄結構
-- 使用有意義的檔名
-
-### 效能
-- 避免不必要的 import/include
-- 將第三方套件放 bundle 中
-- 使用 bundle 減少 HTTP 請求
-
-### 維護
-- 定期更新 srcbuild 版本
-- 檢查編譯警告
-- 保持 bundle.json 清晰
-
-### 除錯
-- 開發模式啟用 source map
-- 檢查編譯輸出的檔案
-- 使用 browser DevTools
-
-## 常見問題
-
-### Q: 編譯很慢怎麼辦？
-A:
-- 檢查 ignored 設定，排除不必要的目錄
-- 減少 bundle 中的檔案數量
-- 考慮分批編譯
-
-### Q: Pug 模組 include 找不到？
-A: 確認 @ 路徑解析正確，模組在 module/base/ 下。
-
-### Q: 監控沒有觸發重編譯？
-A: 檢查檔案是否在監控範圍內，確認沒有被 ignored。
-
-### Q: 生產環境需要 srcbuild 嗎？
-A: 不需要，應預先編譯所有資源。
+編譯 LiveScript / Stylus / Pug，管理 bundle 與 content addressing。
+
+**工具本身的完整文件在 srcbuild 自己的 `README.md`**（選項、adapter、pug 擴充、
+content addressing 的兩種模式與 manifest 結構）。這份只記 servebase 專屬的部分——
+怎麼接上去、設定放哪裡、以及在這個專案裡才會踩到的坑。
+
+
+## 在 servebase 怎麼接
+
+`backend/engine/index.ls` 的 `watch` 裡：
+
+    @srcbuild = srcbuild.lsp((@config.build or {}) <<< {
+      logger, i18n
+      base: [@feroot] ++ (@config.srcbuild or [])
+      bundle: {configFile: 'bundle.json', relativePath: true, manager: mgr}
+      ...
+    })
+
+兩個要點：
+
+ - **整包 `config.build` 會傳進 `lsp`**，所以 srcbuild 的任何選項（`hash`、`bundle`、
+   `lsc` ...）直接寫在 `config.build` 底下就會生效，不用改 wiring。
+ - **`config.build.enabled` 為 false 時整段不執行**——不監看也不編譯。生產環境若在別處
+   建好再部署，就是這個設定。
+
+express view engine 另外拿到同一個 content-hash store：
+
+    app.engine 'pug', pug({..., store: ~> @srcbuild?.stores?.0})
+
+傳的是 getter 不是實例，因為 `@watch` 比 `app.engine` 晚跑。沒有它也能動（view engine
+會退回讀磁碟上的 manifest），只是每次重建都要重讀。
+
+
+## 目錄
+
+    frontend/<site>/src/pug/    ->  static/*.html  與  .view/*.js
+    frontend/<site>/src/ls/     ->  static/js/
+    frontend/<site>/src/styl/   ->  static/css/
+    frontend/<site>/bundle.json ->  static/assets/bundle/
+    frontend/<site>/.bundle-dep/    建置記憶（.dep 與 manifest.json）
+
+哪些該進版控、為什麼，見 `doc/base/infrastructure.md` 的 Build Artifacts 一節。
+簡短版：`static/` 與 `.bundle-dep/manifest.json` 同進退，`*.dep` 可有可無，
+`.view/` 不用（會自癒）。
+
+
+## content addressing
+
+預設關閉，開關在 `config.build.hash`：
+
+    build:
+      enabled: true
+      hash:
+        enabled: true
+        mode: 'query'      # 或 'filename'
+
+**開之前 nginx 要先設對**，否則沒有任何效益（`query` 模式少了 `map $arg_v` 的話，
+每個資產都是 `no-cache`，而且看起來像在運作，因為 URL 上確實帶著 hash）。規則與驗證
+方式見 `doc/base/infrastructure.md` 的 Asset Cache Policy，驗證用
+`npm run cachecheck -- <origin>`。
+
+模式的取捨在 srcbuild README。對 servebase 衍生專案特別相關的一點：**會 commit
+`static/` 的專案應該用 `query`**——`filename` 每次內容變動都新增一個檔名，git history
+會永久保存。
+
+
+## 這個專案才會踩到的坑
+
+**`lib.pug` 是從 frontend root 解析的。**`+script` / `+css` 這些 mixin 來自
+`lib.pug`，而它是用路徑注入、用 `require.resolve(..., {paths: [feroot]})` 解析的——
+所以 `frontend/<site>/node_modules` 裡的那份**永遠贏過根目錄的**，跟正在跑的是哪個
+srcbuild 無關。
+
+實際發生過：`frontend/base/node_modules` 裡留著 2023 年的 0.0.61，注入的 `lib.pug`
+沒有 `asseturl`，於是 content addressing 完全失效——而頁面正常、`cachecheck` 全過、
+沒有任何錯誤。srcbuild 0.1.2 起會在啟動時 warn 並印出兩邊路徑。
+
+所以升 srcbuild 版本時，**根目錄、`module/base/*`、`frontend/<site>` 三處要一起升**。
+`frontend/<site>/package.json` 有一筆明確的 `@plotdb/srcbuild` devDependency 就是為此
+（它自己不建置，但 `lib.pug` 從那裡解析），不要拿掉。
+
+**`frontend/base/package-lock.json` 有進版控。**上面那次舊版復活就是它造成的——
+lockfile 記著 2023 年的解析結果，而 `package.json` 沒有直接提到 srcbuild，npm 就沒有
+理由重新解析。
+
+
+## 生產環境
+
+`config.build.enabled` 開著的話伺服器自己建，`git pull` 就地更新時 `.bundle-dep/` 與
+`static/` 都留著，重啟是暖的，什麼都不用安排。
+
+關著的話（在別處建好再部署）：`static/` 與 `.bundle-dep/manifest.json` **都要送到伺服
+器上**。少了 manifest，烘好的頁面帶著 hash URL，但 server-rendered 的頁面會退回不帶
+hash 的——同一個站台兩種行為，而且無聲。
