@@ -125,7 +125,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
           else \index.min.css
           return base + "/static/assets/lib/#{d.name}/#{d.version or \main}/#path"
 
-    srcbuild.lsp((@config.build or {}) <<< {
+    @srcbuild = srcbuild.lsp((@config.build or {}) <<< {
       logger, i18n,
       base: Array.from(new Set([@feroot] ++ (@config.srcbuild or [])))
       # in view engine below, we provide `domain` and `sysinfo` in `settings` for pug context
@@ -229,6 +229,10 @@ backend.prototype = Object.create(Object.prototype) <<< do
           srcdir: 'src/pug'
           desdir: 'static'
           base: @feroot
+          # a getter, not an instance: `@watch` runs after this, so the content-hash
+          # store does not exist yet. without it the view engine falls back to reading
+          # the manifest off disk, which works but re-reads on every rebuild.
+          store: ~> @srcbuild?.stores?.0
         })
         app.set 'domain', @config.domain
         if (c = @config.client) =>
