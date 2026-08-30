@@ -35,6 +35,7 @@
     "demo": "./start base",
     "stop": "if [ -f .server.pid ]; then PID=$(cat .server.pid); kill $PID 2>/dev/null; pkill -TERM -P $PID 2>/dev/null; echo 'server stopped.'; else echo 'no .server.pid found; server not running?'; fi",
     "ping": "./tool/base/ping",
+    "cachecheck": "./tool/base/cachecheck",
     "log": "./tool/base/logview",
     "cachestamp": "curl -q -s --unix-socket .localctl.sock -X POST http://localhost/cachestamp && echo ' <- new cachestamp'",
     "try": "./node_modules/.bin/lsc log.ls",

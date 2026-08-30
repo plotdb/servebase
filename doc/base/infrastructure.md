@@ -63,6 +63,97 @@ Node server should run as a Daemon with auto-restart mechanism. This can be done
    - 不太確定如何使用 cloud run + dockerhub, 但至少使用 google registry 是可以的. 如下例:
      - gcloud builds submit --tag gcr.io/playground-290605/test
 
+
+## Asset Cache Policy
+
+Off by default. Turn it on per project with `config.build.hash`:
+
+    build:
+      enabled: true
+      hash:
+        enabled: true       # off unless set
+        mode: 'filename'    # or 'query'
+        keep: 3             # filename mode: generations kept
+        keepDays: 0         # filename mode: also keep anything younger than this
+
+It is opt-in because it changes the url of every generated asset in every page, and it
+buys nothing until the edge serves the addressed form with a long `max-age`. Turn it on
+once the rules below are in the config that actually runs.
+
+Whatever the mode, the plain name is always written and always holds the latest build.
+That is what already-deployed html points at, what a page rendered before the first
+build falls back to, and what the nginx fallback lands on.
+
+`mode: 'filename'` writes a second copy under a content-addressed name:
+
+    /js/site.min.js                     mutable  - same name, different bytes each build
+    /js/site.4b6ac41e1bea.min.js        immutable - this name only ever means these bytes
+    /assets/bundle/vendor.min.js        mutable
+    /assets/bundle/vendor.70d9624.min.js  immutable
+
+Pages embed the hashed name. A url then names exactly one byte sequence, so it can be
+served `immutable` - but old copies have to be expired eventually, and html older than
+the retention window would 404 without the `try_files` fallback below.
+
+`mode: 'query'` leaves one file and points at `/js/site.min.js?v=4b6ac41e1bea` instead.
+Nothing accumulates and nothing 404s. The cost is that html older than the last build
+silently gets whatever the file holds now, and some CDNs ignore the query string when
+caching. Pick this if you would rather handle version drift with a "site updated, please
+reload" prompt than keep artefacts around - a client holding old js across a deploy is
+already exposed to backend api drift, so that prompt is worth having either way.
+
+The edge has to distinguish them, because the whole point of the hash is to allow a long
+`max-age` that would be wrong for the plain name:
+
+    /assets/lib/<name>/<exact version>/...   public, max-age=31536000, immutable
+    /assets/lib/<name>/main|local/...        no-cache   ( fedep symlinks, contents change )
+    <anything>.<12 hex>[.min].<ext>          public, max-age=31536000, immutable
+                                             ( with try_files back to the plain name )
+    everything else under /js /css /assets/bundle /modules   no-cache
+    images / fonts                           expires 1d
+
+Two traps, both silent:
+
+ - nginx `add_header` does not inherit. A `location` that sets any `add_header` loses the
+   whole server-level set, so every new location has to repeat the security headers.
+ - regex `location` blocks match in source order, first match wins. An extension rule
+   like `location ~ \.(?:css|js|...)$` placed early will swallow `/assets/lib` and
+   `/assets/bundle` before their own rules are reached.
+
+`config/base/nginx/config.ngx` is a sample. The configuration that actually runs is the
+project's own ( `config/web/nginx/` in a derived project ), so copying the sample is not
+enough - the rules above have to be present in whatever config is deployed.
+
+Nothing fails loudly when this is wrong. The page keeps working and keeps running stale
+code, which is why the checker exists:
+
+    npm run cachecheck -- https://your-origin      # point at nginx, not the express port
+    npm run cachecheck -- -j <origin>              # json, for CI
+    npm run cachecheck -- -s <origin>              # warnings ( missing security headers ) fail too
+
+It reads the pairs to test out of the build's own manifest
+( `<feroot>/.bundle-dep/manifest.json` ), so it checks the files the project actually
+ships. Exit code 0 means no failures.
+
+
+## Build Metadata
+
+`<feroot>/.bundle-dep/` holds what the frontend build remembers between runs:
+
+ - `<type>/<name>.dep` - per-bundle: which sources it concatenates, which pug files
+   declare it.
+ - `manifest.json` - plain url to content-addressed url, plus which files belong to
+   which generation ( used to expire old ones ).
+
+It is generated, gitignored, and safe to delete. Deleting it is not free though: with no
+manifest the first render of every page falls back to the plain urls, and the pages are
+rendered a second time once the hashes are known - a cold start rebuilt 32 pages where a
+warm one rebuilt none. Keeping the directory across deployments ( deploy in place, or
+mount it, or exclude it from the rsync delete ) avoids that double pass, and in filename
+mode lets old copies be expired properly: generations the manifest does not know about
+are never cleaned up.
+
+
 ## Database
 
  - database scaling

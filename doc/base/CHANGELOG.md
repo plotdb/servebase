@@ -1,5 +1,31 @@
 ## master
 
+ - features:
+   - content-addressed frontend assets, off by default. `config.build.hash.enabled`
+     turns it on; `mode` picks `filename` ( `<name>.<hash>[.min].<ext>`, servable as
+     immutable ) or `query` ( `<name>.min.js?v=<hash>`, nothing accumulates ). covers
+     bundles, compiled `.ls` and compiled `.styl`. see
+     `doc/base/infrastructure.md` -> Asset Cache Policy.
+   - `npm run cachecheck -- <origin>`: assert the edge applies the cache policy the
+     build assumes. urls are read from the build's own manifest, so it checks what the
+     project actually ships. `-j` json, `-q` exit code only, `-s` warnings fail too,
+     `-k` self-signed cert. a wrong cache policy is silent otherwise.
+ - tweaks:
+   - nginx sample gains the asset cache rules: content-addressed urls immutable with a
+     `try_files` fallback to the plain name, plain build output and fedep `main`/`local`
+     symlinks no-cache, exact-version lib directories immutable. each block repeats the
+     server-level security headers, since `add_header` does not inherit.
+   - the express view engine is handed the content-hash store instead of re-reading the
+     manifest off disk.
+   - `@plotdb/srcbuild` -> `^0.1.0`, in the root package and in the module workspaces.
+     all of them have to move together: `lib.pug` resolves from the frontend root.
+ - bug fix:
+   - ( in srcbuild 0.1.0, see its CHANGELOG ) dependency-graph traversal hung on cycles
+     and grew multiplicatively on shared includes; a file whose dependency analysis
+     failed was silently never rebuilt; the bundle reverse index only ever grew; bundles
+     were rewritten on every event; the express view engine ran a second full build of
+     the whole pug tree in parallel with the real one.
+
 
 ## 0.0.1 - 2026-08-25
 

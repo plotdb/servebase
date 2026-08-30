@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# check that the server in front of this project applies the cache policy the build
+# assumes. see `npm run cachecheck`.
+#
+#   npm run cachecheck -- https://serve.base     check that origin
+#   npm run cachecheck -- -j <url>               json ( for scripts / agents / CI )
+#   npm run cachecheck -- -q <url>               no output, exit code only
+#   npm run cachecheck -- -s <url>               treat warnings as failures too
+#   npm run cachecheck -- -k <url>               accept a self-signed cert ( local dev )
+#
+# exit code: 0 = no failures, 1 = at least one failure, 2 = could not run.
+#
+# point this at the EDGE ( nginx ), not at the express port: express.static answers
+# `max-age=0` for everything and knows nothing about the cache policy.
+#
+# why this exists: a wrong cache policy is silent. nothing breaks, nothing logs, the
+# page just keeps running code from an hour ago and the next person to look debugs the
+# wrong thing. the rules below are what the content-hash build depends on, so they are
+# worth asserting rather than documenting.
+#
+# the urls are not hardcoded: they are read from the build's own manifest
+# ( <feroot>/.bundle-dep/manifest.json ), so this checks the files this project
+# actually ships.
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+cd "$ROOT" || exit 2
+
+MODE=human
+STRICT=0
+INSECURE=
+ORIGIN=""
+FEROOT=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -j|--json) MODE=json; shift ;;
+    -q|--quiet) MODE=quiet; shift ;;
+    -s|--strict) STRICT=1; shift ;;
+    -k|--insecure) INSECURE=-k; shift ;;
+    -r|--feroot) FEROOT="$2"; shift 2 ;;
+    -h|--help) grep '^#' "$0" | grep -v '^#!' | cut -c 3-; exit 0 ;;
+    *) ORIGIN="$1"; shift ;;
+  esac
+done
+
+if [ -z "$ORIGIN" ]; then
+  echo "usage: npm run cachecheck -- [-j|-q] [-r <feroot>] <origin>" >&2
+  echo "e.g.   npm run cachecheck -- https://serve.base" >&2
+  exit 2
+fi
+ORIGIN="${ORIGIN%/}"
+
+# find the manifest. default layout is frontend/base, but derived projects use
+# frontend/web, so look for whichever exists unless told.
+if [ -z "$FEROOT" ]; then
+  for d in frontend/web frontend/base web .; do
+    if [ -f "$d/.bundle-dep/manifest.json" ]; then FEROOT="$d"; break; fi
+  done
+fi
+MANIFEST="$FEROOT/.bundle-dep/manifest.json"
+if [ ! -f "$MANIFEST" ]; then
+  echo "no build manifest found ( looked for <feroot>/.bundle-dep/manifest.json )." >&2
+  echo "run the server once so the build produces it, or pass -r <feroot>." >&2
+  exit 2
+fi
+
+PASS=0
+WARN=0
+FAIL=0
+ROWS=""
+
+# $1 url, $2 rule ( immutable | nocache ), $3 label
+check() {
+  local url="$1" rule="$2" label="$3" hdr cc status verdict detail
+  hdr=$(curl -q $INSECURE -sS -o /dev/null -D - --max-time 10 "$ORIGIN$url" 2>/dev/null)
+  status=$(printf '%s' "$hdr" | tr -d '\r' | awk '/^HTTP\//{s=$2} END{print s}')
+  cc=$(printf '%s' "$hdr" | tr -d '\r' | awk -F': ' 'tolower($1)=="cache-control"{print tolower($2)}' | paste -sd, -)
+  verdict=ok; detail=""
+
+  if [ "$status" != "200" ]; then
+    verdict=fail; detail="http $status"
+  elif [ "$rule" = immutable ]; then
+    # content-addressed: the url only ever names this one byte sequence
+    case "$cc" in
+      *immutable*) ;;
+      *) verdict=fail; detail="want immutable, got '${cc:-<none>}'" ;;
+    esac
+  else
+    # mutable url: same name, different bytes after the next build
+    case "$cc" in
+      *no-cache*|*no-store*|*max-age=0*) ;;
+      *) verdict=fail; detail="want no-cache, got '${cc:-<none>}'" ;;
+    esac
+  fi
+
+  # a location block with any add_header stops inheriting the server-level ones, which
+  # is easy to do by accident and equally silent.
+  if [ "$verdict" = ok ] && ! printf '%s' "$hdr" | grep -qi '^x-frame-options:'; then
+    verdict=warn; detail="no X-Frame-Options ( add_header in this location drops the server-level set )"
+  fi
+
+  case "$verdict" in
+    ok)   PASS=$((PASS+1)) ;;
+    warn) WARN=$((WARN+1)) ;;
+    *)    FAIL=$((FAIL+1)) ;;
+  esac
+  ROWS="$ROWS$verdict|$label|$url|${cc:-<none>}|$detail"$'\n'
+}
+
+# one hashed / plain pair per kind ( bundle, js, css ), taken from the manifest.
+PAIRS=$(node -e '
+  const m = require(process.argv[1]);
+  const pick = (re) => Object.keys(m).filter(k => re.test(k) && /\.min\.[a-z]+$/.test(k)).sort()[0];
+  for (const re of [/^\/assets\/bundle\//, /^\/js\//, /^\/css\//]) {
+    const k = pick(re);
+    if (k) console.log(k + "\t" + m[k].url);
+  }
+' "$ROOT/$MANIFEST" 2>/dev/null)
+
+if [ -z "$PAIRS" ]; then
+  echo "manifest has no entries to check ( $MANIFEST )." >&2
+  exit 2
+fi
+
+while IFS=$'\t' read -r plain hashed; do
+  [ -z "$plain" ] && continue
+  check "$hashed" immutable "content-addressed"
+  check "$plain"  nocache   "plain name ( fallback )"
+done <<< "$PAIRS"
+
+# fedep symlinks: the exact-version path is immutable, main/local is not.
+# a sample is enough: the point is to tell the two rules apart, not to enumerate.
+NEXACT=0
+NSYM=0
+while read -r name; do
+  [ -z "$name" ] && continue
+  [ "$NEXACT" -ge 2 ] && [ "$NSYM" -ge 2 ] && break
+  for v in $(ls -1 "$FEROOT/static/assets/lib/$name" 2>/dev/null); do
+    f=$(cd "$FEROOT/static/assets/lib/$name/$v" 2>/dev/null && ls -1 *.min.js *.min.css 2>/dev/null | head -1)
+    [ -z "$f" ] && continue
+    case "$v" in
+      main|local)
+        [ "$NSYM" -ge 2 ] && continue
+        NSYM=$((NSYM+1)); check "/assets/lib/$name/$v/$f" nocache "lib symlink ( $v )" ;;
+      *)
+        [ "$NEXACT" -ge 2 ] && continue
+        NEXACT=$((NEXACT+1)); check "/assets/lib/$name/$v/$f" immutable "lib exact version" ;;
+    esac
+  done
+done <<< "$(ls -1 "$FEROOT/static/assets/lib" 2>/dev/null)"
+
+if [ "$MODE" = json ]; then
+  printf '{"origin":"%s","pass":%d,"warn":%d,"fail":%d,"checks":[' "$ORIGIN" "$PASS" "$WARN" "$FAIL"
+  first=1
+  while IFS='|' read -r v l u c d; do
+    [ -z "$v" ] && continue
+    [ $first -eq 0 ] && printf ','
+    first=0
+    printf '{"verdict":"%s","label":"%s","url":"%s","cacheControl":"%s","detail":"%s"}' "$v" "$l" "$u" "$c" "$d"
+  done <<< "$ROWS"
+  printf ']}\n'
+elif [ "$MODE" != quiet ]; then
+  echo "cache policy at $ORIGIN"
+  echo
+  while IFS='|' read -r v l u c d; do
+    [ -z "$v" ] && continue
+    case "$v" in
+      ok)   mark=" ok " ;;
+      warn) mark="warn" ;;
+      *)    mark="FAIL" ;;
+    esac
+    printf ' [%s] %-26s %s\n' "$mark" "$l" "$u"
+    printf '        cache-control: %s\n' "$c"
+    [ -n "$d" ] && printf '        %s\n' "$d"
+  done <<< "$ROWS"
+  echo
+  echo "$PASS ok, $WARN warn, $FAIL fail"
+  if [ "$FAIL" -gt 0 ]; then
+    echo
+    echo "the build writes content-addressed filenames ( <name>.<hash>.min.js ) so they"
+    echo "can be served immutable, and keeps the plain name as a mutable fallback that"
+    echo "must not be cached. see doc/base/infrastructure.md -> Asset cache policy."
+  fi
+fi
+
+if [ "$STRICT" = 1 ]; then [ $((FAIL+WARN)) -eq 0 ]; else [ "$FAIL" -eq 0 ]; fi

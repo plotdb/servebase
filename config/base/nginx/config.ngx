@@ -42,9 +42,59 @@ server {
     proxy_read_timeout 30m;
   }
 
-  # put at the top ( let the fallback location directive to try files. )
-  location ~ \.(?:ico|css|js|gif|jpe?g|png|svg|woff|ttf|otf)$ {
+  # asset cache policy. see doc/base/infrastructure.md -> Asset Cache Policy, and
+  # verify a running origin with `npm run cachecheck -- <origin>`.
+  #
+  # two traps, both silent:
+  #  - `add_header` does not inherit: a location that sets one loses the whole
+  #    server-level set above, so each block repeats the security headers.
+  #  - regex locations match in source order, first match wins. the generic extension
+  #    rule has to come LAST or it swallows everything below it.
+
+  # content-addressed: the name only ever means one byte sequence.
+  # `try_files` falls back to the plain name when the addressed file has been expired,
+  # so html older than the retention window serves the current build instead of 404ing.
+  # that build may not be what the page expects, which is what a "site updated, please
+  # reload" prompt is for - but a slightly-newer script beats a broken page.
+  location ~ "^/(?<hashed_base>(?:js|css|assets/bundle|modules)/.*)\.[0-9a-f]{12}(?<hashed_ext>(?:\.min)?\.(?:js|css|html))$" {
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    try_files $uri /$hashed_base$hashed_ext =404;
+  }
+
+  # fedep symlinks - `main` and `local` point at whatever is installed now.
+  location ~ ^/assets/lib/[^/]+/(?:main|local)/ {
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    add_header Cache-Control "no-cache" always;
+  }
+
+  # an exact version directory never changes contents.
+  location ~ ^/assets/lib/[^/]+/[^/]+/ {
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+  }
+
+  # plain build output: same url, different bytes after the next build. correctness
+  # rests on revalidation here, so this must not be cached.
+  location ~ ^/(?:js|css|assets/bundle|modules)/ {
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    add_header Cache-Control "no-cache" always;
+  }
+
+  # everything else ( images, fonts ). keep this LAST of the asset rules.
+  location ~ \.(?:ico|gif|jpe?g|png|svg|woff2?|ttf|otf)$ {
     expires 1d;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
     add_header 'Pragma' 'public';
     add_header 'Cache-Control' 'public';
   }
