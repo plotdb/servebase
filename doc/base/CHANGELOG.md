@@ -10,6 +10,11 @@
      build assumes. urls are read from the build's own manifest, so it checks what the
      project actually ships. `-j` json, `-q` exit code only, `-s` warnings fail too,
      `-k` self-signed cert. a wrong cache policy is silent otherwise.
+   - `module/base/refresh` ( WIP, not wired ): the piece that tells an already-open page
+     that the deploy underneath it moved on. content addressing keeps such a page
+     working but silently old, and backend api drift is the part no asset strategy can
+     fix. the module is self-contained - nothing outside it is touched, so nothing in a
+     running site changes until it is wired in. see its README.
  - tweaks:
    - nginx sample gains the asset cache rules: content-addressed urls immutable with a
      `try_files` fallback to the plain name, plain build output and fedep `main`/`local`

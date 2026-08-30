@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+echo "prepare..."
+rm -rf dist
+mkdir -p dist
+
+bin=../../../node_modules/.bin
+echo "build refresh.ls -> index.js ..."
+$bin/lsc -cp src/refresh.ls > dist/index.js
+echo "minify index.js -> index.min.js ..."
+$bin/uglifyjs dist/index.js > dist/index.min.js
+
+echo "build server files ..."
+$bin/lsc -co dist/lib lib

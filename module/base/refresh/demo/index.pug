@@ -1,0 +1,79 @@
+extends ../base.pug
+
+block head
+  style(type="text/css"): :stylus
+    body { padding: 2em; max-width: 44em; margin: 0 auto; }
+    .box { border: 1px solid #ddd; border-radius: .4em; padding: 1em 1.25em; margin: 1em 0; }
+    .v { font-family: monospace; font-size: 1.1em; }
+    .stale { display: none; }
+    .stale.on { display: block; border-color: #d9534f; background: #fdf3f3; }
+
+block body
+  h3 @servebase/refresh
+  p.text-muted
+    | A page can outlive several deploys. It holds html, js and css from one build and
+    | talks to an api from another, and nothing tells it so. Content addressing keeps
+    | those assets resolving, so the page does not break - it just goes quietly stale.
+  .box
+    div
+      | version this page first saw:
+      span.v#seen  &mdash;
+    div
+      | version the last response reported:
+      span.v#now  &mdash;
+    div.mt-3
+      button.btn.btn-primary#poll poll the server
+      span.text-muted.ml-2#count  0 requests
+  .box.stale#stale
+    b the server moved on.
+    div.mt-1
+      span#from
+      |  &rarr;
+      span#to
+    button.btn.btn-danger.mt-2#reload reload
+  .box
+    b to simulate a deploy
+    p.mb-0.text-muted
+      | the version comes from the
+      code  .version
+      |  file, watched at runtime - no restart needed:
+    pre.mb-0: code echo "deploy-$(date +%s)" > .version
+    p.mt-2.mb-0.text-muted
+      | then press
+      b  poll the server
+      | . the banner above appears once, and never again for this page.
+
+block script
+  script(type="module"): :lsc
+    ld$ '#seen' .0.textContent = '( none yet )'
+    n = 0
+    show = (id, v) -> ld$("##id").0.textContent = " #v"
+
+    servebaseRefresh.init!
+    servebaseRefresh.on \updated, ({from, to}) ->
+      show \from, from
+      show \to, to
+      ld$ '#stale' .0.classList.add \on
+
+    poll = ->
+      # any request works - this rides on traffic the page was making anyway.
+      # `no-store` so we always reach the server rather than a cached response.
+      fetch '/api/global', {cache: 'no-store'}
+        .then ->
+          n := n + 1
+          show \count, "#n requests"
+          show \seen, (servebaseRefresh.seen or '( none yet )')
+        .catch (e) -> console.warn e
+
+    ld$ '#poll' .0.addEventListener \click, poll
+    ld$ '#reload' .0.addEventListener \click, -> location.reload!
+
+    # the header is read by the wrapper, so show it here too for the demo
+    orig = window.fetch
+    window.fetch = (...args) ->
+      orig.apply(window, args).then (res) ->
+        v = res.headers.get 'x-app-version'
+        if v => show \now, v
+        return res
+
+    poll!
