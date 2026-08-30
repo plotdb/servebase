@@ -55,7 +55,7 @@
     "@plotdb/block": "^5.2.0",
     "@plotdb/colors": "^0.0.3",
     "@plotdb/express-session": "^1.17.3",
-    "@plotdb/srcbuild": "^0.0.71",
+    "@plotdb/srcbuild": "^0.1.0",
     "@plotdb/suuid": "^0.5.1",
     "accepts": "^1.3.8",
     "argon2": "^0.44.0",

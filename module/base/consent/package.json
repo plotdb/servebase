@@ -22,7 +22,7 @@
     "start": "npx server -r web -o true"
   },
   "devDependencies": {
-    "@plotdb/srcbuild": "^0.0.71",
+    "@plotdb/srcbuild": "^0.1.0",
     "@zbryikt/template": "^2.4.3"
   }
 }
