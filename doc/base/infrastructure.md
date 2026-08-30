@@ -109,16 +109,44 @@ The edge has to distinguish them, because the whole point of the hash is to allo
     /assets/lib/<name>/main|local/...        no-cache   ( fedep symlinks, contents change )
     <anything>.<12 hex>[.min].<ext>          public, max-age=31536000, immutable
                                              ( with try_files back to the plain name )
-    everything else under /js /css /assets/bundle /modules   no-cache
+    /js /css /assets/bundle /modules with ?v=<hash>   public, max-age=31536000, immutable
+    /js /css /assets/bundle /modules bare    no-cache
     images / fonts                           expires 1d
 
-Two traps, both silent:
+`no-cache` does not mean "do not store" - the response is stored and revalidated, and
+nginx answers 304 from the ETag. On this project's index that is 40 conditional requests
+returning 146 bytes in total. Content addressing removes even those; it is a performance
+optimisation on top of a policy that is already correct.
+
+The `?v=` row needs a `map`, because `location` matching ignores the query string and a
+`?v=` url is otherwise indistinguishable from its bare form:
+
+    map $arg_v $<name>_asset_cc {
+      ""      "no-cache";
+      default "public, max-age=31536000, immutable";
+    }
+
+    location ~ ^/(?:js|css|assets/bundle|modules)/ {
+      add_header Cache-Control $<name>_asset_cc always;
+      # ... and the server-level security headers, repeated
+    }
+
+It deliberately does not cover `/assets/lib/*/main|local/`: the `?v=` there is
+`libLoader._v`, a build-wide token, and fedep can swap the symlink without it changing.
+`if` is not used for this - `add_header` inside `if` in a location behaves surprisingly.
+
+Both modes work under the same ruleset; nothing has to change when you switch.
+
+Three traps, all silent:
 
  - nginx `add_header` does not inherit. A `location` that sets any `add_header` loses the
    whole server-level set, so every new location has to repeat the security headers.
  - regex `location` blocks match in source order, first match wins. An extension rule
    like `location ~ \.(?:css|js|...)$` placed early will swallow `/assets/lib` and
    `/assets/bundle` before their own rules are reached.
+ - `location` never sees the query string. `mode: 'query'` without the `map` above gets
+   `no-cache` on every asset and buys nothing at all - and looks like it is working,
+   because the urls do carry the hash.
 
 `config/base/nginx/config.ngx` is a sample. The configuration that actually runs is the
 project's own ( `config/web/nginx/` in a derived project ), so copying the sample is not

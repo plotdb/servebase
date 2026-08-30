@@ -14,7 +14,10 @@
    - nginx sample gains the asset cache rules: content-addressed urls immutable with a
      `try_files` fallback to the plain name, plain build output and fedep `main`/`local`
      symlinks no-cache, exact-version lib directories immutable. each block repeats the
-     server-level security headers, since `add_header` does not inherit.
+     server-level security headers, since `add_header` does not inherit. a
+     `map $arg_v` makes `mode: 'query'` cacheable too - `location` matching ignores the
+     query string, so without it a `?v=` url is served no-cache and the mode buys
+     nothing.
    - the express view engine is handed the content-hash store instead of re-reading the
      manifest off disk.
    - `@plotdb/srcbuild` -> `^0.1.0`, in the root package and in the module workspaces.

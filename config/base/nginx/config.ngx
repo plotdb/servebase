@@ -2,6 +2,16 @@ upstream !{name}_api {
   server !{ip}:!{port};
 }
 
+# `location` matching ignores the query string, so a `?v=<hash>` url cannot be told
+# apart from its bare form by a location block. this map can. it is what makes
+# `config.build.hash.mode = 'query'` worth anything - without it a `?v=` url falls
+# through to the plain-output rule below and is served no-cache.
+# named after the project so several sites can be included side by side.
+map $arg_v $!{name}_asset_cc {
+  ""      "no-cache";
+  default "public, max-age=31536000, immutable";
+}
+
 server {
   listen 443 ssl;
   #listen 443 ssl http2;
@@ -80,13 +90,18 @@ server {
     add_header Cache-Control "public, max-age=31536000, immutable" always;
   }
 
-  # plain build output: same url, different bytes after the next build. correctness
-  # rests on revalidation here, so this must not be cached.
+  # plain build output. bare, the url keeps its name and changes its bytes every build,
+  # so correctness rests on revalidation ( no-cache still stores, it just asks first,
+  # and nginx answers 304 from the ETag ). with `?v=<content hash>` the url does name
+  # one byte sequence, and the map above turns it immutable.
+  # note this deliberately does not cover /assets/lib/*/main|local/ : the `?v=` there
+  # is `libLoader._v`, a build-wide token, and fedep can swap the symlink without it
+  # changing.
   location ~ ^/(?:js|css|assets/bundle|modules)/ {
     add_header Cross-Origin-Opener-Policy "same-origin" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Content-Security-Policy "frame-ancestors 'self'" always;
-    add_header Cache-Control "no-cache" always;
+    add_header Cache-Control $!{name}_asset_cc always;
   }
 
   # everything else ( images, fonts ). keep this LAST of the asset rules.
