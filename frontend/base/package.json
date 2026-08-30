@@ -16,11 +16,14 @@
     "../../module/base/erratum",
     "../../module/base/core",
     "../../module/base/navtop",
+    "../../module/base/refresh",
     "../../module/base/pugutil",
     "../../module/base/discuss",
-    "../../module/base/payment",
     "../../module/base/connector"
   ],
+  "devDependencies": {
+    "@plotdb/srcbuild": "^0.1.1"
+  },
   "dependencies": {
     "@loadingio/bootstrap.ext": "^0.0.9",
     "@loadingio/debounce.js": "^1.0.1",
@@ -39,7 +42,7 @@
     "bootstrap.native": "^3.0.10",
     "curegex": "^0.0.4",
     "dompurify": "^3.0.5",
-    "fedep": "^1.1.7",
+    "fedep": "^1.7.6",
     "i18next": "^22.4.7",
     "i18next-browser-languagedetector": "^6.1.4",
     "ldbutton": "^2.0.1",
@@ -99,7 +102,7 @@
         "dir": "dist"
       },
       {
-        "name": "@servebase/payment",
+        "name": "@servebase/refresh",
         "dir": "dist"
       },
       {
