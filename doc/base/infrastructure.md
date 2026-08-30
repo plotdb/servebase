@@ -164,22 +164,71 @@ It reads the pairs to test out of the build's own manifest
 ships. Exit code 0 means no failures.
 
 
-## Build Metadata
+## Build Artifacts
 
-`<feroot>/.bundle-dep/` holds what the frontend build remembers between runs:
+The frontend build produces three things. Whether each one belongs in version control is
+not a matter of taste - it follows from whether the running server needs it, so decide
+per artifact rather than per project.
 
- - `<type>/<name>.dep` - per-bundle: which sources it concatenates, which pug files
-   declare it.
- - `manifest.json` - plain url to content-addressed url, plus which files belong to
-   which generation ( used to expire old ones ).
+    <feroot>/static/                    the document root. runtime needs it.
+    <feroot>/.bundle-dep/manifest.json  url -> content-addressed url. runtime needs it.
+    <feroot>/.bundle-dep/<type>/*.dep   bundle specs. only the builder needs it.
+    <feroot>/.view/                     precompiled pug. self-healing cache.
 
-It is generated, gitignored, and safe to delete. Deleting it is not free though: with no
-manifest the first render of every page falls back to the plain urls, and the pages are
-rendered a second time once the hashes are known - a cold start rebuilt 32 pages where a
-warm one rebuilt none. Keeping the directory across deployments ( deploy in place, or
-mount it, or exclude it from the rsync delete ) avoids that double pass, and in filename
-mode lets old copies be expired properly: generations the manifest does not know about
-are never cleaned up.
+**`static/`** is what nginx has as its `root`, and what express serves as a fallback
+when there is no nginx in front. Two kinds of thing live in it, and both are needed:
+the assets ( js, css, bundles, fedep'd libs ), which exist only as files, and the
+prerendered html. The html matters more than it looks: nginx's fallback location is
+`try_files /$1 /$1/index.html @apiserver`, so a page whose html is missing only survives
+if the app has a route that renders it. Removing `static/dev/refresh/index.html` makes
+that page fail, while `/` keeps working because a route renders it.
+
+**`manifest.json` has to travel with `static/`.** When the server does not build
+( `config.build.enabled` off - assets are built elsewhere and deployed ), nothing
+populates the in-memory hash store, and the view engine resolves `asseturl` /
+`bundleurl` by reading this file. Without it, prerendered pages carry content-addressed
+urls while server-rendered pages fall back to the plain ones: the same site behaving two
+ways, silently. Whatever policy `static/` gets, this file gets the same one.
+
+**`*.dep`** is builder state - which sources a bundle concatenates, which pug file
+declares it. A server that does not build never reads it. Committing it only saves a
+first-build pass.
+
+**`.view/`** is a cache and repairs itself: the view engine compiles from `src/pug` on
+demand when a precompiled template is missing. Verified by deleting the whole directory
+while the server was running - pages kept rendering and the directory came back.
+Committing it saves the first compile per page and nothing else.
+
+
+## Deploying Build Artifacts
+
+Two shapes, and the base project and its derived projects land on different ones.
+
+**Build on the server.** Nothing is committed; `git pull` leaves the generated
+directories alone because they are ignored, so a restart is warm and there is nothing to
+arrange. This is what servebase itself does - its `frontend/base/static` is a demo, not
+something a derived project consumes.
+
+**Build locally, deploy artifacts.** `static/` and `manifest.json` are committed and
+reach the server by `git pull`. This is what derived projects do with `frontend/web`.
+The cost is merge noise on files nobody edits by hand.
+
+That noise is avoidable, because these files are regenerable: taking either side and
+rebuilding is always correct. A `.gitattributes` saying so turns every such conflict
+into a no-op:
+
+    frontend/web/static/**            merge=ours
+    frontend/web/.bundle-dep/*.json   merge=ours
+
+with `git config merge.ours.driver true` ( a driver that keeps the local version ). Run
+the build after the merge, and the tree is correct again.
+
+**Committing `static/` changes which hash mode you want.** In `filename` mode every
+content change introduces a new *filename*, which git keeps in history forever even
+after the file is expired from disk - one edit to one `.ls` already leaves four hashed
+files behind. In `query` mode the file set never changes; only the bytes inside
+`site.min.js` and the `?v=` in the html do, which is what git stores efficiently. If the
+project commits its `static/`, prefer `mode: 'query'`.
 
 
 ## Database

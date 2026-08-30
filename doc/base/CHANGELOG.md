@@ -20,6 +20,11 @@
      nothing.
    - the express view engine is handed the content-hash store instead of re-reading the
      manifest off disk.
+   - document which build artifacts belong in version control and why - it follows from
+     whether the running server needs them, not from taste ( `doc/base/infrastructure.md`
+     -> Build Artifacts / Deploying Build Artifacts ). includes the `.gitattributes`
+     trick for projects that commit `static/`, and why those projects want
+     `mode: 'query'` rather than `filename`.
    - `@plotdb/srcbuild` -> `^0.1.1`, in the root package and in the module workspaces.
      all of them have to move together: `lib.pug` resolves from the frontend root.
      0.1.1 fixes content addressing across a warm restart: the url -> pages index was
