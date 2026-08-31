@@ -1,12 +1,33 @@
 # srcbuild 的 minify 跟 server 搶同一條 event loop
 
-dev server 啟動後幾秒內進來的請求, 有機會拿到資料庫錯誤頁 ( 使用者看到的是
-「Ooops, Things Broken」)。追下去發現跟資料庫無關 —— 是 srcbuild 的 minify 把
-event loop 佔住, 讓同一個 process 裡的 pg 連線握手來不及在逾時前完成。
+**狀態 ( 2026/08/31 )**: 上游已修, 在 srcbuild 0.1.3 ( 未發版 )。下面保留原始分析,
+因為它是這些修改的說明與量測依據。servebase 這邊還沒做的:
 
-與 `20260830-srcbuild-build-graph.md` 同一個套件但不同問題: 那份講的是相依圖與
-增量建置的正確性 ( 已在 0.1.0 修掉 ), 這份講的是建置**佔用資源**的方式。
-本地 checkout 在 `../srcbuild`, 撰寫時版本 0.1.2, 下面的行號已對 0.1.2 確認過。
+ - srcbuild 發版後把六個 `package.json` 的 `@plotdb/srcbuild` 升到 `^0.1.3`
+   ( root / 各 module workspace / `frontend/base` —— 三處要一起動, 見 0.1.2 的 lib.pug
+     skew 警告 )
+ - **決定要不要在 `backend/engine/index.ls:299-302` 等 `srcbuild.ready`**。
+   目前是 `@listen!` 之後才 `@watch`, 也就是伺服器在初次建置完成前就開始收請求。
+   0.1.3 把訊號給出來了 ( `await @srcbuild.ready` ), 但要不要等是下游的取捨:
+   等 = 冷啟動慢幾秒但不會撞到建置; 不等 = 現況。建議加 config 開關而不是寫死。
+
+## srcbuild 0.1.3 做了什麼
+
+ - minify 移到 `worker_threads`。量測: 0.94MB bundle 同步 2677ms、event loop 卡住
+   1769ms; 走 worker 3283ms ( 多 ~20% ), 字串進出只花 9ms, loop 最差 tick 13ms。
+   **沒有做大小門檻**, 因為耗時不隨大小成比例 ( 同一份語料 800KB 88ms、960KB 2319ms,
+   差在最後那段有個 uglify 會爆炸的構造 ) —— 無法從輸入預測哪一次會貴。
+   worker 首次使用才 spawn、`unref`、閒置 30 秒回收; 起不來或死掉就退回 in-process。
+   `SRCBUILD_MINIFY_WORKER=0` 可關。
+   pug 的 `lsc` / `stylus` filter 維持同步 —— pug filter 介面沒有非同步形式, 而它們
+   處理的是 inline `include:lsc` 這種小片段。
+ - 順手抓到的 bug: `uglify-js.minify` 遇語法錯誤是回傳 `{error}` 而**沒有 `code` 欄位**,
+   所有呼叫端讀 `.code` 拿到 `undefined`, 然後不是寫成空的 `.min.js` 就是 join 進
+   bundle 時被靜默丟掉 —— 一個檔案有 typo, min bundle 就少了那個檔, 沒 log 沒 throw,
+   旁邊還躺著一份完好的非 min 版本。現在失敗一律退回原始碼並記 log。
+ - 同一個 bundle 同時只跑一次建置。建置中進來的請求只設旗標, 跑完再補一輪,
+   n 次請求最多兩次建置。`force` 會跨過合併保留。
+ - `watcher.ready`: 初次建置完成的訊號 ( 含它觸發的 bundle )。永不 reject。
 
 
 ## 位置
