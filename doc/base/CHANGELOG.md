@@ -39,7 +39,7 @@
      -> Build Artifacts / Deploying Build Artifacts ). includes the `.gitattributes`
      trick for projects that commit `static/`, and why those projects want
      `mode: 'query'` rather than `filename`.
-   - `@plotdb/srcbuild` -> `^0.1.2`, in the root package, in the module workspaces and
+   - `@plotdb/srcbuild` -> `^0.1.4`, in the root package, in the module workspaces and
      in `<feroot>` - all of them have to move together, because `lib.pug` is injected by
      path and resolved from the frontend root, so whichever copy lands there wins.
      0.1.1 fixes content addressing across a warm restart: the url -> pages index was
@@ -47,7 +47,11 @@
      nothing left it empty - the first edit after it moved the hash without
      re-rendering the pages that embed it. 0.1.2 warns when the injected `lib.pug` is
      not the one shipped with the running srcbuild - the failure above was found that
-     way, and it is otherwise silent.
+     way, and it is otherwise silent. 0.1.3 moves minification onto a worker thread, so
+     a build no longer stalls the event loop of the server it shares a process with,
+     and stops a minifier error from silently producing an empty file. 0.1.4 adds
+     `src/raw` ( see Generated and Hand-Written Files above ); nothing in this project
+     uses it yet, and the older whitelist copier it sits beside is unchanged.
  - bug fix:
    - ( in srcbuild 0.1.0, see its CHANGELOG ) dependency-graph traversal hung on cycles
      and grew multiplicatively on shared includes; a file whose dependency analysis

@@ -22,7 +22,7 @@
     "../../module/base/connector"
   ],
   "devDependencies": {
-    "@plotdb/srcbuild": "^0.1.2"
+    "@plotdb/srcbuild": "^0.1.4"
   },
   "dependencies": {
     "@loadingio/bootstrap.ext": "^0.0.9",
