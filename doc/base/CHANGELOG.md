@@ -16,6 +16,15 @@
      fix. the module is self-contained - nothing outside it is touched, so nothing in a
      running site changes until it is wired in. see its README.
  - tweaks:
+   - document where the files nobody generates belong: `<feroot>/src/raw`, copied
+     verbatim into the document root ( `doc/base/infrastructure.md` -> Generated and
+     Hand-Written Files ). they sit directly in `static/` today, which makes that
+     directory the only copy of some of its contents and derived for the rest, with
+     nothing able to tell the two apart. the section carries the migration recipe -
+     build into an empty `static/` and diff - and is explicit that a project must
+     finish it before acting on what follows from it, since a derived project merges
+     this document long before it does the move, and `rm -rf static` on an
+     unmigrated tree deletes files that exist nowhere else.
    - nginx sample gains the asset cache rules: content-addressed urls immutable with a
      `try_files` fallback to the plain name, plain build output and fedep `main`/`local`
      symlinks no-cache, exact-version lib directories immutable. each block repeats the

@@ -8,7 +8,10 @@
    - subfolder under `frontend/xxx`: follow `@plotdb/srcbuild` structure.
      - `.view`: prebuilt pug js files.
      - `src`
-       - ls, styl, pug
+       - ls, styl, pug: compiled into `static`.
+       - raw: copied into `static` verbatim - favicon, robots.txt, images, fonts,
+         anything served as-is. see `doc/base/infrastructure.md` ->
+         Generated and Hand-Written Files.
        - include module pug with following code: (adopted from https://github.com/pugjs/pug/issues/3125):
 
            p = resolve: (fn,src,opt) -> if /^@\//.exec(fn) => path.resolve(fn.replace(/^@\//, 'module')) else fn

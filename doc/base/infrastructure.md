@@ -164,6 +164,87 @@ It reads the pairs to test out of the build's own manifest
 ships. Exit code 0 means no failures.
 
 
+## Generated and Hand-Written Files
+
+    <feroot>/src/ls, src/styl, src/pug   compiled into static/
+    <feroot>/src/raw                     copied into static/ verbatim
+    <feroot>/static/                     output
+
+Every site has files nobody generates: `favicon.ico`, `robots.txt`, images, fonts, a
+`site.webmanifest`. They used to be placed straight into `static/`, beside the build's
+output. That makes `static/` the only copy of some of its contents and a derived
+artifact for the rest, and nothing downstream can tell which is which - not git, not a
+deploy script, not the next person to wonder whether the directory is safe to delete.
+
+`src/raw` ( srcbuild >= 0.1.4 ) is where they belong instead. It is copied into the
+document root unchanged, with no extension whitelist:
+
+    src/raw/favicon.ico            ->  static/favicon.ico
+    src/raw/robots.txt             ->  static/robots.txt
+    src/raw/assets/img/logo.png    ->  static/assets/img/logo.png
+    src/raw/assets/custom/x.svg    ->  static/assets/custom/x.svg
+
+Junk is excluded ( `.DS_Store`, `Thumbs.db`, `*.swp`, `*~`, `.git` ). Deleting a source
+deletes its copy - but only while the watcher is running, so a file removed with the
+server down leaves an orphan behind. That is what makes the guarantee below worth
+having: on a migrated project `rm -rf static` costs one rebuild and fixes it.
+
+This is a build-time union, not a lookup order: `static/` stays the single document
+root, so nginx, `express.static`, the manifest, the hash store and `cachecheck` all
+keep their one-root assumption and none of them has to agree on a search order. It also
+means the same builder runs in development and in a deploy build - a serve-time search
+path would be two implementations of one rule, one in express and one in nginx, with
+nothing keeping them in step.
+
+The older whitelist copier is untouched and still runs. In servebase it is pointed at
+`src/pug`, so images can sit beside the pug that uses them:
+
+    src/pug/**.{png,gif,jpg,svg,json}  ->  static/**
+
+Both work. Migrate at your own pace.
+
+### Migrating a project
+
+For every file in `static/` that no build produces, move it to `src/raw/<same path>`.
+`git status` cannot find them - `static/` is ignored - so let the build find them.
+
+Check first whether anything under `static/` is written at runtime ( uploads, generated
+user content ). This moves the whole directory aside, and a running server would then
+write into a fresh one; stop the server, and take a copy of that data before starting,
+not just the `mv` below.
+
+    mv <feroot>/static <feroot>/static.old
+    npm run dev                                  # let it build, then stop it
+    diff -rq <feroot>/static.old <feroot>/static
+
+Everything reported as `Only in static.old` falls into one of four groups, and only the
+last one moves to `src/raw`:
+
+ - **output of a builder that did not run** in that pass. Build again before concluding
+   anything.
+ - **installed by a tool**, not by srcbuild: `static/assets/lib/**` comes from
+   `npx fedep`, `bootstrap.custom` from `npm run bootstrap`. Regenerable, leave alone.
+ - **runtime data** - user uploads, anything the server writes. `static/s` is reserved
+   for this ( see `doc/base/repo-structure/main.md` ), and it should be a symlink or an
+   nginx location rather than a real directory under the document root. It is the one
+   category that is genuinely irreplaceable, so check for it first.
+ - **hand-written and shipped as-is.** These move.
+
+### Only then
+
+Once a project has finished that migration, and not before, `static/` is entirely
+derived, and three things follow:
+
+ - `rm -rf <feroot>/static` is always safe.
+ - the directory does not need to be in version control.
+ - deploying can be a build rather than a merge of hand-placed and generated files.
+
+**Do not assume the migration has happened.** A derived project that merges servebase
+gets this document before it gets the move, and acting on the three points above with
+hand-written files still sitting in `static/` deletes them. Confirm with the `diff`
+above first; the sections below still describe both worlds for that reason.
+
+
 ## Build Artifacts
 
 The frontend build produces three things. Whether each one belongs in version control is
@@ -182,6 +263,11 @@ prerendered html. The html matters more than it looks: nginx's fallback location
 `try_files /$1 /$1/index.html @apiserver`, so a page whose html is missing only survives
 if the app has a route that renders it. Removing `static/dev/refresh/index.html` makes
 that page fail, while `/` keeps working because a route renders it.
+
+Whether it is safe to *lose* `static/` is a different question, and it depends on
+whether the project has moved its hand-written files into `src/raw` - see Generated and
+Hand-Written Files above. Until it has, `static/` holds the only copy of some of them,
+and every option below that treats the directory as regenerable is unsafe for it.
 
 **`manifest.json` has to travel with `static/`.** When the server does not build
 ( `config.build.enabled` off - assets are built elsewhere and deployed ), nothing
@@ -207,7 +293,8 @@ Two shapes, and the base project and its derived projects land on different ones
 **Build on the server.** Nothing is committed; `git pull` leaves the generated
 directories alone because they are ignored, so a restart is warm and there is nothing to
 arrange. This is what servebase itself does - its `frontend/base/static` is a demo, not
-something a derived project consumes.
+something a derived project consumes. It requires the `src/raw` migration: a file that
+was never committed and is not regenerable does not exist on the server at all.
 
 **Build locally, deploy artifacts.** `static/` and `manifest.json` are committed and
 reach the server by `git pull`. This is what derived projects do with `frontend/web`.
@@ -229,6 +316,14 @@ after the file is expired from disk - one edit to one `.ls` already leaves four 
 files behind. In `query` mode the file set never changes; only the bytes inside
 `site.min.js` and the `?v=` in the html do, which is what git stores efficiently. If the
 project commits its `static/`, prefer `mode: 'query'`.
+
+**A separate deploy repository removes that argument.** Pushing `static/` to a repo of
+its own - one whose history may be pruned or force-pushed, and whose commit message can
+record the source commit it was built from - makes `filename` mode viable again, and
+`filename` is the mode that actually earns an immutable `max-age`. It is not the current
+flow ( production does a `git pull` of the project itself ) and nothing here changes
+that yet; it is written down because the choice only opens up once `static/` is fully
+derived, which is the point of the `src/raw` migration above.
 
 
 ## Database
