@@ -235,7 +235,11 @@ last one moves to `src/raw`:
 Once a project has finished that migration, and not before, `static/` is entirely
 derived, and three things follow:
 
- - `rm -rf <feroot>/static` is always safe.
+ - `rm -rf <feroot>/static` loses nothing that cannot be made again. Making it again
+   is not the build alone, though: on servebase's own `frontend/base`, a build into an
+   empty `static/` restores 49 of 1937 files, because 1852 of them are fedep'd libraries
+   and the bundles that concatenate them come out empty without those. Restoring the
+   directory is `fedep`, then `npm run bootstrap`, then the build.
  - the directory does not need to be in version control.
  - deploying can be a build rather than a merge of hand-placed and generated files.
 
