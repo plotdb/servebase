@@ -26,3 +26,10 @@ config/**/local.*
 dev/srcbuild/static/
 .bundle-dep
 context/shared
+
+# --- app-level overrides (downstream leaf apps) ---
+# Append-only, so everything above stays byte-identical across the base and every
+# app built on it and merges cleanly. servebase (the base) ignores package-lock.json;
+# a deployable leaf app should re-include and commit its lockfiles here for
+# reproducible `npm ci` installs by adding:  !package-lock.json
+# (node_modules/**/package-lock.json stays ignored: its parent dir is excluded.)
