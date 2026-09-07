@@ -175,7 +175,12 @@ connector.prototype = Object.create(Object.prototype) <<<
     # window, then the offline cover ) - stand down and just keep ticking.
     # resetting `last` also gives pending a fresh threshold after reconnect,
     # so queued ops get a chance to drain before the hint reappears.
-    if @_running => @_peekcfg.last = Date.now!
+    if @_running =>
+      @_peekcfg.last = Date.now!
+      # reopen's cover is blocking too, so drop ours or the two stack. The
+      # `!up` branch below cannot do this: whenever the socket is down, reopen
+      # is running and execution never reaches it.
+      @_stall false
     else
       pending = false
       try pending = !!@_pending! catch e => pending = false
@@ -187,8 +192,8 @@ connector.prototype = Object.create(Object.prototype) <<<
       waited = now - @_peekcfg.last
       up = @ws and @ws.status! == 2
       if !up =>
-        # the socket is down and `reopen` owns the ui from here. stand down so
-        # the stalled cover and the offline cover do not stack on each other.
+        # socket is down while reopen is not running ( it has already given up,
+        # or has not started yet ). nothing of ours belongs on screen here.
         @_stall false
         # reset the clock too: on reconnect the queue gets a fresh window to
         # drain in, instead of being judged on time it spent offline - otherwise

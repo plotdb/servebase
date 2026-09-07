@@ -174,6 +174,7 @@
     var pending, e, now, waited, up, this$ = this;
     if (this._running) {
       this._peekcfg.last = Date.now();
+      this._stall(false);
     } else {
       pending = false;
       try {
