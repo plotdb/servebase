@@ -67,7 +67,10 @@ connector = (opt = {}) ->
   # event. If the queue drains ( a late flush, a recovered route ) it is toggled
   # back off and the user carries on - nothing here is terminal by itself, so
   # nothing here should force a reload.
-  @_peekcfg = {threshold: 3000, interval: 1000, blockAfter: 15000}
+  # `waited` accumulates time during which local changes were pending AND the
+  # socket claimed to be usable. `last` is only the previous tick's timestamp.
+  # see `_peek` for why it is accumulated rather than measured from a mark.
+  @_peekcfg = {threshold: 3000, interval: 1000, blockAfter: 15000, waited: 0}
   pending = opt.pending or null
   @_pending = if typeof(pending) == \function => pending else (pending or {}).check or null
   @_guard = true
@@ -178,46 +181,64 @@ connector.prototype = Object.create(Object.prototype) <<<
   # sampling states instead of listening events keeps this robust against
   # reconnect races - we never miss or double-count anything.
   _peek: ->
-    # during reopen the ui is owned by `reopen` ( hint through the grace
-    # window, then the offline cover ) - stand down and just keep ticking.
-    # resetting `last` also gives pending a fresh threshold after reconnect,
-    # so queued ops get a chance to drain before the hint reappears.
-    # reopen owns the ui while it runs; it drops our cover itself, at the moment
-    # its own goes up ( see `summon` ). Doing it from here instead would either
-    # stack the two or open a gap between them, depending on the timing.
-    if @_running => @_peekcfg.last = Date.now!
-    else
-      pending = false
-      try pending = !!@_pending! catch e => pending = false
-      now = Date.now!
-      # the queue drained - whatever we were showing about it is no longer true.
-      if !pending or !(@_peekcfg.last?) =>
-        @_peekcfg.last = now
-        @_stall false
-      waited = now - @_peekcfg.last
-      up = @ws and @ws.status! == 2
-      if !up =>
-        # socket is down while reopen is not running ( it has already given up,
-        # or has not started yet ). nothing of ours belongs on screen here.
-        @_stall false
-        # reset the clock too: on reconnect the queue gets a fresh window to
-        # drain in, instead of being judged on time it spent offline - otherwise
-        # the cover flashes for a moment before the flush lands.
-        @_peekcfg.last = now
-      else if @_peekcfg.blockAfter > 0 and waited >= @_peekcfg.blockAfter =>
-        # Pending has outlasted anything a "connection hiccup" can explain,
-        # while the socket still reports itself as up - so nothing else in this
-        # stack will say a word. `reopen` is not running, no offline event is
-        # coming, and the hint has been sitting there being ignorable the whole
-        # time. Escalate, and drop the hint: the cover is now the accurate
-        # description. Recoverable by design - if the queue drains above, this
-        # is toggled straight back off.
+    pending = false
+    try pending = !!@_pending! catch e => pending = false
+    now = Date.now!
+    [last, @_peekcfg.last] = [@_peekcfg.last, now]
+    up = @ws and @ws.status! == 2
+    # Accumulate, do not measure from a mark. What we are trying to answer is
+    # "how long have local changes been failing to reach the server", and only
+    # ticks where the socket claims to be usable are evidence of that - time
+    # spent offline says nothing either way ( the route was gone; of course
+    # nothing landed ), so it simply does not count.
+    #
+    # This used to be `now - last` against a mark that got reset on various
+    # events, and every reset was a place the counter could be zeroed by
+    # something other than the queue actually draining. It was: `reopen` reset
+    # it on every tick while it ran, and a reopen that never finished therefore
+    # silenced this entirely. Accumulating removes the whole class - there is
+    # now exactly one thing that clears it, and it is the one thing that means
+    # the data got through.
+    if !pending =>
+      @_peekcfg.waited = 0
+      @_stall false
+    else if up and last? => @_peekcfg.waited = (@_peekcfg.waited or 0) + (now - last)
+    waited = @_peekcfg.waited or 0
+    # `since` is what the ui counts from. derive it from `waited` so a paused
+    # counter shows the time that actually counted, not wall clock.
+    ctx = {waited, since: now - waited}
+    if @_running =>
+      # reopen owns the hint and the offline cover while it runs, so we do not
+      # touch either - but we no longer stand down completely.
+      #
+      # `_running` was written on the assumption that reopen always finishes.
+      # It does not: `_reconnect` is consumer code and may hang indefinitely.
+      # Whether reopen is running is our business; whether data is reaching the
+      # server is the user's, and past `blockAfter` that question has only one
+      # honest answer.
+      #
+      # Unless reopen already has its own blocking cover up - then the user is
+      # stopped either way and a second cover would only stack.
+      if !@_covered and @_peekcfg.blockAfter > 0 and waited >= @_peekcfg.blockAfter =>
         @_hint false
-        @_stall true, {waited, since: @_peekcfg.last}
-      else if !@_stalled =>
-        # only in the undetected window ( socket looks connected );
-        # summon / dismiss on transitions only - the hint ui keeps time itself.
-        @_hint (waited >= @_peekcfg.threshold)
+        @_stall true, ctx
+    else if !up =>
+      # socket is down while reopen is not running ( it has already given up,
+      # or has not started yet ). nothing of ours belongs on screen here - the
+      # offline cover, if anyone raised one, is the accurate description.
+      @_stall false
+    else if @_peekcfg.blockAfter > 0 and waited >= @_peekcfg.blockAfter =>
+      # Pending has outlasted anything a "connection hiccup" can explain, while
+      # the socket still reports itself as up - so nothing else in this stack
+      # will say a word. Escalate, and drop the hint: the cover is now the
+      # accurate description. Recoverable by design - if the queue drains
+      # above, this is toggled straight back off.
+      @_hint false
+      @_stall true, ctx
+    else if !@_stalled =>
+      # only in the undetected window ( socket looks connected );
+      # summon / dismiss on transitions only - the hint ui keeps time itself.
+      @_hint (waited >= @_peekcfg.threshold)
     setTimeout (~> @_peek!), @_peekcfg.interval
 
   init: ->

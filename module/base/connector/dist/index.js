@@ -36,7 +36,8 @@
     this._peekcfg = {
       threshold: 3000,
       interval: 1000,
-      blockAfter: 15000
+      blockAfter: 15000,
+      waited: 0
     };
     pending = opt.pending || null;
     this._pending = typeof pending === 'function'
@@ -173,36 +174,40 @@
       return Promise.reject(e);
     });
   }, ref$._peek = function(){
-    var pending, e, now, waited, up, this$ = this;
-    if (this._running) {
-      this._peekcfg.last = Date.now();
-    } else {
+    var pending, e, now, ref$, last, up, waited, ctx, this$ = this;
+    pending = false;
+    try {
+      pending = !!this._pending();
+    } catch (e$) {
+      e = e$;
       pending = false;
-      try {
-        pending = !!this._pending();
-      } catch (e$) {
-        e = e$;
-        pending = false;
-      }
-      now = Date.now();
-      if (!pending || !(this._peekcfg.last != null)) {
-        this._peekcfg.last = now;
-        this._stall(false);
-      }
-      waited = now - this._peekcfg.last;
-      up = this.ws && this.ws.status() === 2;
-      if (!up) {
-        this._stall(false);
-        this._peekcfg.last = now;
-      } else if (this._peekcfg.blockAfter > 0 && waited >= this._peekcfg.blockAfter) {
+    }
+    now = Date.now();
+    ref$ = [this._peekcfg.last, now], last = ref$[0], this._peekcfg.last = ref$[1];
+    up = this.ws && this.ws.status() === 2;
+    if (!pending) {
+      this._peekcfg.waited = 0;
+      this._stall(false);
+    } else if (up && last != null) {
+      this._peekcfg.waited = (this._peekcfg.waited || 0) + (now - last);
+    }
+    waited = this._peekcfg.waited || 0;
+    ctx = {
+      waited: waited,
+      since: now - waited
+    };
+    if (this._running) {
+      if (!this._covered && this._peekcfg.blockAfter > 0 && waited >= this._peekcfg.blockAfter) {
         this._hint(false);
-        this._stall(true, {
-          waited: waited,
-          since: this._peekcfg.last
-        });
-      } else if (!this._stalled) {
-        this._hint(waited >= this._peekcfg.threshold);
+        this._stall(true, ctx);
       }
+    } else if (!up) {
+      this._stall(false);
+    } else if (this._peekcfg.blockAfter > 0 && waited >= this._peekcfg.blockAfter) {
+      this._hint(false);
+      this._stall(true, ctx);
+    } else if (!this._stalled) {
+      this._hint(waited >= this._peekcfg.threshold);
     }
     return setTimeout(function(){
       return this$._peek();
