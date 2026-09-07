@@ -90,6 +90,10 @@
         "dir": "dist"
       },
       {
+        "name": "@servebase/connector",
+        "dir": "dist"
+      },
+      {
         "name": "@servebase/erratum",
         "dir": "dist"
       },

@@ -61,6 +61,7 @@
       "static/assets/lib/@servebase/auth/main/index.min.js",
       "static/assets/lib/@servebase/consent/main/index.min.js",
       "static/assets/lib/@servebase/captcha/main/index.min.js",
+      "static/assets/lib/@servebase/connector/main/index.min.js",
       "static/assets/lib/@servebase/core/main/index.min.js"
     ]
   }
