@@ -9,6 +9,10 @@ connector = (opt = {}) ->
   #     - unstable: disconnection is suspected - local changes are not
   #       acknowledged in time. toggled with true / false; the hint ui
   #       tracks elapsed time itself. requires opt.pending.
+  #     - stalled: local changes have gone unacknowledged past `blockAfter`
+  #       while the socket still reports itself up. toggled with true / false
+  #       and given {ws, waited, since}; `since` is when the queue last drained,
+  #       so the ui can keep its own clock. requires opt.pending.
   #     - ctx: {ws} - connector is the source of ws; take it from here
   #       instead of reaching for closures or `this`.
   # normalized into {offline, hint} regardless of the given form.
@@ -20,7 +24,11 @@ connector = (opt = {}) ->
   @_ldcv =
     if typeof(ldcv) == \function => {offline: (v, ctx) ~> ldcv.call @, v, ctx}
     else if ldcv.toggle => {offline: (v) -> ldcv.toggle v}
-    else {offline: (ldcv.offline or (->)), hint: ldcv.unstable}
+    else {
+      offline: (ldcv.offline or (->))
+      hint: ldcv.unstable
+      stalled: ldcv.stalled
+    }
   @_error = opt.error or null
   @_reconnect = opt.reconnect
   @_path = opt.path or \/ws
@@ -34,6 +42,7 @@ connector = (opt = {}) ->
   @_grace = if opt.grace? => opt.grace else 2000
   @_covered = false
   @_hint-on = false
+  @_stalled = false
   # opt.pending - enables unstable-connection detection (with ldcv.unstable).
   # either a function or {check, threshold, interval}:
   #   - check (or the function form): -> truthy if there are local changes
@@ -44,12 +53,26 @@ connector = (opt = {}) ->
   #   - interval: polling interval (ms). default 1000.
   #   - guard: warn ( native browser confirm ) when leaving the page while
   #     pending is truthy. default true; set false to opt out.
-  @_peekcfg = {threshold: 3000, interval: 1000}
+  #   - blockAfter: how long pending may last before the situation stops being
+  #     a hint and becomes `ldcv.stalled` ( ms ). default 15000; 0 disables.
+  #
+  # On blockAfter: "some data is not yet confirmed" is an honest thing to say
+  # for a few seconds. Past that it is no longer true - the data is not getting
+  # through, and everything the user does meanwhile is being lost. A
+  # non-blocking banner is the wrong shape for that: it reads as a transient
+  # network blip, so people keep working, and the longer they keep working the
+  # more there is to lose. Past the threshold the consumer gets to escalate.
+  #
+  # `stalled` is toggled, not fired once: being stalled is a condition, not an
+  # event. If the queue drains ( a late flush, a recovered route ) it is toggled
+  # back off and the user carries on - nothing here is terminal by itself, so
+  # nothing here should force a reload.
+  @_peekcfg = {threshold: 3000, interval: 1000, blockAfter: 15000}
   pending = opt.pending or null
   @_pending = if typeof(pending) == \function => pending else (pending or {}).check or null
   @_guard = true
   if pending and typeof(pending) != \function =>
-    for k in <[threshold interval]> => if pending[k]? => @_peekcfg[k] = pending[k]
+    for k in <[threshold interval blockAfter]> => if pending[k]? => @_peekcfg[k] = pending[k]
     if pending.guard? => @_guard = !!pending.guard
   @_evthdr = {}
   @hub = {}
@@ -61,6 +84,13 @@ connector.prototype = Object.create(Object.prototype) <<<
   open: ->
     console.log "#{@_tag} ws reconnect ..."
     @ws.connect!
+      # ews rejects `connect` when there is already a socket ( 1011, a generic
+      # "resource conflict" - it is raised from more than one place and does not
+      # by itself mean "already connected" ). what we actually need to know is
+      # whether the socket ended up usable, so ask the socket rather than read
+      # intent into an error code. this catch stays attached to `connect` alone;
+      # further down the chain it would swallow `_reconnect` failures too.
+      .catch (e) ~> if @ws.status! == 2 => return else Promise.reject e
       .then ~> console.log "#{@_tag} object reconnect ..."
       .then ~> if @_reconnect => @_reconnect!
       .then ~> @fire \reconnect
@@ -82,6 +112,13 @@ connector.prototype = Object.create(Object.prototype) <<<
     if !@_ldcv.hint or @_hint-on == !!v => return
     @_hint-on = !!v
     @_ldcv.hint !!v, {ws: @ws}
+  # same contract for the stalled cover. deduped so the consumer sees edges
+  # only - it is toggling a cover, and re-toggling it every second would fight
+  # whatever animation it has.
+  _stall: (v, ctx = {}) ->
+    if !@_ldcv.stalled or @_stalled == !!v => return
+    @_stalled = !!v
+    @_ldcv.stalled !!v, {ws: @ws} <<< ctx
   reopen: ->
     if @_running => return
     @_running = true
@@ -110,6 +147,26 @@ connector.prototype = Object.create(Object.prototype) <<<
         if !@_covered => return
         debounce 350 .then ~> @_ldcv.offline false, {ws: @ws}
       .then ~> @_covered = false; @_running = false
+      .catch (e) ~>
+        # Reconnect failed. Treat it as terminal and make sure of one thing: the
+        # blocking cover stays up. It is the only thing on screen saying that
+        # local changes no longer reach remote, and before this catch existed a
+        # rejection here could leave the flow half-done with the cover already
+        # dismissed.
+        #
+        # `_running` deliberately stays set. Releasing it would let the next
+        # offline event retry straight back into the same failure and flip the
+        # cover on and off; the user's way out of a terminal state is a reload,
+        # which is what the rethrow below ends up telling them.
+        @_hint false
+        if !@_covered =>
+          @_covered = true
+          @_ldcv.offline true, {ws: @ws}
+        @fire \error, e
+        # Rethrow rather than swallow. Without a catch here this rejection went
+        # unhandled and reached the app's global lderror handler, which is what
+        # surfaced the failure to the user - keep that path intact.
+        Promise.reject e
   # poll `pending` and show / hide the hint accordingly.
   # sampling states instead of listening events keeps this robust against
   # reconnect races - we never miss or double-count anything.
@@ -123,11 +180,34 @@ connector.prototype = Object.create(Object.prototype) <<<
       pending = false
       try pending = !!@_pending! catch e => pending = false
       now = Date.now!
-      if !pending or !(@_peekcfg.last?) => @_peekcfg.last = now
+      # the queue drained - whatever we were showing about it is no longer true.
+      if !pending or !(@_peekcfg.last?) =>
+        @_peekcfg.last = now
+        @_stall false
       waited = now - @_peekcfg.last
-      # only in the undetected window ( socket looks connected );
-      # summon / dismiss on transitions only - the hint ui keeps time itself.
-      @_hint (@ws and @ws.status! == 2 and waited >= @_peekcfg.threshold)
+      up = @ws and @ws.status! == 2
+      if !up =>
+        # the socket is down and `reopen` owns the ui from here. stand down so
+        # the stalled cover and the offline cover do not stack on each other.
+        @_stall false
+        # reset the clock too: on reconnect the queue gets a fresh window to
+        # drain in, instead of being judged on time it spent offline - otherwise
+        # the cover flashes for a moment before the flush lands.
+        @_peekcfg.last = now
+      else if @_peekcfg.blockAfter > 0 and waited >= @_peekcfg.blockAfter =>
+        # Pending has outlasted anything a "connection hiccup" can explain,
+        # while the socket still reports itself as up - so nothing else in this
+        # stack will say a word. `reopen` is not running, no offline event is
+        # coming, and the hint has been sitting there being ignorable the whole
+        # time. Escalate, and drop the hint: the cover is now the accurate
+        # description. Recoverable by design - if the queue drains above, this
+        # is toggled straight back off.
+        @_hint false
+        @_stall true, {waited, since: @_peekcfg.last}
+      else if !@_stalled =>
+        # only in the undetected window ( socket looks connected );
+        # summon / dismiss on transitions only - the hint ui keeps time itself.
+        @_hint (waited >= @_peekcfg.threshold)
     setTimeout (~> @_peek!), @_peekcfg.interval
 
   init: ->

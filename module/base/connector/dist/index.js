@@ -23,7 +23,8 @@
         }
         : {
           offline: ldcv.offline || function(){},
-          hint: ldcv.unstable
+          hint: ldcv.unstable,
+          stalled: ldcv.stalled
         };
     this._error = opt.error || null;
     this._reconnect = opt.reconnect;
@@ -31,9 +32,11 @@
     this._grace = opt.grace != null ? opt.grace : 2000;
     this._covered = false;
     this._hintOn = false;
+    this._stalled = false;
     this._peekcfg = {
       threshold: 3000,
-      interval: 1000
+      interval: 1000,
+      blockAfter: 15000
     };
     pending = opt.pending || null;
     this._pending = typeof pending === 'function'
@@ -41,7 +44,7 @@
       : (pending || {}).check || null;
     this._guard = true;
     if (pending && typeof pending !== 'function') {
-      for (i$ = 0, len$ = (ref$ = ['threshold', 'interval']).length; i$ < len$; ++i$) {
+      for (i$ = 0, len$ = (ref$ = ['threshold', 'interval', 'blockAfter']).length; i$ < len$; ++i$) {
         k = ref$[i$];
         if (pending[k] != null) {
           this._peekcfg[k] = pending[k];
@@ -78,7 +81,11 @@
   }, ref$.open = function(){
     var this$ = this;
     console.log(this._tag + " ws reconnect ...");
-    return this.ws.connect().then(function(){
+    return this.ws.connect()['catch'](function(e){
+      if (this$.ws.status() === 2) {} else {
+        return Promise.reject(e);
+      }
+    }).then(function(){
       return console.log(this$._tag + " object reconnect ...");
     }).then(function(){
       if (this$._reconnect) {
@@ -104,6 +111,15 @@
     return this._ldcv.hint(!!v, {
       ws: this.ws
     });
+  }, ref$._stall = function(v, ctx){
+    ctx == null && (ctx = {});
+    if (!this._ldcv.stalled || this._stalled === !!v) {
+      return;
+    }
+    this._stalled = !!v;
+    return this._ldcv.stalled(!!v, import$({
+      ws: this.ws
+    }, ctx));
   }, ref$.reopen = function(){
     var summon, hold, this$ = this;
     if (this._running) {
@@ -143,9 +159,19 @@
     }).then(function(){
       this$._covered = false;
       return this$._running = false;
+    })['catch'](function(e){
+      this$._hint(false);
+      if (!this$._covered) {
+        this$._covered = true;
+        this$._ldcv.offline(true, {
+          ws: this$.ws
+        });
+      }
+      this$.fire('error', e);
+      return Promise.reject(e);
     });
   }, ref$._peek = function(){
-    var pending, e, now, waited, this$ = this;
+    var pending, e, now, waited, up, this$ = this;
     if (this._running) {
       this._peekcfg.last = Date.now();
     } else {
@@ -159,9 +185,22 @@
       now = Date.now();
       if (!pending || !(this._peekcfg.last != null)) {
         this._peekcfg.last = now;
+        this._stall(false);
       }
       waited = now - this._peekcfg.last;
-      this._hint(this.ws && this.ws.status() === 2 && waited >= this._peekcfg.threshold);
+      up = this.ws && this.ws.status() === 2;
+      if (!up) {
+        this._stall(false);
+        this._peekcfg.last = now;
+      } else if (this._peekcfg.blockAfter > 0 && waited >= this._peekcfg.blockAfter) {
+        this._hint(false);
+        this._stall(true, {
+          waited: waited,
+          since: this._peekcfg.last
+        });
+      } else if (!this._stalled) {
+        this._hint(waited >= this._peekcfg.threshold);
+      }
     }
     return setTimeout(function(){
       return this$._peek();
@@ -209,5 +248,10 @@
     module.connector = connector;
   } else if (typeof window != 'undefined' && window !== null) {
     window.connector = connector;
+  }
+  function import$(obj, src){
+    var own = {}.hasOwnProperty;
+    for (var key in src) if (own.call(src, key)) obj[key] = src[key];
+    return obj;
   }
 }).call(this);

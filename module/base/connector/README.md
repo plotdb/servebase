@@ -10,6 +10,11 @@ with following constructor options:
  - `init()`: customized initialization function. optional.
  - `reconnect()`: customized function called when (re)connected. optional.
  - `error(e)`: customized error handler for connecting failures. optional.
+   a failed reconnect is terminal: the blocking cover is guaranteed to stay
+   up, and the rejection propagates (reaching the page's global handler if
+   nothing catches it) rather than being retried into the same failure. a
+   `connect` that fails only because the socket is already up is not a
+   failure - it is checked by socket state, not by error code.
  - `path`: websocket server path. default `/ws`.
  - `grace`: delay (ms) between disconnection confirmed and `ldcv.offline`
    actually summoned. reconnection starts right away regardless; if it
@@ -29,6 +34,12 @@ with following constructor options:
        should track elapsed time itself, since connector only summons and
        dismisses it on state transitions. requires the `pending` option;
        omit `unstable` (or `pending`) to disable.
+     - `stalled(v, ctx)`: local changes have gone unacknowledged past
+       `blockAfter` while the socket still reports itself up. toggle a
+       blocking cover with `v`. `ctx` additionally carries `{waited, since}`;
+       `since` is when the queue last drained, so the ui can keep its own
+       clock. requires the `pending` option; omit `stalled` (or `pending`,
+       or set `blockAfter: 0`) to disable.
      - `ctx`: `{ws}`. connector is the source of `ws` - take it from here
        instead of reaching for closures or `this`. new-form callbacks are
        deliberately not `this`-bound.
@@ -49,6 +60,8 @@ with following constructor options:
    - `threshold`: report unstable when pending lasts longer than this (ms).
      default 3000.
    - `interval`: polling interval (ms). default 1000.
+   - `blockAfter`: escalate from `unstable` to `stalled` when pending lasts
+     longer than this (ms). default 15000; set `0` to disable.
    - `guard`: warn when leaving the page while `check()` is truthy - data
      entered may not have reached the server yet. browsers only allow their
      own generic confirm dialog here, no custom message. registered with
@@ -65,9 +78,11 @@ A typical modern setup:
       ldcv:
         offline: (v, {ws}) -> ldcvmgr.toggle {ns: \local, name: \offline-retry}, v, {ws}
         unstable: (v) -> ldcvmgr.toggle {ns: \local, name: \unstable-hint}, v
+        stalled: (v, {since}) ->
+          ldcvmgr.toggle {ns: \local, name: \sync-stalled}, v, {since}
 
-Note: prepare (prefetch) the covers used by `offline` / `unstable` at init
-time - they can't be fetched once the network is gone.
+Note: prepare (prefetch) the covers used by `offline` / `unstable` / `stalled`
+at init time - they can't be fetched once the network is gone.
 
 
 And following API:
@@ -88,19 +103,32 @@ Available members for customized functions:
  - `hub`: empty object for storing customized object.
 
 
-## Unstable vs offline
+## Unstable, stalled and offline
 
 Disconnection can never be known immediately - a half-open socket accepts
 writes that silently go nowhere until heartbeat timeouts declare it dead.
-connector thus reports two escalating states:
+connector thus reports three escalating states:
 
  - `unstable`: summoned in two situations - (a) `pending()` stays truthy
    beyond `threshold` while the socket still looks connected: data may not
    have been delivered; (b) disconnection just got confirmed and
    reconnection is in progress, through the `grace` window. either way the
    ui should warn without blocking (e.g., a small banner).
+ - `stalled`: `pending()` has stayed truthy past `blockAfter` while the
+   socket still reports itself up. "some data is not yet confirmed" is an
+   honest thing to say for a few seconds; past that it is not - the data is
+   not getting through, and everything entered meanwhile is being lost. Note
+   that nothing else here will speak up in this situation: reconnection is
+   not running, no offline event is coming, and the non-blocking hint has
+   been sitting there being ignorable the whole time. The ui should block.
  - `offline`: reconnection did not complete within the `grace` window; the
    blocking cover takes over and `unstable` yields. a transient outage thus
    shows at most the non-blocking hint.
 
-Both are dismissed once reconnection completes and pending drains.
+`stalled` differs from the other two in kind: it describes a condition, not a
+verdict. It is toggled back off as soon as the queue drains, so the ui should
+offer a reload rather than force one - forcing it would discard the very
+pendingOps being waited on. It also yields whenever the socket goes down,
+leaving that case to `offline` so the two covers never stack.
+
+All are dismissed once reconnection completes and pending drains.
