@@ -134,9 +134,10 @@
       }
       this$._covered = true;
       this$._hint(false);
-      return this$._ldcv.offline(true, {
+      this$._ldcv.offline(true, {
         ws: this$.ws
       });
+      return this$._stall(false);
     };
     hold = this._grace > 0
       ? debounce(summon, this._grace)()
@@ -167,6 +168,7 @@
           ws: this$.ws
         });
       }
+      this$._stall(false);
       this$.fire('error', e);
       return Promise.reject(e);
     });
@@ -174,7 +176,6 @@
     var pending, e, now, waited, up, this$ = this;
     if (this._running) {
       this._peekcfg.last = Date.now();
-      this._stall(false);
     } else {
       pending = false;
       try {

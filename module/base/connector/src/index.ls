@@ -135,6 +135,12 @@ connector.prototype = Object.create(Object.prototype) <<<
       @_covered = true
       @_hint false
       @_ldcv.offline true, {ws: @ws}
+      # Hand over, do not just step aside: ours comes down only after theirs is
+      # up. Dropping it from `_peek` the moment reopen started left a window
+      # with no blocking cover at all - and we are covering precisely because
+      # data is known not to be getting through, so that window is the worst
+      # possible time to let someone type.
+      @_stall false
     # function-form debounce for `cancel`. delay 0 falls back to 750 in
     # debounce.js, so grace 0 ( immediate cover ) is called directly.
     hold = if @_grace > 0 => debounce(summon, @_grace)! else (summon!; null)
@@ -162,6 +168,7 @@ connector.prototype = Object.create(Object.prototype) <<<
         if !@_covered =>
           @_covered = true
           @_ldcv.offline true, {ws: @ws}
+        @_stall false
         @fire \error, e
         # Rethrow rather than swallow. Without a catch here this rejection went
         # unhandled and reached the app's global lderror handler, which is what
@@ -175,12 +182,10 @@ connector.prototype = Object.create(Object.prototype) <<<
     # window, then the offline cover ) - stand down and just keep ticking.
     # resetting `last` also gives pending a fresh threshold after reconnect,
     # so queued ops get a chance to drain before the hint reappears.
-    if @_running =>
-      @_peekcfg.last = Date.now!
-      # reopen's cover is blocking too, so drop ours or the two stack. The
-      # `!up` branch below cannot do this: whenever the socket is down, reopen
-      # is running and execution never reaches it.
-      @_stall false
+    # reopen owns the ui while it runs; it drops our cover itself, at the moment
+    # its own goes up ( see `summon` ). Doing it from here instead would either
+    # stack the two or open a gap between them, depending on the timing.
+    if @_running => @_peekcfg.last = Date.now!
     else
       pending = false
       try pending = !!@_pending! catch e => pending = false
