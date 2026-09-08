@@ -70,7 +70,7 @@ connector = (opt = {}) ->
   # `waited` accumulates time during which local changes were pending AND the
   # socket claimed to be usable. `last` is only the previous tick's timestamp.
   # see `_peek` for why it is accumulated rather than measured from a mark.
-  @_peekcfg = {threshold: 3000, interval: 1000, blockAfter: 15000, waited: 0}
+  @_peekcfg = {threshold: 5000, interval: 1000, blockAfter: 20000, waited: 0}
   pending = opt.pending or null
   @_pending = if typeof(pending) == \function => pending else (pending or {}).check or null
   @_guard = true

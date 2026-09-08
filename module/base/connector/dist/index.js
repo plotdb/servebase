@@ -34,9 +34,9 @@
     this._hintOn = false;
     this._stalled = false;
     this._peekcfg = {
-      threshold: 3000,
+      threshold: 5000,
       interval: 1000,
-      blockAfter: 15000,
+      blockAfter: 20000,
       waited: 0
     };
     pending = opt.pending || null;
