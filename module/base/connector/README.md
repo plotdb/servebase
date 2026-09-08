@@ -95,7 +95,7 @@ And following API:
    - unlike `open`, this triggers `ldcv.offline` for loading indicator.
  - `on(name, cb)`: register an event handler for event `name`.
  - `fire(name, ...args)`: fire an event with `name` and additional options `...args`.
-
+ - `peek()`: actively hint connector to check against pending jobs.
 
 Available members for customized functions:
 
