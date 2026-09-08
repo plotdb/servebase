@@ -57,6 +57,9 @@
     }
     this._evthdr = {};
     this.hub = {};
+    this.peek = debounce(function(){
+      return this._peek();
+    });
     return this;
   };
   connector.prototype = (ref$ = Object.create(Object.prototype), ref$.on = function(n, cb){
@@ -175,6 +178,9 @@
     });
   }, ref$._peek = function(){
     var pending, e, now, ref$, last, up, waited, ctx, this$ = this;
+    if (this._peekhdr) {
+      clearTimeout(this._peekhdr);
+    }
     pending = false;
     try {
       pending = !!this._pending();
@@ -203,13 +209,16 @@
       }
     } else if (!up) {
       this._stall(false);
+      if (!this._running) {
+        this.reopen();
+      }
     } else if (this._peekcfg.blockAfter > 0 && waited >= this._peekcfg.blockAfter) {
       this._hint(false);
       this._stall(true, ctx);
     } else if (!this._stalled) {
       this._hint(waited >= this._peekcfg.threshold);
     }
-    return setTimeout(function(){
+    return this._peekhdr = setTimeout(function(){
       return this$._peek();
     }, this._peekcfg.interval);
   }, ref$.init = function(){

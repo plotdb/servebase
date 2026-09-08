@@ -79,6 +79,7 @@ connector = (opt = {}) ->
     if pending.guard? => @_guard = !!pending.guard
   @_evthdr = {}
   @hub = {}
+  @peek = debounce -> @_peek!
   @
 
 connector.prototype = Object.create(Object.prototype) <<<
@@ -181,6 +182,7 @@ connector.prototype = Object.create(Object.prototype) <<<
   # sampling states instead of listening events keeps this robust against
   # reconnect races - we never miss or double-count anything.
   _peek: ->
+    if @_peekhdr => clearTimeout @_peekhdr
     pending = false
     try pending = !!@_pending! catch e => pending = false
     now = Date.now!
@@ -227,6 +229,7 @@ connector.prototype = Object.create(Object.prototype) <<<
       # or has not started yet ). nothing of ours belongs on screen here - the
       # offline cover, if anyone raised one, is the accurate description.
       @_stall false
+      if !@_running => @reopen!
     else if @_peekcfg.blockAfter > 0 and waited >= @_peekcfg.blockAfter =>
       # Pending has outlasted anything a "connection hiccup" can explain, while
       # the socket still reports itself as up - so nothing else in this stack
@@ -239,7 +242,7 @@ connector.prototype = Object.create(Object.prototype) <<<
       # only in the undetected window ( socket looks connected );
       # summon / dismiss on transitions only - the hint ui keeps time itself.
       @_hint (waited >= @_peekcfg.threshold)
-    setTimeout (~> @_peek!), @_peekcfg.interval
+    @_peekhdr = setTimeout (~> @_peek!), @_peekcfg.interval
 
   init: ->
     @ws = new ews {path: @_path}
@@ -268,7 +271,6 @@ connector.prototype = Object.create(Object.prototype) <<<
         # for legacy engines; keep any message another handler may have set.
         if !e.returnValue => e.returnValue = true
     @open!
-
 
 if module? => module.connector = connector
 else if window? => window.connector = connector
