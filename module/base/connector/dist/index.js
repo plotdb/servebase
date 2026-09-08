@@ -126,6 +126,9 @@
     }, ctx));
   }, ref$.reopen = function(){
     var summon, hold, this$ = this;
+    if (!this._inited) {
+      return;
+    }
     if (this._running) {
       return;
     }
@@ -235,30 +238,32 @@
     if (this._init) {
       this._init();
     }
-    if (this._pending && this._ldcv.hint) {
-      this._peekcfg.last = Date.now();
-      this._peek();
-    }
-    if (this._pending && this._guard && typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', function(e){
-        var p, err;
-        p = false;
-        try {
-          p = !!this$._pending();
-        } catch (e$) {
-          err = e$;
+    return this.open().then(function(){
+      this$._inited = true;
+      if (this$._pending && this$._ldcv.hint) {
+        this$._peekcfg.last = Date.now();
+        this$._peek();
+      }
+      if (this$._pending && this$._guard && typeof window !== 'undefined') {
+        return window.addEventListener('beforeunload', function(e){
+          var p, err;
           p = false;
-        }
-        if (!p) {
-          return;
-        }
-        e.preventDefault();
-        if (!e.returnValue) {
-          return e.returnValue = true;
-        }
-      });
-    }
-    return this.open();
+          try {
+            p = !!this$._pending();
+          } catch (e$) {
+            err = e$;
+            p = false;
+          }
+          if (!p) {
+            return;
+          }
+          e.preventDefault();
+          if (!e.returnValue) {
+            return e.returnValue = true;
+          }
+        });
+      }
+    });
   }, ref$);
   if (typeof module != 'undefined' && module !== null) {
     module.connector = connector;

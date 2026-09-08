@@ -124,6 +124,7 @@ connector.prototype = Object.create(Object.prototype) <<<
     @_stalled = !!v
     @_ldcv.stalled !!v, {ws: @ws} <<< ctx
   reopen: ->
+    if !@_inited => return
     if @_running => return
     @_running = true
     @_covered = false
@@ -252,6 +253,8 @@ connector.prototype = Object.create(Object.prototype) <<<
       @reopen!
     @ws.on \close, ~> @reopen!
     if @_init => @_init!
+    <~ @open!then _
+    @_inited = true
     if @_pending and @_ldcv.hint =>
       @_peekcfg.last = Date.now!
       @_peek!
@@ -270,7 +273,6 @@ connector.prototype = Object.create(Object.prototype) <<<
         e.preventDefault!
         # for legacy engines; keep any message another handler may have set.
         if !e.returnValue => e.returnValue = true
-    @open!
 
 if module? => module.connector = connector
 else if window? => window.connector = connector
