@@ -74,6 +74,52 @@ survives `SIGKILL` and its pid may later be reused, while a leftover socket file
 refuses connection and is reported as stale. Each project root has its own socket,
 so ping never reports another project's server.
 
+Accepting is the whole test; answering is not. A server whose event loop is busy
+- starting up, or in the middle of heavy synchronous work - holds the port and
+is up, it just cannot reply yet, and is reported as `running: true, busy: true`.
+Calling that "no server" is how two servers end up fighting over one port.
+
+When nothing is running, a `.server.crash` left behind by `start` is reported
+too; see `doc/base/infrastructure.md` -> Giving Up.
+
+
+### Servers
+
+`npm run ping` answers for one project. `npm run servers` answers for the
+machine - every servebase process running on it, whichever project or agent
+started it:
+
+    npm run servers          # human readable
+    npm run servers -- -j    # raw json, for scripts and agents
+
+    2 servebase servers running:
+
+      jiemu.local  9100   development  17h 18m   /Users/me/workspace/jiemu/server
+      Make Chart   9103   development  9d 5h     /Users/me/workspace/makechart/server
+
+    1 other servebase process:
+
+      subscription:v3.ldio.dev  pid 70359   /Users/me/workspace/loading/v3/tool/ldio/subscription
+
+They are found in `ps`, not in a registry. `start` re-execs itself as
+`start:<dirname>` and the engine sets its process title to
+`servebase:<role>:<name>`, so the evidence is already there; a registry would
+have to stay true across `kill -9`, reboots, worktrees and `--force`, and a
+registry that lies is worse than none. The project root is each process's own
+cwd, and the port, mode and uptime come from that project's `tool/base/ping`
+over its own socket - nothing here guesses a port or reads a config.
+
+A `start` with no engine under it is listed separately, as a warning:
+
+    1 project with a start script but no engine - starting up, or stuck failing to start:
+
+      pid 46075  /Users/me/workspace/jiemu/server
+
+That is either a server still coming up, which clears in a moment, or one stuck
+failing to start. The second case is the one worth a tool: it is invisible
+everywhere else, because a healthy server is usually running right next to it
+and the project looks fine.
+
 `./start` runs the same check on startup and refuses to launch a second server for
 the same project, printing the running one's info instead. Pass `--force` ( `-F` )
 to start anyway.

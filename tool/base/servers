@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# list the servebase processes running on this machine - all of them, not just
+# this project's. see `npm run servers`.
+#
+#   npm run servers           human readable
+#   npm run servers -- -j     json ( for scripts / agents )
+#
+# exit code: 0 = at least one process found, 1 = none.
+#
+# they are found in `ps`, not in a registry: `start` re-execs itself as
+# `start:<dirname>` and the engine sets its process title to
+# `servebase:<role>:<name>`, so the evidence is already there. a registry would
+# have to stay true across `kill -9`, reboots, worktrees and `--force`, and a
+# registry that lies is worse than no registry.
+#
+# `ps` gives the pid; the project root is the process's cwd ( `start` runs from
+# it ); everything else comes from that project's own `tool/base/ping`, over its
+# own control socket. so this never has to guess a port or parse a config.
+#
+# a `start:` with no engine under it is reported as a warning: that is a server
+# either still coming up or stuck failing to start, and the second case is
+# invisible in every other view - the machine is busy, the log grows, and the
+# project looks fine because a healthy server is usually running next to it.
+
+MODE=human
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -j|--json) MODE=json; shift ;;
+    -h|--help) grep '^#' "$0" | grep -v '^#!' | cut -c 3-; exit 0 ;;
+    *) echo "servers: unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+
+# linux has it for free; elsewhere pay for lsof.
+proc_cwd() {
+  if [ -r "/proc/$1/cwd" ]; then
+    readlink "/proc/$1/cwd" 2>/dev/null
+  else
+    lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1
+  fi
+}
+
+# one record per line: kind \t pid \t name \t root, kind being engine or start.
+records=$(
+  ps -Ao pid=,command= | while read -r pid cmd; do
+    case "$cmd" in
+      (servebase:*)
+        # the title is padded to the length of the original argv; drop that.
+        name=$(echo "${cmd#servebase:}" | sed 's/[[:space:]]*$//')
+        printf 'engine\t%s\t%s\t%s\n' "$pid" "$name" "$(proc_cwd "$pid")" ;;
+      (start:*)
+        printf 'start\t%s\t%s\t%s\n' "$pid" "" "$(proc_cwd "$pid")" ;;
+    esac
+  done
+)
+
+[ -z "$records" ] && {
+  [ "$MODE" = json ] && echo '{"servers":[],"other":[],"warnings":[]}'
+  [ "$MODE" = human ] && echo "no servebase processes running on this machine."
+  exit 1
+}
+
+# ask each project what it is, through its own socket. a root is asked once even
+# when several processes point at it ( engine, its lsc wrapper, `--force` ).
+roots=$(echo "$records" | cut -f4 | grep -v '^$' | sort -u)
+info=""
+for root in $roots; do
+  [ -x "$root/tool/base/ping" ] || continue
+  json=$("$root/tool/base/ping" -j 2>/dev/null)
+  [ -n "$json" ] && info="$info$root	$json
+"
+done
+
+node -e '
+var recs = (process.argv[1] || "").split("\n").filter(Boolean).map(function (l) {
+  var f = l.split("\t");
+  return { kind: f[0], pid: Number(f[1]), name: f[2], root: f[3] };
+});
+var info = {};
+(process.argv[2] || "").split("\n").filter(Boolean).forEach(function (l) {
+  var f = l.split("\t");
+  try { info[f[0]] = JSON.parse(f[1]) } catch (e) {}
+});
+var mode = process.argv[3];
+
+var servers = [], other = [], warnings = [];
+var engineRoots = {};
+recs.filter(function (r) { return r.kind === "engine" }).forEach(function (r) {
+  var d = info[r.root] || {};
+  var role = r.name.split(":")[0], label = r.name.slice(role.length + 1);
+  if (r.root) engineRoots[r.root] = true;
+  var row = { role: role, name: label, pid: r.pid, root: r.root || null,
+              port: d.port || null, mode: d.mode || null, version: d.version || null,
+              uptime: d.uptime || null, busy: !!d.busy };
+  (role === "server" ? servers : other).push(row);
+});
+// a supervisor whose engine is not in `ps` is starting up or looping on a
+// permanent error. the pid is the one `npm run stop` would kill.
+recs.filter(function (r) { return r.kind === "start" && r.root && !engineRoots[r.root] })
+  .forEach(function (r) { warnings.push({ pid: r.pid, root: r.root }) });
+
+if (mode === "json") {
+  console.log(JSON.stringify({ servers: servers, other: other, warnings: warnings }));
+  process.exit(0);
+}
+
+var up = function (ms) {
+  var s = Math.floor((ms || 0) / 1000);
+  return [[86400,"d"],[3600,"h"],[60,"m"],[1,"s"]].reduce(function (a, u) {
+    var v = Math.floor(s / u[0]); s -= v * u[0];
+    if (v || a.length || u[0] === 1) a.push(v + u[1]);
+    return a;
+  }, []).slice(0, 2).join(" ");
+};
+var pad = function (s, n) { s = String(s == null ? "" : s); return s + " ".repeat(Math.max(1, n - s.length)) };
+
+if (servers.length) {
+  console.log(servers.length + " servebase server" + (servers.length > 1 ? "s" : "") + " running:");
+  console.log("");
+  var w = Math.max.apply(null, servers.map(function (r) { return r.name.length }));
+  servers.forEach(function (r) {
+    console.log("  " + pad(r.name, w + 2) + pad(r.port, 7) + pad(r.mode, 13) +
+                pad(r.busy ? "busy" : up(r.uptime), 10) + r.root);
+  });
+}
+if (other.length) {
+  console.log("");
+  console.log(other.length + " other servebase process" + (other.length > 1 ? "es" : "") + ":");
+  console.log("");
+  var w2 = Math.max.apply(null, other.map(function (r) { return (r.role + ":" + r.name).length }));
+  other.forEach(function (r) {
+    console.log("  " + pad(r.role + ":" + r.name, w2 + 2) + pad("pid " + r.pid, 12) + r.root);
+  });
+}
+if (warnings.length) {
+  console.log("");
+  console.log(warnings.length + " project" + (warnings.length > 1 ? "s" : "") +
+              " with a start script but no engine - starting up, or stuck failing to start:");
+  console.log("");
+  warnings.forEach(function (r) {
+    console.log("  pid " + r.pid + "  " + r.root);
+  });
+  console.log("");
+  console.log("  if this does not clear in a moment, that is a restart loop: check");
+  console.log("  its server.log, and `kill <pid>` takes the whole loop down.");
+}
+' "$records" "$info" "$MODE"

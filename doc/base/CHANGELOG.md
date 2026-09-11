@@ -1,5 +1,16 @@
 ## master
 
+ - features:
+   - `npm run servers` ( `tool/base/servers` ): every servebase process on this
+     machine, not just this project's - name, port, mode, uptime, project root,
+     plus background roles such as `subscription`. with several terminals and
+     coding agents starting servers, which of them is running what stops being
+     answerable from any one project directory. found in `ps` ( `start:<dirname>`
+     and the engine's `servebase:<role>:<name>` title ) rather than a registry,
+     with details from each project's own `ping`, so it stays true across
+     `kill -9`, reboots and `--force`. a `start` with no engine under it is
+     flagged: that is a server still coming up, or one stuck failing to start.
+     `-j` for json.
  - fixes:
    - `start` no longer retries a server that cannot start. a run dying within
      `SB_CRASH_FAST` seconds ( 10 ) counts as a failed start; `SB_CRASH_MAX` of
