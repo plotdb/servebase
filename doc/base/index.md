@@ -97,17 +97,30 @@ started it:
       jiemu.local  9100   development  17h 18m   /Users/me/workspace/jiemu/server
       Make Chart   9103   development  9d 5h     /Users/me/workspace/makechart/server
 
-    1 other servebase process:
-
-      subscription:v3.ldio.dev  pid 70359   /Users/me/workspace/loading/v3/tool/ldio/subscription
-
 They are found in `ps`, not in a registry. `start` re-execs itself as
-`start:<dirname>` and the engine sets its process title to
-`servebase:<role>:<name>`, so the evidence is already there; a registry would
-have to stay true across `kill -9`, reboots, worktrees and `--force`, and a
-registry that lies is worse than none. The project root is each process's own
-cwd, and the port, mode and uptime come from that project's `tool/base/ping`
-over its own socket - nothing here guesses a port or reads a config.
+`start:<dirname>` and the engine titles itself
+`servebase:<dirname>[:<sitename>]` ( see `backend/engine/index.ls` ), so the
+evidence is already there; a registry would have to stay true across `kill -9`,
+reboots, worktrees and `--force`, and a registry that lies is worse than none.
+The project root is each process's own cwd, and the port, mode and uptime come
+from that project's `tool/base/ping` over its own socket - nothing here guesses
+a port or reads a config.
+
+The name shown is the sitename where a config sets one, since the dirname half
+is very often just `server`. What counts as a running server is decided by that
+`ping`, not by the title - a title makes no claim about whether anything is
+answering. An engine `ping` cannot reach is listed on its own rather than
+guessed about:
+
+    1 servebase engine ping could not reach:
+
+      v3.ldio.dev  pid 70359   /Users/me/workspace/loading/v3/tool/ldio/subscription
+
+      running, but with no control socket to ask: an older engine, a layout
+      without tool/base/ping, or a process belonging to another user.
+
+`lsof` reads cwd only for your own processes, so another user's server lists
+without a root, and without the details looked up through it.
 
 A `start` with no engine under it is listed separately, as a warning:
 
