@@ -9,6 +9,22 @@ fi
 # --noloop: run server once without auto-restart loop,
 # for service managers ( e.g., systemd with Restart=always ) that restart on their own.
 # --force: start even if another server already answers on .localctl.sock.
+#
+# env:
+#   SB_CRASH_FAST  seconds; a run shorter than this counts as a failed start ( 10 )
+#   SB_CRASH_MAX   that many failed starts in a row and the loop gives up ( 5 )
+#   SB_CRASH_HOOK  shell command run just before giving up, with SB_CRASH_PROJECT /
+#                  SB_CRASH_COUNT / SB_CRASH_LOG / SB_CRASH_FILE in its environment.
+#                  set it where the server is deployed ( a mail / chat call in
+#                  production, a desktop notification in development ).
+#   SB_CRASH_HOOK_TIMEOUT  seconds before the hook is killed ( 30 )
+#
+# giving up always leaves two things that cannot fail: a nonzero exit ( which is
+# what systemd `OnFailure=` wants ) and a `.server.crash` file. the hook is the
+# part that reaches the outside world, so it is also the part that can hang -
+# whatever stops a server from starting is often what a mail or webhook call
+# needs too. it is best effort: it gets a timeout, and giving up does not wait
+# on it succeeding.
 LOOP=1
 FORCE=0
 CFG=""
@@ -33,7 +49,29 @@ if [ "$FORCE" = 0 ] && ./tool/base/ping -q; then
   exit 1
 fi
 
-trap "rm -f .server.pid; kill 0" exit # killing all process on current group on exit
+# second guard, for the window the first one cannot see: between this script
+# writing .server.pid and its engine calling listen(), there is no socket yet,
+# so `ping` correctly reports nothing while a server is in fact on its way up.
+# a live pid in .server.pid is the only evidence that exists during it.
+if [ "$FORCE" = 0 ] && [ -f .server.pid ]; then
+  OTHER=$(cat .server.pid 2>/dev/null)
+  if [ -n "$OTHER" ] && [ "$OTHER" != "$$" ] && kill -0 "$OTHER" 2>/dev/null; then
+    echo "a server for this project is already starting up ( pid $OTHER )."
+    echo
+    echo "run 'npm run stop' to stop it, or './start --force' to start anyway."
+    exit 1
+  fi
+fi
+
+# the pidfile is deleted on the way out only if it is still ours. a server that
+# lost the startup race used to delete the winner's pidfile as it left, and
+# `npm run stop` then had nothing to kill - the surviving server could only be
+# found by hand, in `ps`.
+cleanup() {
+  [ "$(cat .server.pid 2>/dev/null)" = "$$" ] && rm -f .server.pid
+  kill 0 # take down the whole process group
+}
+trap cleanup exit
 trap "echo server loop stopped; exit" SIGINT SIGTERM # on ctrl-c, exit script.
 
 echo $$ > .server.pid # for `npm stop`; killing this pid takes down the whole group.
@@ -43,8 +81,39 @@ echo $$ > .server.pid # for `npm stop`; killing this pid takes down the whole gr
 #  -c : color
 #  -t : format timestamp
 
+# a server that dies this fast did not really start; that many failed starts in
+# a row and the reason is not going to fix itself by trying again ( a port
+# already taken, a syntax error, a missing config ). the loop used to retry such
+# a server forever, which turns one stray `./start` into a machine at full tilt
+# and a log growing megabytes an hour, with the real server running fine next to
+# it - nothing visibly broken, so nobody looks.
+CRASH_FAST=${SB_CRASH_FAST:-10}
+CRASH_MAX=${SB_CRASH_MAX:-5}
+crashes=0
+
+# run SB_CRASH_HOOK, but never let it become the new way this hangs. it runs in
+# the background with a killer beside it, so `wait` returns either way; the exit
+# path below does not care whether it worked.
+run_crash_hook() {
+  local timeout=${SB_CRASH_HOOK_TIMEOUT:-30} hook_pid killer_pid
+  SB_CRASH_PROJECT="$PWD" SB_CRASH_COUNT="$1" \
+  SB_CRASH_LOG="$PWD/server.log" SB_CRASH_FILE="$PWD/.server.crash" \
+    bash -c "$SB_CRASH_HOOK" < /dev/null &
+  hook_pid=$!
+  ( sleep "$timeout"; kill -TERM "$hook_pid" 2>/dev/null ) &
+  killer_pid=$!
+  wait "$hook_pid" 2>/dev/null
+  if ! kill -0 "$killer_pid" 2>/dev/null; then
+    echo "crash hook did not finish within ${timeout}s; killed it."
+  fi
+  kill -TERM "$killer_pid" 2>/dev/null
+  wait "$killer_pid" 2>/dev/null
+}
+
 # see infrastructure.md -> daemon
 while [ 1 ]; do
+
+  run_start=$SECONDS
 
   if [[ $NODE_ENV == "production" ]]; then
     # production - use prebuilt js files
@@ -65,8 +134,48 @@ while [ 1 ]; do
 
   if [ "$LOOP" = "0" ]; then break; fi
 
-  echo "server down; try to auto restart after 1s."
-  sleep 1;
+  # a run that lasted counts as a real start: whatever killed it happened later,
+  # so the next start deserves a clean slate.
+  if [ $(( SECONDS - run_start )) -lt "$CRASH_FAST" ]; then
+    crashes=$(( crashes + 1 ))
+  else
+    # a server that ran is a server that started: whatever an older `.server.crash`
+    # describes is over, and leaving it would have `ping` reporting it for good.
+    crashes=0
+    rm -f .server.crash
+  fi
+
+  if [ "$crashes" -ge "$CRASH_MAX" ]; then
+    echo
+    echo "server failed to start $crashes times in a row, each within ${CRASH_FAST}s."
+    echo "giving up. last lines of server.log:"
+    echo
+    tail -n 15 server.log
+
+    # written first, and to the project directory: no network, no config, no
+    # daemon - the one report that survives whatever took the server down.
+    # `tool/base/ping` reads it, so asking why a project is down answers this
+    # too, and nothing has to be watching at the moment it happens.
+    {
+      echo "time: $(date '+%Y-%m-%dT%H:%M:%S%z')"
+      echo "project: $PWD"
+      echo "count: $crashes"
+      echo "window: ${CRASH_FAST}s"
+      echo "reason: failed to start $crashes times in a row, each within ${CRASH_FAST}s"
+      echo "--- last 15 lines of server.log ---"
+      tail -n 15 server.log
+    } > .server.crash 2>/dev/null
+
+    [ -n "$SB_CRASH_HOOK" ] && run_crash_hook "$crashes"
+    exit 1
+  fi
+
+  # back off a little further each time, so the few retries before giving up
+  # also leave room for whatever is holding the port to let go of it.
+  backoff=$(( 1 << (crashes - 1) ))
+  [ "$backoff" -gt 30 ] && backoff=30
+  echo "server down; try to auto restart after ${backoff}s."
+  sleep $backoff
 
 done
 

@@ -1,5 +1,30 @@
 ## master
 
+ - fixes:
+   - `start` no longer retries a server that cannot start. a run dying within
+     `SB_CRASH_FAST` seconds ( 10 ) counts as a failed start; `SB_CRASH_MAX` of
+     them in a row ( 5 ) and the loop backs off, gives up and exits nonzero,
+     instead of respawning a doomed process every few seconds until someone
+     notices the fan. it leaves `.server.crash` behind - when, how often, why,
+     tail of the log - which `npm run ping` reports whenever a project has no
+     server, plus an optional `SB_CRASH_HOOK` for reaching the outside world.
+     the hook runs under `SB_CRASH_HOOK_TIMEOUT` ( 30s ) and is killed if it
+     overruns: what stops a server from starting often stops a mail call too,
+     and reporting the hang must not become one. see `doc/base/infrastructure.md`
+     -> Giving Up.
+   - `tool/base/ping` tells a busy server from an absent one. the control socket
+     is served from the event loop that also serves the site, and `localctl.init`
+     runs only after `listen()` has taken the port, so between "port taken" and
+     "able to answer" the socket accepts and nothing replies - curl reports 28,
+     not 7. reading only curl's output made that window look like "no server",
+     which is exactly when a second `./start` is most likely; the loser then
+     spun on EADDRINUSE. such a server now reports `running: true, busy: true`.
+   - `start` refuses to start over a server that is still coming up, and removes
+     `.server.pid` only if it is still its own. the ping guard cannot see a
+     server that has not opened its socket yet, so a live pid in `.server.pid` is
+     now checked too; and a process that lost the race used to delete the
+     winner's pidfile as it exited, leaving `npm run stop` with nothing to kill
+     and the surviving server findable only by hand in `ps`.
  - features:
    - content-addressed frontend assets, off by default. `config.build.hash.enabled`
      turns it on; `mode` picks `filename` ( `<name>.<hash>[.min].<ext>`, servable as

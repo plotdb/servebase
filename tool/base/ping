@@ -8,11 +8,20 @@
 #                             `{"running":false}`. messages go to stderr.
 #   npm run ping -- -q        no output, exit code only
 #
+# when nothing is running, a `.server.crash` left by `start` is reported too:
+# `start` gives up after a server fails to start enough times in a row, and this
+# is where someone already looks to find out why a project is down.
+#
 # exit code: 0 = a server is running for this project, 1 = none.
 #
 # liveness is decided by whether `.localctl.sock` accepts a connection, not by
 # `.server.pid`: a pidfile survives SIGKILL and its pid may later be reused,
 # while a leftover socket file refuses connection and is thus self-correcting.
+#
+# accepting the connection is the whole test - answering is not. a server whose
+# event loop is blocked ( startup, a heavy synchronous build ) is up and owns
+# this project's port, it just cannot reply yet; such a server reports
+# `running: true, busy: true`. see the busy branch below for why this matters.
 #
 # each project root has its own socket, so this never reports another project's
 # server ( see backend/engine/localctl.ls ).
@@ -21,6 +30,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$ROOT" || exit 1
 SOCK=.localctl.sock
 PIDFILE=.server.pid
+CRASHFILE=.server.crash
 MODE=human
 
 while [ $# -gt 0 ]; do
@@ -40,7 +50,25 @@ say() {
     *) echo "$@" ;;
   esac
 }
-down() { [ "$MODE" = json ] && echo '{"running":false}'; exit 1; }
+down() {
+  if [ "$MODE" = json ]; then
+    node -e '
+var fs = require("fs"), out = { running: false };
+try {
+  var t = fs.readFileSync(process.argv[1], "utf8");
+  var g = function (k) { var m = t.match(new RegExp("^" + k + ": (.*)$", "m")); return m ? m[1] : null };
+  out.crash = { time: g("time"), count: Number(g("count")) || null, reason: g("reason") };
+} catch (e) {}
+console.log(JSON.stringify(out))' "$CRASHFILE"
+  elif [ -f "$CRASHFILE" ]; then
+    say ""
+    say "the server gave up trying to start here:"
+    say "  when    $(sed -n 's/^time: //p' "$CRASHFILE")"
+    say "  why     $(sed -n 's/^reason: //p' "$CRASHFILE")"
+    say "  detail  $ROOT/$CRASHFILE ( carries the tail of server.log )"
+  fi
+  exit 1
+}
 
 if [ ! -S "$SOCK" ]; then
   say "no server running in $ROOT ( no $SOCK )"
@@ -52,7 +80,28 @@ fi
 
 # -q first: ignore ~/.curlrc, whose -w / -v style settings would corrupt the json.
 JSON=$(curl -q -s --max-time 3 --unix-socket "$SOCK" http://localhost/info 2>/dev/null)
-if [ $? != 0 ] || [ -z "$JSON" ]; then
+RC=$?
+
+# a busy server is still a running server, and telling the two apart is the
+# point of reading curl's exit code rather than just its output:
+#
+#   7  - connection refused: nothing is listening, the socket file is a leftover.
+#   28 - timed out: something IS listening but did not answer in time.
+#   52 / 56 - answered with nothing / died mid-reply. someone is there.
+#
+# the engine serves this socket from the same event loop as the site, and
+# `localctl.init` runs only after `listen()` on the port has already succeeded.
+# so between "port taken" and "ready to answer" there is a window where the
+# socket accepts and nothing replies. reporting "no server" in that window let
+# a second `./start` past the guard in `start`, and the loser then spun on
+# EADDRINUSE - forever, since the loop has no idea the error is permanent.
+if [ $RC = 28 ] || [ $RC = 52 ] || [ $RC = 56 ]; then
+  say "server running in $ROOT, but busy ( $SOCK accepted, no answer within 3s )"
+  [ "$MODE" = json ] && echo '{"running":true,"busy":true}'
+  exit 0
+fi
+
+if [ $RC != 0 ] || [ -z "$JSON" ]; then
   say "no server running in $ROOT ( $SOCK is stale )"
   down
 fi

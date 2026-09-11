@@ -35,6 +35,66 @@ Node server should run as a Daemon with auto-restart mechanism. This can be done
      stop with `npm stop` ( kills pid in `.server.pid`, trap takes down the group ).
 
 
+### Giving Up
+
+A server that crashes after running is worth restarting; one that never starts
+is not. The bash loop counts starts that die within `SB_CRASH_FAST` seconds
+( 10 ), backs off further each time, and after `SB_CRASH_MAX` of them in a row
+( 5 ) stops instead of spinning. Without this, a permanent error - a port
+already taken, a syntax error, a config that no longer parses - is retried
+forever; with the real server usually still running next to it, nothing looks
+broken and the only symptom is a hot machine and a log growing by the hour.
+
+Giving up leaves behind:
+
+ - a nonzero exit, for `systemd` ( `OnFailure=` ) or whatever supervises it.
+ - `.server.crash` in the project directory: when, how many times, why, and the
+   tail of `server.log`. `npm run ping` reads it whenever the project has no
+   server running, so asking "why is this down" answers it without anyone
+   having had to watch at the time. A server that starts and runs deletes it.
+ - `SB_CRASH_HOOK`, if set: a shell command, with `SB_CRASH_PROJECT`,
+   `SB_CRASH_COUNT`, `SB_CRASH_LOG` and `SB_CRASH_FILE` in its environment - a
+   mail or chat call in production, a desktop notification in development.
+
+The hook is best effort, and deliberately the last of the three. Whatever keeps
+a server from starting - no network, no DNS, an unreadable config - is often
+what a call to the outside world needs too, so it runs with a timeout
+( `SB_CRASH_HOOK_TIMEOUT`, 30s ) and is killed if it overruns. Reporting must
+not become the new way this hangs.
+
+Set it where the server is deployed. Single quotes, so the variables expand when
+the hook runs rather than when it is set:
+
+    # production: mail the whole report out
+    SB_CRASH_HOOK='mail -s "$(basename $SB_CRASH_PROJECT) failed to start" ops@example.com < "$SB_CRASH_FILE"'
+
+    # or a webhook
+    SB_CRASH_HOOK='curl -sS --max-time 20 -X POST "$MY_WEBHOOK" --data-binary @"$SB_CRASH_FILE"'
+
+    # development: a desktop notification, which is all it takes to not lose a night
+    SB_CRASH_HOOK='osascript -e "display notification \"$SB_CRASH_COUNT failed starts\" with title \"$(basename $SB_CRASH_PROJECT)\""'
+
+Note what the hook is not: it is not wired to `config/private`, even though the
+mail settings sitting there would make a default hook look easy. Four reasons,
+and the last is the one that matters.
+
+ - the config is `.ls`; reading it from bash means starting a node process, and
+   node failing to start is one of the things being reported.
+ - the code that sends mail ( `backend/engine/mail-queue.ls` ) lives in the
+   engine, and the engine is what just died. Using it means loading the config,
+   `nodemailer` and its transport again - betting on the same startup path that
+   just failed, at the moment it is known to be failing.
+ - it is a secret file. Reading it in bash and passing it down through a child
+   process environment widens where those secrets go, in exchange for a notice.
+ - a server that will not start often will not start because its config broke or
+   could not be read. A reporting path built on that same config is one that
+   fails exactly when it is needed.
+
+This is the same call as the timeout above: this layer can guarantee a local
+file and an exit code, and nothing else. Anything that needs something else to
+still be alive belongs outside it.
+
+
 ## Note
 
  - Load Balancing
