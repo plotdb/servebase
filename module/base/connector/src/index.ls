@@ -1,4 +1,3 @@
-console.log "SBMARK_NOPATCH"
 connector = (opt = {}) ->
   @ <<< ws: null, _running: false, _tag: "[@servebase/connector]"
   @_init = opt.init
