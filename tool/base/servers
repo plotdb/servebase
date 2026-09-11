@@ -17,6 +17,12 @@
 # it ); everything else comes from that project's own `tool/base/ping`, over its
 # own control socket. so this never has to guess a port or parse a config.
 #
+# and it is `ping` that decides what counts as a running server, not the process
+# title: the title is `servebase:<dirname>[:<sitename>]` and carries no claim
+# about whether the thing is answering. an engine that ping cannot reach is
+# listed separately rather than guessed about - an older engine with no control
+# socket, a layout without `tool/base/ping`, or another user's process.
+#
 # a `start:` with no engine under it is reported as a warning: that is a server
 # either still coming up or stuck failing to start, and the second case is
 # invisible in every other view - the machine is busy, the log grows, and the
@@ -83,16 +89,20 @@ var info = {};
 });
 var mode = process.argv[3];
 
-var servers = [], other = [], warnings = [];
+// `servebase:<dirname>[:<sitename>]`, see backend/engine/index.ls. the dirname
+// is whatever the project folder is called - very often just `server` - so the
+// sitename, where a config sets one, is the half worth showing.
+var label = function (t) { var p = t.split(":"); return p.length > 1 ? p.slice(1).join(":") : p[0] };
+
+var servers = [], engines = [], warnings = [];
 var engineRoots = {};
 recs.filter(function (r) { return r.kind === "engine" }).forEach(function (r) {
   var d = info[r.root] || {};
-  var role = r.name.split(":")[0], label = r.name.slice(role.length + 1);
   if (r.root) engineRoots[r.root] = true;
-  var row = { role: role, name: label, pid: r.pid, root: r.root || null,
-              port: d.port || null, mode: d.mode || null, version: d.version || null,
-              uptime: d.uptime || null, busy: !!d.busy };
-  (role === "server" ? servers : other).push(row);
+  var row = { name: label(r.name), title: "servebase:" + r.name, pid: r.pid,
+              root: r.root || null, port: d.port || null, mode: d.mode || null,
+              version: d.version || null, uptime: d.uptime || null, busy: !!d.busy };
+  (d.running ? servers : engines).push(row);
 });
 // a supervisor whose engine is not in `ps` is starting up or looping on a
 // permanent error. the pid is the one `npm run stop` would kill.
@@ -100,7 +110,7 @@ recs.filter(function (r) { return r.kind === "start" && r.root && !engineRoots[r
   .forEach(function (r) { warnings.push({ pid: r.pid, root: r.root }) });
 
 if (mode === "json") {
-  console.log(JSON.stringify({ servers: servers, other: other, warnings: warnings }));
+  console.log(JSON.stringify({ servers: servers, engines: engines, warnings: warnings }));
   process.exit(0);
 }
 
@@ -112,25 +122,33 @@ var up = function (ms) {
     return a;
   }, []).slice(0, 2).join(" ");
 };
-var pad = function (s, n) { s = String(s == null ? "" : s); return s + " ".repeat(Math.max(1, n - s.length)) };
+var pad = function (s, n) { s = String(s == null || s === "" ? "-" : s); return s + " ".repeat(Math.max(1, n - s.length)) };
+// cwd is readable only for our own processes, so a server owned by someone
+// else lists without a root - and without the ping details found through it.
+var where = function (r) { return r.root || "( another user? cwd not readable )" };
+var widest = function (rows, f) { return Math.max.apply(null, rows.map(function (r) { return f(r).length })) };
 
 if (servers.length) {
   console.log(servers.length + " servebase server" + (servers.length > 1 ? "s" : "") + " running:");
   console.log("");
-  var w = Math.max.apply(null, servers.map(function (r) { return r.name.length }));
+  var w = widest(servers, function (r) { return r.name });
   servers.forEach(function (r) {
     console.log("  " + pad(r.name, w + 2) + pad(r.port, 7) + pad(r.mode, 13) +
-                pad(r.busy ? "busy" : up(r.uptime), 10) + r.root);
+                pad(r.busy ? "busy" : r.uptime ? up(r.uptime) : null, 10) + where(r));
   });
 }
-if (other.length) {
+if (engines.length) {
   console.log("");
-  console.log(other.length + " other servebase process" + (other.length > 1 ? "es" : "") + ":");
+  console.log(engines.length + " servebase engine" + (engines.length > 1 ? "s" : "") +
+              " ping could not reach:");
   console.log("");
-  var w2 = Math.max.apply(null, other.map(function (r) { return (r.role + ":" + r.name).length }));
-  other.forEach(function (r) {
-    console.log("  " + pad(r.role + ":" + r.name, w2 + 2) + pad("pid " + r.pid, 12) + r.root);
+  var w2 = widest(engines, function (r) { return r.name });
+  engines.forEach(function (r) {
+    console.log("  " + pad(r.name, w2 + 2) + pad("pid " + r.pid, 12) + where(r));
   });
+  console.log("");
+  console.log("  running, but with no control socket to ask: an older engine, a layout");
+  console.log("  without tool/base/ping, or a process belonging to another user.");
 }
 if (warnings.length) {
   console.log("");
