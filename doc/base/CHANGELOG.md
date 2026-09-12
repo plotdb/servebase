@@ -37,6 +37,22 @@
      now checked too; and a process that lost the race used to delete the
      winner's pidfile as it exited, leaving `npm run stop` with nothing to kill
      and the surviving server findable only by hand in `ps`.
+   - `@plotdb/srcbuild` -> `^0.1.7`, and `<feroot>` no longer carries a copy of its
+     own. 0.1.7 fixes a module symlinked into the document root after the watcher
+     started never reporting another change: chokidar's fsevents backend only installs
+     a watcher for what was there when it began, and a symlink - unlike a directory -
+     is not covered by anything else, so a frontend dependency added while the dev
+     server was up left its bundle stale until a restart, silently. it also stops a
+     source being rebuilt underneath a build ( every module's build script opens with
+     `rm -rf dist` ) from reporting as a failure; see its CHANGELOG.
+     `<feroot>/package.json` used to depend on srcbuild too, and the note under
+     `^0.1.4` above says why that was dangerous: `lib.pug` is injected by path and
+     resolved from the frontend root, so whichever copy lands there wins over the one
+     actually running, and a stale one is silent - pages build, and `asseturl`,
+     `bundleurl` and `hashfile` are just absent. it had drifted to `^0.1.4` against a
+     root running `^0.1.6`. with no copy in `<feroot>` at all, node resolution walks up
+     to the root package and the two cannot diverge. nothing in `<feroot>` imports
+     srcbuild; the dependency existed only to place that file.
  - features:
    - content-addressed frontend assets, off by default. `config.build.hash.enabled`
      turns it on; `mode` picks `filename` ( `<name>.<hash>[.min].<ext>`, servable as

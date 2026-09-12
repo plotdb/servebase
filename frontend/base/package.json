@@ -21,9 +21,6 @@
     "../../module/base/discuss",
     "../../module/base/connector"
   ],
-  "devDependencies": {
-    "@plotdb/srcbuild": "^0.1.4"
-  },
   "dependencies": {
     "@loadingio/bootstrap.ext": "^0.0.9",
     "@loadingio/debounce.js": "^1.0.1",
