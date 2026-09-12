@@ -12,6 +12,13 @@
      engine it cannot reach is listed separately rather than guessed about. a
      `start` with no engine under it is flagged - a server still coming up, or
      one stuck failing to start. `-j` for json.
+ - tweaks:
+   - `config/base/nginx/cloudflare-notice.md`: behind cloudflare `$remote_addr` is a
+     CF edge node, so access.log, the `X-Real-IP` / `X-Forwarded-For` handed to
+     `@apiserver`, and a would-be `limit_req` are all wrong, and silently so. the fix
+     ( nginx realip ) is one include away but needs a generated, shared range list, so
+     nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
+     `context/servebase/tasks/todo/`.
  - fixes:
    - `start` no longer retries a server that cannot start. a run dying within
      `SB_CRASH_FAST` seconds ( 10 ) counts as a failed start; `SB_CRASH_MAX` of
