@@ -1,6 +1,21 @@
 ## master
 
  - features:
+   - the backend runs from the livescript sources everywhere now, production
+     included. compiling all of `backend/` costs about 0.25s against a startup
+     otherwise spent requiring the npm tree and reaching db / redis, and in
+     exchange production stops running a code path nobody develops against and
+     can no longer quietly serve last month's code after a forgotten
+     `npm run prebuild`. `.backend` remains as the legacy path and as somewhere
+     to stand if the sources cannot be run: its presence is the whole switch -
+     in production, if `.backend/engine/index.js` exists, `start` runs it, and
+     warns on every start that it did, plus a second line when a source under
+     `backend/` is newer than the build. development never takes it, as it never
+     has, so a stray prebuild cannot leave a developer editing files nothing
+     runs. no flag, nothing to configure; `rm -rf .backend` is how a project
+     leaves it behind. `npm run ping` reports which of the two a
+     running server took ( `backend: source | prebuilt` ). see
+     `doc/base/infrastructure.md` -> Prebuilt or Source.
    - `npm run servers` ( `tool/base/servers` ): every servebase process on this
      machine, not just this project's - name, port, mode, uptime, project root.
      with several terminals and coding agents starting servers, which of them is
@@ -174,5 +189,6 @@
      ( renamed from `context/project`, which is reserved for derived projects );
      `context/shared` remains gitignored.
 
-note: production runs prebuilt js in `.backend`; run `npm run prebuild` on deploy
-for the `--home` / `process.title` changes to take effect.
+note: production ran prebuilt js in `.backend` at the time of this release, so
+`npm run prebuild` on deploy was needed for the `--home` / `process.title` changes
+to take effect. since then the sources are what runs; see Prebuilt or Source.

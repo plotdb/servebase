@@ -110,20 +110,32 @@ run_crash_hook() {
   wait "$killer_pid" 2>/dev/null
 }
 
+# the livescript sources are the default, production included; `.backend`
+# ( `npm run prebuild` ) is the legacy path, used only in production and only if
+# it is there. see infrastructure.md -> Prebuilt or Source. dev never takes it:
+# a leftover `.backend` would mean every later edit to a `.ls` silently does
+# nothing.
+CFGOPT=()
+if [ -n "$CFG" ]; then CFGOPT=(-c "$CFG"); fi
+CMD=(./node_modules/.bin/lsc ./backend/engine/index)
+if [[ $NODE_ENV == "production" ]] && [ -f .backend/engine/index.js ]; then
+  CMD=(node ./.backend/engine/index.js)
+  echo "warning: running the prebuilt backend in .backend/, not the backend/ sources."
+  # a hint, not a verdict: mtime catches a source edited since the build, but not
+  # a checkout, where git stamps every file with the time it wrote it. hence the
+  # warning above is unconditional.
+  if [ -n "$(find backend -name '*.ls' -newer .backend/engine/index.js -print -quit 2>/dev/null)" ]; then
+    echo "         and it is OUT OF DATE - sources under backend/ are newer than it."
+  fi
+  echo "         run 'npm run prebuild' to rebuild it, or remove .backend/ to run"
+  echo "         from source, which is what development always does."
+fi
+ARGS=(--home "$PWD" "${CFGOPT[@]}") # identity hint; also sets process.title in engine
+
 # see infrastructure.md -> daemon
 while [ 1 ]; do
 
   run_start=$SECONDS
-
-  if [[ $NODE_ENV == "production" ]]; then
-    # production - use prebuilt js files
-    CMD=(node ./.backend/engine/index.js)
-  else
-    # dev - use livescript files
-    CMD=(./node_modules/.bin/lsc ./backend/engine/index)
-  fi
-  ARGS=(--home "$PWD") # identity hint; also sets process.title in engine
-  if [ -n "$CFG" ]; then ARGS+=(-c "$CFG"); fi
 
   "${CMD[@]}" "${ARGS[@]}" | \
      tee -a server.log | \

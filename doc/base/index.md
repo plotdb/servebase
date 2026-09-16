@@ -62,8 +62,15 @@ current project:
       config   config/private/secret.ls
       port     8901
       mode     development
+      backend  source
       version  rand-w4pfjuxk438
       uptime   3h 12m 40s
+
+`backend` is which of the two backends this server was started from - `source`
+( the livescript under `backend/`, the default ) or `prebuilt` ( the js in
+`.backend`, used in production whenever that directory exists ); see
+`doc/base/infrastructure.md` -> Prebuilt or Source. The server reports this about
+itself, so it holds however it was launched - `./start` or by hand.
 
 It exits 0 when a server is up and 1 when none is, so `npm run ping -q || npm run dev`
 is a safe way to start one only if needed.

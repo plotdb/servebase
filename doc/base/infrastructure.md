@@ -35,6 +35,45 @@ Node server should run as a Daemon with auto-restart mechanism. This can be done
      stop with `npm stop` ( kills pid in `.server.pid`, trap takes down the group ).
 
 
+### Prebuilt or Source
+
+There are two backends. The livescript sources under `backend/` are the default,
+in production as much as in development: compiling all of them takes about a
+quarter of a second, which is nothing beside requiring the npm tree and reaching
+db and redis, and it means production runs what everyone actually develops
+against rather than a second code path of its own.
+
+The other is `npm run prebuild` output - plain js under `.backend`. It is kept as
+the legacy path and as somewhere to stand if the sources ever cannot be run, and
+its presence is the whole switch: **in production, if `.backend/engine/index.js`
+is there, `start` runs it.** There is no flag and nothing to configure; to go
+back to source, remove the directory.
+
+Development never takes that path, as it never has. A `.backend` left behind by
+one `npm run prebuild` would otherwise mean every later edit to a `.ls` silently
+does nothing.
+
+Every start that takes that path says so:
+
+    warning: running the prebuilt backend in .backend/, not the backend/ sources.
+             and it is OUT OF DATE - sources under backend/ are newer than it.
+             run 'npm run prebuild' to rebuild it, or remove .backend/ to run
+             from source, which is what development always does.
+
+The second line appears only when some `.ls` under `backend/` is newer than the
+build. That is the failure this path has and the source path cannot: a prebuild
+nobody refreshed looks exactly like a deliberate one from the outside, and
+production goes on serving last month's code with nothing visibly wrong.
+
+It is a hint, not a verdict, which is why the first line is printed either way.
+mtime catches a source edited since the build - the common case - but not a
+checkout or a fresh clone, where git stamps every file it writes with the time it
+wrote it, so a `.backend` committed months ago arrives looking brand new.
+
+Which of the two a running server took is reported by `npm run ping` as
+`backend: source | prebuilt`.
+
+
 ### Giving Up
 
 A server that crashes after running is worth restarting; one that never starts

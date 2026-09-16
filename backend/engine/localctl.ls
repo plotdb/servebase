@@ -32,6 +32,14 @@ module.exports = (backend) ->
       cfg-name: backend.cfg-name
       port: (addr or {}).port or backend.config.port
       mode: backend.mode or \development
+      # `source` ( the livescript under backend/ ) or `prebuilt` ( the js in
+      # .backend ). which one is running is otherwise invisible from outside, and
+      # in production either is possible - see infrastructure.md -> Prebuilt or
+      # Source. this file's own extension is the answer, so it holds however the
+      # server was launched, `start` or by hand. the `(js)` livescript appends
+      # only shows up on an entry point, which this is not - allowed for anyway,
+      # since `engine/index` has to strip it to find its own directory.
+      backend: if /\.ls(\(js\))?$/.test(__filename) => \source else \prebuilt
       version: backend.version
       cachestamp: backend.cachestamp
       uptime: new Date!getTime! - backend.start-time

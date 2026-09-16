@@ -124,6 +124,7 @@ var up = [[86400,"d"],[3600,"h"],[60,"m"],[1,"s"]].reduce(function(a, u) {
 }, []).join(" ");
 [ ["title", d.title], ["pid", d.pid], ["home", d.home],
   ["config", "config/private/" + d.cfgName + ".ls"], ["port", d.port],
-  ["mode", d.mode], ["version", d.version], ["uptime", up]
+  ["mode", d.mode], ["backend", d.backend || "unknown"],
+  ["version", d.version], ["uptime", up]
 ].forEach(function(r) { console.log("  " + (r[0] + "        ").slice(0, 9) + r[1]) });
 ' "$JSON"
