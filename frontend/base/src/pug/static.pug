@@ -1,8 +1,13 @@
+//- built once by srcbuild into static/static.html, then served by
+//- express.static - there is no request and no `settings` here. that is
+//- deliberate: `domain` and `sysinfo` belong to the running server, and baking
+//- them into a static file mixes dev and production domains and pins a version
+//- that goes stale on the next deploy. see the view engine setup in
+//- backend/engine/index.ls, where pug locals are left empty for this reason.
+//- compare with view.pug, which renders per request at /demo/view and does get them.
 doctype html
 html
   head
   body
     h1 hi static page.
-    div domain: #{settings.domain}
-    div version: #{settings.sysinfo().version}
-    div cachestamp: #{settings.sysinfo().cachestamp}
+    div this page is built at build time, not rendered per request.

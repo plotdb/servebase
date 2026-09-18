@@ -28,6 +28,21 @@
      `start` with no engine under it is flagged - a server still coming up, or
      one stuck failing to start. `-j` for json.
  - tweaks:
+   - the server reaches `listen` in about 0.95s rather than 1.36s. nothing about
+     express was slow - building the app, mounting every router and taking the
+     port is 16ms of that - but three requires that only the builder and the mail
+     queue ever need were paid on the way there by every server, whether it built
+     anything or sent any mail or not. jsdom alone is ~450ms of require.
+     `@plotdb/srcbuild`, `@plotdb/block` and jsdom now load inside `watch`, which
+     runs after `listen` and only when build is enabled, and jsdom only in the
+     branch that has no block manager of its own to use. `dompurify` and the jsdom
+     window it needs are built on the first html mail sanitized instead of at
+     module load: `mail-queue.ls` is required unconditionally by the engine, while
+     the queue itself is only built when mail is configured, so a server that
+     sends no mail used to pay for a window it never opened. `livescript` is now
+     required explicitly by the engine - it used to arrive as a side effect of
+     srcbuild's `ext/pug`, and `config.from` reading a `.ls` config depends on it
+     being there, which is too much to leave resting on an import order.
    - `config/base/nginx/cloudflare-notice.md`: behind cloudflare `$remote_addr` is a
      CF edge node, so access.log, the `X-Real-IP` / `X-Forwarded-For` handed to
      `@apiserver`, and a would-be `limit_req` are all wrong, and silently so. the fix
@@ -35,6 +50,21 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `backend/base/manager.ls` is no longer loaded as a route. it sits in the demo
+     route folder only so that `config.build.block.manager` has somewhere to point,
+     but that folder is scanned and everything in it is called as a route: it was
+     called with the backend as its `{base}`, built a block manager nobody kept,
+     and - the reason it is now excluded rather than merely harmless - pulled jsdom
+     into the startup path, ~380ms before `listen`. the builder requires it itself,
+     after `listen`, when the config names it.
+   - `frontend/base/src/pug/static.pug` builds again. it read `settings.domain` and
+     `settings.sysinfo()`, which the view engine hands to a per-request render but
+     the static build deliberately withholds - baking them into a built file mixes
+     dev and production domains and pins a version that goes stale on the next
+     deploy. so every start logged `Cannot read properties of undefined ( reading
+     'domain' )` and produced no `static.html`, from a demo page whose job is to
+     show what a static page is. it now shows one, and says why it has no
+     `settings`, with `view.pug` beside it as the per-request counterpart.
    - `start` no longer retries a server that cannot start. a run dying within
      `SB_CRASH_FAST` seconds ( 10 ) counts as a failed start; `SB_CRASH_MAX` of
      them in a row ( 5 ) and the loop backs off, gives up and exits nonzero,

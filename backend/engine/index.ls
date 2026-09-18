@@ -1,7 +1,13 @@
 require! <[fs yargs express @plotdb/colors path pino lderror pino-http body-parser cookie-parser csurf chokidar]>
 require! <[i18next-http-middleware accepts]>
-require! <[@plotdb/srcbuild @plotdb/block jsdom]>
+# the view engine, needed before `listen`. the builder's own dependencies
+# ( @plotdb/srcbuild, @plotdb/block, jsdom ) are not here - see `watch` below.
 require! <[@plotdb/srcbuild/dist/view/pug]>
+# `config.from` below requires a `.ls` file, which only works once livescript is
+# registered. it used to arrive as a side effect of the line above ( via
+# srcbuild's ext/pug ); required here so that moving those requires around
+# cannot silently break loading the config.
+require! <[livescript]>
 require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql ./localctl]>
 require! <[@servebase/auth @servebase/consent @servebase/captcha @servebase/config]>
 
@@ -32,8 +38,8 @@ argv = yargs
 cfg-name = argv.c
 process.title = "servebase:#{path.basename(argv.home or process.cwd!)}"
 try
-  # requiring livescript file is only possible if `livescript` is imported.
-  # in this case, `livescript` is imported in `ext/pug` in @plotdb/srcbuild.
+  # requiring a livescript file is only possible if `livescript` is imported,
+  # which is what the explicit require at the top of this file is for.
   secret = config.from "private/#{cfg-name or \secret}"
 catch e
   console.log "failed to load config file `config/private/#{cfg-name or 'secret'}`.".red
@@ -111,10 +117,21 @@ backend.prototype = Object.create(Object.prototype) <<< do
 
     if !(@config.build and @config.build.enabled) => return
 
+    # the builder's dependencies are required here rather than at the top of the
+    # file. they are a third of the time it takes to reach `listen` ( jsdom alone
+    # is ~450ms of it ), they are of no use to a server that only serves, and a
+    # server with build disabled - production, normally - should not pay for
+    # them at all. `watch` runs after `listen`, so what is left is off the path
+    # to answering the first request.
+    srcbuild = require "@plotdb/srcbuild"
+
     if @config.build.{}block.manager =>
       mgr = require path.join(rootdir, @config.build.block.manager)
     else
-      # for @plotdb/block in node context
+      # for @plotdb/block in node context. jsdom is required in this branch only:
+      # a project that names its own block manager above never needs a fake DOM.
+      block = require "@plotdb/block"
+      jsdom = require "jsdom"
       dom = new jsdom.JSDOM "<DOCTYPE html><html><body></body></html>"
       win = dom.window
       block.env win
