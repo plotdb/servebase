@@ -75,15 +75,19 @@ server {
   }
 
   # fedep symlinks - `main` and `local` point at whatever is installed now.
-  location ~ ^/assets/lib/[^/]+/(?:main|local)/ {
+  # the optional scope segment is load-bearing: without it `@servebase/auth/main/`
+  # reads as <scope>/<name>, falls through to the rule below and a symlink is served
+  # immutable for a year - fedep then swaps it and nobody revalidates.
+  location ~ ^/assets/lib/(?:@[^/]+/)?[^/]+/(?:main|local)/ {
     add_header Cross-Origin-Opener-Policy "same-origin" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Content-Security-Policy "frame-ancestors 'self'" always;
     add_header Cache-Control "no-cache" always;
   }
 
-  # an exact version directory never changes contents.
-  location ~ ^/assets/lib/[^/]+/[^/]+/ {
+  # an exact version directory never changes contents. same scope segment, so that
+  # `@scope/name/` alone ( no version ) is not mistaken for one.
+  location ~ ^/assets/lib/(?:@[^/]+/)?[^/]+/[^/]+/ {
     add_header Cross-Origin-Opener-Policy "same-origin" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Content-Security-Policy "frame-ancestors 'self'" always;
