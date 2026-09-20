@@ -149,6 +149,10 @@ normalize-rows = (rows = [], columns = []) ->
       v = (row.vars or {})[name]
       vars[name] = if v? => "#{v}" else ''
     email = "#{(row.email or '')}".trim!
+    # email 也能當變數用 ( 「您的帳號 {{email}}」之類 ). 不從 row.vars 拿,
+    # 直接用收件者位址本身 - 那才是權威的值, 而且舊樣板沒把 email 列進
+    # columns 也照樣能用.
+    vars.email = email
     return {idx, email, vars}
 
 normalize-columns = (columns = []) ->

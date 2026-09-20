@@ -91,6 +91,7 @@
           }
         }
         email = ((row.email || '') + "").trim();
+        vars.email = email;
         return {
           idx: idx,
           email: email,
