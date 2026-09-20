@@ -38,6 +38,11 @@ promise 要自己 `.catch next`.
 `mailspool` / `mailspool_item`, 定義在這個模組的 `index.sql`, 與
 `consent.sql` / `sharedb.sql` 一樣需要手動套用.
 
+app 端建議在自己的 `config/*/db/` 放一個指到這裡的 symlink ( grantdash 的
+`config/base/db/mailspool.sql` 就是 ). 建站的人只會看 `config/*/db`,
+schema 藏在模組底下很容易被忽略; 但抄成兩份的話, 改了一邊另一邊就會悄悄
+過期. `psql -f` 吃得下 symlink.
+
 ## 三種保存層級
 
 `mailspool.record` 決定信件內容留不留在 DB:

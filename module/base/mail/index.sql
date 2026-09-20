@@ -1,5 +1,10 @@
 -- mailspool: 有紀錄與重試的寄信佇列.
 --
+-- 這份 schema 歸模組所有 ( package.json 的 files 會把它一起發出去 ).
+-- app 端的 config/base/db/mailspool.sql 是指到這裡的 symlink - 建站的人
+-- 只會看 config/base/db, 放在模組底下很容易被忽略; 但真的抄成兩份的話,
+-- 改了一邊另一邊就悄悄過期了.
+--
 -- 與 backend/engine/mail-queue.ls 的分工: mail-queue 是 transport
 -- ( nodemailer 封裝 / sanitize / blacklist / 樣板渲染 ), 這裡是持久化的
 -- 派送層. mail-queue 原本的記憶體 @list 會被這裡取代 - 那個佇列 process
