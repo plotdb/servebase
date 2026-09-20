@@ -36,6 +36,16 @@ cfg = ({} <<< ((backend.config.mail or {}).mailmerge or {}))
 cfg.interval ?= 6000ms
 cfg.batch-size ?= 1
 cfg.max-retry ?= 3
+# 單封寄送等多久就放棄等待. 這不是效能門檻, 是「別讓 worker 卡死」的保險:
+# transport 的 promise 要是永遠不 settle, 整輪 tick 就停在那裡, @running
+# 再也放不掉 ( 見 tick ). nodemailer 自己的 socketTimeout 是 10 分鐘, 我們
+# 要比它早動手; 正常一封信不管走 SMTP 還是 HTTP API 都遠低於這個值.
+#
+# 逾時**不重試**: 逾時不代表沒寄出去, 重試會寄出第二封給同一個人. 少寄一封
+# 可以人工補, 重複寄不能收回.
+cfg.send-timeout ?= 30000ms
+# 一輪 tick 跑多久算是卡死, 讓下一輪接手. 見 tick.
+cfg.stuck-minutes ?= 10
 # `sending` 停在那裡超過這個時間, 視為 process 中途死掉, 回收重寄.
 # 代價是極少數情況下可能重寄一封 ( sendMail 成功但回報前 crash ).
 cfg.stale-minutes ?= 5
@@ -457,8 +467,14 @@ worker =
       cfg.startup-delay
 
   tick: ->
-    if @running => return Promise.resolve!
+    # @running 是防兩輪重疊, 但它只在鏈的結尾放掉 - 只要有任何一條路徑
+    # 永遠不 settle, 這個鎖就再也解不開, 之後每一次 tick 都直接 return,
+    # 整個 worker 從此不動. 所以記下開始時間, 卡太久就讓新的一輪接手
+    # ( 舊那輪留下的 sending item 由 recover 收拾 ).
+    if @running and (Date.now! - (@started-at or 0)) < cfg.stuck-minutes * 60000ms
+      return Promise.resolve!
     @running = true
+    @started-at = Date.now!
     Promise.resolve!
       .then ~> @recover!
       .then ~> @reopen!
@@ -471,12 +487,21 @@ worker =
       .then ~> @running = false
 
   # 被中斷的 item 回收. retry 照加, 免得一封信一直卡在 crash - 重送 - crash.
+  #
+  # 超過上限的直接判失敗, 不再放回 pending: 沒有這一段的話, 任何讓 send-one
+  # 整個逃走 ( 而不是走到它自己的 catch ) 的錯誤, 都會讓那封信在
+  # pending -> sending -> pending 之間無限繞圈, retry 一路往上爬卻永遠不會
+  # 停下來.
   recover: ->
     db.query """
     update mailspool_item
-    set status = 'pending', retry = retry + 1, updatedtime = now()
+    set status = (case when retry + 1 >= $2 then 'failed' else 'pending' end),
+      retry = retry + 1,
+      error = (case when retry + 1 >= $2
+        then coalesce(error, 'interrupted repeatedly') else error end),
+      updatedtime = now()
     where status = 'sending' and updatedtime < now() - ($1 || ' minutes')::interval
-    """, ["#{cfg.stale-minutes}"]
+    """, ["#{cfg.stale-minutes}", cfg.max-retry]
 
   # 已收尾的批次又冒出待處理 item ( 中斷回收, 或 retry 重送 ) 就重新開工.
   # 沒有這段的話, 那些 item 會永遠留在 pending - drain 只看 sending 的批次.
@@ -544,7 +569,13 @@ worker =
     vars = if held => (held.vars[item.key] or {}) else (item.vars or {})
     sender = common.format-sender(detail) or default-sender(detail.lng)
     if !sender => return @mark item, \failed, "no sender available"
-    Promise.resolve!
+    # catch 要包住整條路徑, 不是只包 send 回傳的 promise. 這條路上還有
+    # blacklist 查詢、render、以及 send 自己在建 promise 之前做的事
+    # ( 例如 sanitize 時才 lazy require 的 jsdom ) - 那些是同步 throw,
+    # 只掛在 send 結果上的 catch 接不到. 漏掉的話那一封會繞過重試上限,
+    # 卡在 sending 被 recover 一輪一輪打回 pending, 而且那一輪的
+    # finalize / expire 也全被跳過.
+    sending = Promise.resolve!
       .then ~> backend.mail-queue.in-blacklist item.email
       .then (blocked) ~>
         if blocked => return @mark item, \skipped, "blacklisted"
@@ -553,19 +584,40 @@ worker =
         if detail.replyto => payload.replyTo = detail.replyto
         # 先存成變數再接 .then - 直接接在 `do` 的最後一個參數後面,
         # 會被當成那個參數的方法鏈.
-        sending = backend.mail-queue.send do
+        sent = backend.mail-queue.send do
           {to: item.email, from: sender} <<< payload{subject, html, text, replyTo}
           {now: true, strict: true}
-        sending
+        @wait sent
           .then (info = {}) ~> @mark item, \sent, null, (info or {}).messageId
-          .catch (err) ~>
-            if item.retry + 1 >= cfg.max-retry =>
-              return @mark item, \failed, "#{err.message or err}", null, true
-            # 還有機會就丟回 pending, 下一輪 tick 再試.
-            db.query """
-            update mailspool_item set status = 'pending', retry = retry + 1,
-              error = $2, updatedtime = now() where key = $1
-            """, [item.key, "#{err.message or err}"]
+    sending.catch (err) ~>
+      msg = "#{err.message or err}"
+      # 逾時不重試 - 信可能已經寄出去了, 只是回應沒回來. 重試會讓同一個人
+      # 收到第二封, 那比少寄一封糟. 要補由人決定.
+      if err and err.mail-timeout =>
+        return @mark item, \failed, msg, null, true
+      if item.retry + 1 >= cfg.max-retry =>
+        return @mark item, \failed, msg, null, true
+      # 還有機會就丟回 pending, 下一輪 tick 再試.
+      db.query """
+      update mailspool_item set status = 'pending', retry = retry + 1,
+        error = $2, updatedtime = now() where key = $1
+      """, [item.key, msg]
+
+  # 等 transport, 但不等到天荒地老. 見 cfg.send-timeout 的說明.
+  wait: (p) ->
+    if !cfg.send-timeout => return p
+    timer = null
+    guard = new Promise (res, rej) ->
+      timer := setTimeout do
+        ->
+          err = new Error "send timed out after #{cfg.send-timeout}ms (may or may not have been delivered)"
+          err.mail-timeout = true
+          rej err
+        cfg.send-timeout
+    racing = Promise.race [p, guard]
+    racing
+      .then (v) -> clearTimeout timer; return v
+      .catch (e) -> clearTimeout timer; throw e
 
   # `bump`: 這次失敗算一次重試. 設定類錯誤 ( 沒有寄件者等 ) 不該灌 retry,
   # 那不是「試過但失敗」, 修好設定重送就好.

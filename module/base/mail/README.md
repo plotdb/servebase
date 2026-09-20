@@ -77,8 +77,26 @@ batch key 為 key ), 之後由 worker 照一般速率寄 — 與 `full` 走同�
 | `interval` | 6000 | worker tick 間隔 (ms) |
 | `batch-size` | 1 | 每輪寄幾封. 與 interval 一起決定速率 ( 預設 10 封/分 ) |
 | `max-retry` | 3 | 單封重試上限 |
+| `send-timeout` | 30000 | 單封等 transport 多久就放棄 (ms). 逾時判失敗且**不重試** - 逾時不代表沒寄出 |
+| `stuck-minutes` | 10 | 一輪 tick 跑多久算卡死, 讓下一輪接手 |
 | `stale-minutes` | 5 | `sending` 卡住多久視為 process 死掉, 回收重寄 |
 | `retention-days` | 548 | 紀錄保留多久. email 是個資, 不該無限期留著 |
 | `expire-interval` | 3600000 | 過期清理的頻率 (ms) |
 | `nostore-max` | 1000 | 不落地批次的收件者上限. 內容整批留在記憶體, 要有個上限 |
 | `startup-delay` | 15000 | 開機後多久跑第一輪 (ms)。避開 session store 的啟動清理 |
+
+## 測試
+
+```
+npx lsc module/base/mail/test/transport.ls
+```
+
+不用測試框架, 自己跑自己斷言, 有失敗就 exit 1. 需要本機的 postgres
+( 連不上就跳過, 不當成失敗 ), 會自己建一個 scratch db 再丟掉.
+
+測的是**寄信失敗**的那些路徑 - 那是平常碰不到的部分: 開發機的 mail-queue
+通常開著 suppress, `send-directly` 根本走不到 `api.sendMail`, 所以 mailgun /
+nodemailer 會丟出來的錯誤在一般操作下完全測不到. 這支把 mail-queue 換成可
+程式化的假貨, 直接驅動 worker, 涵蓋: transport 一直 reject、同步 throw、
+blacklist 查詢壞掉、部分收件者失敗、transport 永遠不回應, 以及卡住之後
+worker 還接不接得了新批次.

@@ -22,6 +22,8 @@
     cfg.interval == null && (cfg.interval = 6000);
     cfg.batchSize == null && (cfg.batchSize = 1);
     cfg.maxRetry == null && (cfg.maxRetry = 3);
+    cfg.sendTimeout == null && (cfg.sendTimeout = 30000);
+    cfg.stuckMinutes == null && (cfg.stuckMinutes = 10);
     cfg.staleMinutes == null && (cfg.staleMinutes = 5);
     cfg.retentionDays == null && (cfg.retentionDays = 548);
     cfg.expireInterval == null && (cfg.expireInterval = 3600000);
@@ -473,10 +475,11 @@
       },
       tick: function(){
         var this$ = this;
-        if (this.running) {
+        if (this.running && Date.now() - (this.startedAt || 0) < cfg.stuckMinutes * 60000) {
           return Promise.resolve();
         }
         this.running = true;
+        this.startedAt = Date.now();
         return Promise.resolve().then(function(){
           return this$.recover();
         }).then(function(){
@@ -500,7 +503,7 @@
         });
       },
       recover: function(){
-        return db.query("update mailspool_item\nset status = 'pending', retry = retry + 1, updatedtime = now()\nwhere status = 'sending' and updatedtime < now() - ($1 || ' minutes')::interval", [cfg.staleMinutes + ""]);
+        return db.query("update mailspool_item\nset status = (case when retry + 1 >= $2 then 'failed' else 'pending' end),\n  retry = retry + 1,\n  error = (case when retry + 1 >= $2\n    then coalesce(error, 'interrupted repeatedly') else error end),\n  updatedtime = now()\nwhere status = 'sending' and updatedtime < now() - ($1 || ' minutes')::interval", [cfg.staleMinutes + "", cfg.maxRetry]);
       },
       reopen: function(){
         return db.query("update mailspool set status = 'sending', donetime = null\nwhere status = 'done' and resumable and exists (\n  select 1 from mailspool_item i\n  where i.batch = mailspool.key and i.status = 'pending'\n)");
@@ -539,7 +542,7 @@
         });
       },
       sendOne: function(item, batch){
-        var held, detail, vars, sender, this$ = this;
+        var held, detail, vars, sender, sending, this$ = this;
         if (!batch) {
           return this.mark(item, 'failed', "batch missing");
         }
@@ -554,10 +557,10 @@
         if (!sender) {
           return this.mark(item, 'failed', "no sender available");
         }
-        return Promise.resolve().then(function(){
+        sending = Promise.resolve().then(function(){
           return backend.mailQueue.inBlacklist(item.email);
         }).then(function(blocked){
-          var payload, sending, ref$;
+          var payload, sent, ref$;
           if (blocked) {
             return this$.mark(item, 'skipped', "blacklisted");
           }
@@ -565,22 +568,51 @@
           if (detail.replyto) {
             payload.replyTo = detail.replyto;
           }
-          sending = backend.mailQueue.send((ref$ = {
+          sent = backend.mailQueue.send((ref$ = {
             to: item.email,
             from: sender
           }, ref$.subject = payload.subject, ref$.html = payload.html, ref$.text = payload.text, ref$.replyTo = payload.replyTo, ref$), {
             now: true,
             strict: true
           });
-          return sending.then(function(info){
+          return this$.wait(sent).then(function(info){
             info == null && (info = {});
             return this$.mark(item, 'sent', null, (info || {}).messageId);
-          })['catch'](function(err){
-            if (item.retry + 1 >= cfg.maxRetry) {
-              return this$.mark(item, 'failed', (err.message || err) + "", null, true);
-            }
-            return db.query("update mailspool_item set status = 'pending', retry = retry + 1,\n  error = $2, updatedtime = now() where key = $1", [item.key, (err.message || err) + ""]);
           });
+        });
+        return sending['catch'](function(err){
+          var msg;
+          msg = (err.message || err) + "";
+          if (err && err.mailTimeout) {
+            return this$.mark(item, 'failed', msg, null, true);
+          }
+          if (item.retry + 1 >= cfg.maxRetry) {
+            return this$.mark(item, 'failed', msg, null, true);
+          }
+          return db.query("update mailspool_item set status = 'pending', retry = retry + 1,\n  error = $2, updatedtime = now() where key = $1", [item.key, msg]);
+        });
+      },
+      wait: function(p){
+        var timer, guard, racing;
+        if (!cfg.sendTimeout) {
+          return p;
+        }
+        timer = null;
+        guard = new Promise(function(res, rej){
+          return timer = setTimeout(function(){
+            var err;
+            err = new Error("send timed out after " + cfg.sendTimeout + "ms (may or may not have been delivered)");
+            err.mailTimeout = true;
+            return rej(err);
+          }, cfg.sendTimeout);
+        });
+        racing = Promise.race([p, guard]);
+        return racing.then(function(v){
+          clearTimeout(timer);
+          return v;
+        })['catch'](function(e){
+          clearTimeout(timer);
+          throw e;
         });
       },
       mark: function(item, status, error, msgid, bump){
