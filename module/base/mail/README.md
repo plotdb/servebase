@@ -83,6 +83,8 @@ batch key 為 key ), 之後由 worker 照一般速率寄 — 與 `full` 走同�
 | `retention-days` | 548 | 紀錄保留多久. email 是個資, 不該無限期留著 |
 | `expire-interval` | 3600000 | 過期清理的頻率 (ms) |
 | `nostore-max` | 1000 | 不落地批次的收件者上限. 內容整批留在記憶體, 要有個上限 |
+| `batch-max` | 2000 | 一批最多幾位收件者. 擋誤操作 - 貼錯一份十萬列的表格 |
+| `daily-max` | 10000 | 同一個 scope 24 小時內最多寄幾封. 超過回 429. 這是拒絕門檻不是排程手段, 要設在正常用途碰不到的位置 |
 | `startup-delay` | 15000 | 開機後多久跑第一輪 (ms)。避開 session store 的啟動清理 |
 
 ## 測試

@@ -57,6 +57,21 @@ cfg.expire-interval ?= 3600000ms
 # 不落地批次一次最多幾封. 內容與代換資料整批放在記憶體裡直到寄完,
 # 所以要有個上限 - 也順便擋掉「一次寄十萬封」這種一定是誤操作的情況.
 cfg.nostore-max ?= 1000
+# 一批最多幾位收件者. 主要是擋誤操作 - 貼錯一份十萬列的表格進來, 在寫進
+# DB 之前就該被攔下.
+cfg.batch-max ?= 2000
+# 同一個 scope 24 小時內最多寄幾封. 這是拿來限制濫用的: 這些路由只有該
+# scope 的管理員進得來, 所以威脅不是外人, 是被盜用或心懷不軌的管理員拿
+# 平台寄垃圾信 - 代價是整個寄件網域的信譽, 燒掉之後連密碼重設信都寄不
+# 出去. 用收件人數而不是請求數來算, 因為傷害跟寄出的封數成正比.
+#
+# 這是**拒絕**的門檻, 不是排程手段: 批次本來就會排隊, 超量的部分隔天自然
+# 會繼續寄, 所以拿這個數字來擋正常用量只會逼使用者自己把名單切開. 門檻要
+# 設在「正常用途碰不到、但攔得住惡意」的位置.
+#
+# 參考: worker 的吞吐上限是 86400 / interval * batch-size, 預設值下約
+# 14400 封/天; batch-max 已經擋掉單批灌爆, 這條擋的是「一天送很多批」.
+cfg.daily-max ?= 10000
 # 開機後多久才跑第一輪. 見 worker.start 的說明.
 cfg.startup-delay ?= 15000ms
 
@@ -80,6 +95,49 @@ default-sender = (lng) ->
   if mcfg.default-sender => return mcfg.default-sender
   if !(mcfg.sitename and mcfg.domain) => return null
   return "\"#{backend.i18n.t(mcfg.sitename, {lng})}\" <no-reply@#{mcfg.domain}>"
+
+# 輪到某一批之前還有幾封要寄. drain 是照 (batch, idx) 取件的, 所以 key 比它
+# 小而且還在寄的批次會先走完.
+#
+# 只對還沒寄完的批次算: 這個子查詢在清單上是逐列跑的, 歷史一長就是白付的
+# 成本, 而已經結束的批次本來也不需要排隊資訊.
+ahead-sql = """
+  (case when m.status in ('scheduled','sending') then (
+    select count(*) from mailspool_item i
+      join mailspool m2 on m2.key = i.batch
+      where i.status = 'pending' and m2.status = 'sending'
+        and m2.deleted is not true and m2.key < m.key
+  ) else 0 end)::int as ahead
+"""
+
+# ahead 換算成分鐘. 速率是 cfg 決定的, 不該讓前端自己算.
+with-eta = (list = []) ->
+  rate = cfg.batch-size / cfg.interval * 60000ms   # 每分鐘幾封
+  for b in list => b.eta = if b.ahead and rate => Math.ceil(b.ahead / rate) else 0
+  return list
+
+# 這個 scope 過去 24 小時已經送出多少封. 只算離開 draft 的批次 - 草稿還沒
+# 決定要不要寄, 不該佔額度.
+#
+# 用 item 的實際筆數而不是 expected: expected 只有不落地那條路徑會寫,
+# 可續傳的批次那一欄是空的.
+daily-sent = (scope) ->
+  db.query """
+  select coalesce(count(i.key), 0)::int as n
+  from mailspool m join mailspool_item i on i.batch = m.key
+  where m.scope = $1 and m.deleted is not true and m.status <> 'draft'
+    and m.createdtime > now() - interval '24 hours'
+  """, [scope]
+    .then (r = {}) -> (r.[]rows.0 or {}).n or 0
+
+# 超過就擋. 回 429 讓呼叫端能跟其它 4xx 分開, 畫面上才講得出是為什麼.
+check-quota = (scope, incoming) ->
+  if !cfg.daily-max => return Promise.resolve!
+  daily-sent scope .then (sent) ->
+    if sent + incoming > cfg.daily-max
+      backend.log-mail.info "mailspool: #scope hit the daily cap (#sent + #incoming > #{cfg.daily-max})"
+      return lderror.reject 429
+    return
 
 # 清單正規化. TSV 貼上與案件清單帶入最後都收斂成這個形狀,
 # 後面的流程只認這一種格式.
@@ -186,6 +244,7 @@ rt.post \/save, (req, res) ->
   {scope} = req.mailmerge
   detail = normalize-detail detail, (req.mailmerge.defaults or {})
   rows = normalize-rows rows, detail.columns
+  if rows.length > cfg.batch-max => return lderror.reject 400
   record = normalize-record req.body.record
   expiretime = new Date(Date.now! + cfg.retention-days * 86400000)
   saveparams = [
@@ -236,9 +295,10 @@ rt.post \/list, (req, res) ->
   q = "#{(req.body.q or '')}".trim!
   like = if q => "%#{q.replace(/[\\%_]/g, '\\$&')}%" else null
   db.query """
-  select key, owner, scope, name, status, record, resumable, expected,
-    scheduledtime, starttime, donetime, createdtime,
-    detail - 'content' as detail
+  select m.key, m.owner, m.scope, m.name, m.status, m.record, m.resumable,
+    m.expected, m.scheduledtime, m.starttime, m.donetime, m.createdtime,
+    m.detail - 'content' as detail,
+    #ahead-sql
   from mailspool m
   where scope = $1 and deleted is not true
     and ($2::text is null or (
@@ -248,7 +308,32 @@ rt.post \/list, (req, res) ->
   order by key desc
   """, [req.mailmerge.scope, like]
     .then (r = {}) ->
-      list = r.[]rows
+      list = with-eta r.[]rows
+      stat-of list.map(-> it.key)
+        .then (stat) ->
+          for b in list => b.stat = stat[b.key] or {total: 0}
+          res.send list
+
+# 這幾批現在怎麼樣了. 清單的自動更新只需要這些 - 走 /list 的話每次都要對
+# 整個 scope 的 item 做一次統計聚合, 批次多了之後那個成本是白付的.
+#
+# `ahead`: 輪到這一批之前還有幾封要寄. drain 是照 (batch, idx) 取件的, 所以
+# key 比它小而且還在寄的批次會先走完.
+# `eta`: 由 ahead 換算的分鐘數 - 速率是 cfg 決定的, 前端不該自己算.
+rt.post \/progress, (req, res) ->
+  raw = req.body.keys
+  raw = if Array.isArray raw => raw else "#{(raw or '')}".split ','
+  keys = raw.map(-> parseInt it).filter(-> !isNaN it)
+  if !keys.length => return res.send []
+  db.query """
+  select m.key, m.status, m.record, m.resumable, m.expected,
+    m.scheduledtime, m.starttime, m.donetime,
+    #ahead-sql
+  from mailspool m
+  where m.scope = $1 and m.key = any($2::int[]) and m.deleted is not true
+  """, [req.mailmerge.scope, keys]
+    .then (r = {}) ->
+      list = with-eta r.[]rows
       stat-of list.map(-> it.key)
         .then (stat) ->
           for b in list => b.stat = stat[b.key] or {total: 0}
@@ -275,6 +360,9 @@ rt.post \/send, (req, res) ->
   # 標記為敏感的批次不給排程. 內容要等寄完才清得掉, 排到明天就等於讓它在
   # DB 裡多躺一天 ( 期間的任何一次 backup 都會抓到 ).
   if batch.record == \metadata and scheduledtime => return lderror.reject 400
+  # 這批有幾位收件者, 要等 item 數出來才知道 - /save 沒有寫 expected.
+  (cnt = {}) <~ db.query("select count(*)::int as n from mailspool_item where batch = $1", [batch.key]).then _
+  <~ check-quota(req.mailmerge.scope, ((cnt.[]rows.0 or {}).n or 0)).then _
   db.query """
   update mailspool set status = 'scheduled', scheduledtime = $2
   where key = $1 and status = 'draft' returning *
@@ -384,8 +472,9 @@ rt.post \/send-now, (req, res) ->
   if !(detail.subject and detail.content) => return lderror.reject 400
   rows = normalize-rows req.body.rows, detail.columns
   if !rows.length => return lderror.reject 400
-  if rows.length > cfg.nostore-max => return lderror.reject 400
+  if rows.length > Math.min(cfg.nostore-max, cfg.batch-max) => return lderror.reject 400
   if !(common.format-sender(detail) or default-sender(detail.lng)) => return lderror.reject 1015
+  <~ check-quota(scope, rows.length).then _
 
   # 只留得以辨識這批信的欄位.
   meta = detail{subject, sender, sendername, replyto, lng}

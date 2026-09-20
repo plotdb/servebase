@@ -8,7 +8,7 @@
   (function(it){
     return module.exports = it;
   })(function(arg$){
-    var ref$, route, backend, db, rt, reEmail, isEmail, cfg, vault, defaultSender, normalizeRows, normalizeColumns, normalizeDetail, normalizeRecord, getBatch, purgeContent, statOf, worker;
+    var ref$, route, backend, db, rt, reEmail, isEmail, cfg, vault, defaultSender, aheadSql, withEta, dailySent, checkQuota, normalizeRows, normalizeColumns, normalizeDetail, normalizeRecord, getBatch, purgeContent, statOf, worker;
     ref$ = arg$ != null
       ? arg$
       : {}, route = ref$.route, backend = ref$.backend;
@@ -28,6 +28,8 @@
     cfg.retentionDays == null && (cfg.retentionDays = 548);
     cfg.expireInterval == null && (cfg.expireInterval = 3600000);
     cfg.nostoreMax == null && (cfg.nostoreMax = 1000);
+    cfg.batchMax == null && (cfg.batchMax = 2000);
+    cfg.dailyMax == null && (cfg.dailyMax = 10000);
     cfg.startupDelay == null && (cfg.startupDelay = 15000);
     vault = new Map();
     defaultSender = function(lng){
@@ -42,6 +44,34 @@
       return "\"" + backend.i18n.t(mcfg.sitename, {
         lng: lng
       }) + "\" <no-reply@" + mcfg.domain + ">";
+    };
+    aheadSql = "(case when m.status in ('scheduled','sending') then (\n  select count(*) from mailspool_item i\n    join mailspool m2 on m2.key = i.batch\n    where i.status = 'pending' and m2.status = 'sending'\n      and m2.deleted is not true and m2.key < m.key\n) else 0 end)::int as ahead";
+    withEta = function(list){
+      var rate, i$, len$, b;
+      list == null && (list = []);
+      rate = cfg.batchSize / cfg.interval * 60000;
+      for (i$ = 0, len$ = list.length; i$ < len$; ++i$) {
+        b = list[i$];
+        b.eta = b.ahead && rate ? Math.ceil(b.ahead / rate) : 0;
+      }
+      return list;
+    };
+    dailySent = function(scope){
+      return db.query("select coalesce(count(i.key), 0)::int as n\nfrom mailspool m join mailspool_item i on i.batch = m.key\nwhere m.scope = $1 and m.deleted is not true and m.status <> 'draft'\n  and m.createdtime > now() - interval '24 hours'", [scope]).then(function(r){
+        r == null && (r = {});
+        return ((r.rows || (r.rows = []))[0] || {}).n || 0;
+      });
+    };
+    checkQuota = function(scope, incoming){
+      if (!cfg.dailyMax) {
+        return Promise.resolve();
+      }
+      return dailySent(scope).then(function(sent){
+        if (sent + incoming > cfg.dailyMax) {
+          backend.logMail.info("mailspool: " + scope + " hit the daily cap (" + sent + " + " + incoming + " > " + cfg.dailyMax + ")");
+          return lderror.reject(429);
+        }
+      });
     };
     normalizeRows = function(rows, columns){
       rows == null && (rows = []);
@@ -169,6 +199,9 @@
       scope = req.mailmerge.scope;
       detail = normalizeDetail(detail, req.mailmerge.defaults || {});
       rows = normalizeRows(rows, detail.columns);
+      if (rows.length > cfg.batchMax) {
+        return lderror.reject(400);
+      }
       record = normalizeRecord(req.body.record);
       expiretime = new Date(Date.now() + cfg.retentionDays * 86400000);
       saveparams = [key || null, req.user.key, scope, ((name || '') + "").substring(0, 256), detail, record, expiretime];
@@ -212,10 +245,42 @@
       var q, like;
       q = ((req.body.q || '') + "").trim();
       like = q ? "%" + q.replace(/[\\%_]/g, '\\$&') + "%" : null;
-      return db.query("select key, owner, scope, name, status, record, resumable, expected,\n  scheduledtime, starttime, donetime, createdtime,\n  detail - 'content' as detail\nfrom mailspool m\nwhere scope = $1 and deleted is not true\n  and ($2::text is null or (\n    m.name ilike $2 or coalesce(m.detail->>'subject','') ilike $2\n    or exists (select 1 from mailspool_item i where i.batch = m.key and i.email ilike $2)\n  ))\norder by key desc", [req.mailmerge.scope, like]).then(function(r){
+      return db.query("select m.key, m.owner, m.scope, m.name, m.status, m.record, m.resumable,\n  m.expected, m.scheduledtime, m.starttime, m.donetime, m.createdtime,\n  m.detail - 'content' as detail,\n  " + aheadSql + "\nfrom mailspool m\nwhere scope = $1 and deleted is not true\n  and ($2::text is null or (\n    m.name ilike $2 or coalesce(m.detail->>'subject','') ilike $2\n    or exists (select 1 from mailspool_item i where i.batch = m.key and i.email ilike $2)\n  ))\norder by key desc", [req.mailmerge.scope, like]).then(function(r){
         var list;
         r == null && (r = {});
-        list = r.rows || (r.rows = []);
+        list = withEta(r.rows || (r.rows = []));
+        return statOf(list.map(function(it){
+          return it.key;
+        })).then(function(stat){
+          var i$, ref$, len$, b;
+          for (i$ = 0, len$ = (ref$ = list).length; i$ < len$; ++i$) {
+            b = ref$[i$];
+            b.stat = stat[b.key] || {
+              total: 0
+            };
+          }
+          return res.send(list);
+        });
+      });
+    });
+    rt.post('/progress', function(req, res){
+      var raw, keys;
+      raw = req.body.keys;
+      raw = Array.isArray(raw)
+        ? raw
+        : ((raw || '') + "").split(',');
+      keys = raw.map(function(it){
+        return parseInt(it);
+      }).filter(function(it){
+        return !isNaN(it);
+      });
+      if (!keys.length) {
+        return res.send([]);
+      }
+      return db.query("select m.key, m.status, m.record, m.resumable, m.expected,\n  m.scheduledtime, m.starttime, m.donetime,\n  " + aheadSql + "\nfrom mailspool m\nwhere m.scope = $1 and m.key = any($2::int[]) and m.deleted is not true", [req.mailmerge.scope, keys]).then(function(r){
+        var list;
+        r == null && (r = {});
+        list = withEta(r.rows || (r.rows = []));
         return statOf(list.map(function(it){
           return it.key;
         })).then(function(stat){
@@ -265,15 +330,20 @@
         if (batch.record === 'metadata' && scheduledtime) {
           return lderror.reject(400);
         }
-        return db.query("update mailspool set status = 'scheduled', scheduledtime = $2\nwhere key = $1 and status = 'draft' returning *", [batch.key, scheduledtime]).then(function(r){
-          r == null && (r = {});
-          if (!(r.rows || (r.rows = []))[0]) {
-            return lderror.reject(409);
-          }
-          if (!scheduledtime) {
-            worker.tick();
-          }
-          return res.send(r.rows[0]);
+        return db.query("select count(*)::int as n from mailspool_item where batch = $1", [batch.key]).then(function(cnt){
+          cnt == null && (cnt = {});
+          return checkQuota(req.mailmerge.scope, ((cnt.rows || (cnt.rows = []))[0] || {}).n || 0).then(function(){
+            return db.query("update mailspool set status = 'scheduled', scheduledtime = $2\nwhere key = $1 and status = 'draft' returning *", [batch.key, scheduledtime]).then(function(r){
+              r == null && (r = {});
+              if (!(r.rows || (r.rows = []))[0]) {
+                return lderror.reject(409);
+              }
+              if (!scheduledtime) {
+                worker.tick();
+              }
+              return res.send(r.rows[0]);
+            });
+          });
         });
       });
     });
@@ -369,7 +439,7 @@
       });
     });
     rt.post('/send-now', function(req, res){
-      var scope, detail, rows, meta;
+      var scope, detail, rows;
       scope = req.mailmerge.scope;
       detail = normalizeDetail(req.body.detail, req.mailmerge.defaults || {});
       if (!(detail.subject && detail.content)) {
@@ -379,52 +449,55 @@
       if (!rows.length) {
         return lderror.reject(400);
       }
-      if (rows.length > cfg.nostoreMax) {
+      if (rows.length > Math.min(cfg.nostoreMax, cfg.batchMax)) {
         return lderror.reject(400);
       }
       if (!(common.formatSender(detail) || defaultSender(detail.lng))) {
         return lderror.reject(1015);
       }
-      meta = {
-        subject: detail.subject,
-        sender: detail.sender,
-        sendername: detail.sendername,
-        replyto: detail.replyto,
-        lng: detail.lng
-      };
-      return db.query("insert into mailspool (owner, scope, name, detail, status, record,\n  resumable, expected, starttime, expiretime)\nvalues ($1, $2, $3, $4, 'draft', 'none', false, $5, now(), $6)\nreturning *", [req.user.key, scope, detail.subject.substring(0, 256), meta, rows.length, new Date(Date.now() + cfg.retentionDays * 86400000)]).then(function(r){
-        var batch, values, params, i$, ref$, len$, i, row, n;
-        r == null && (r = {});
-        batch = (r.rows || (r.rows = []))[0];
-        if (!batch) {
-          return lderror.reject(500);
-        }
-        values = [];
-        params = [];
-        for (i$ = 0, len$ = (ref$ = rows).length; i$ < len$; ++i$) {
-          i = i$;
-          row = ref$[i$];
-          params.push(batch.key, i, row.email);
-          n = params.length;
-          values.push("($" + (n - 2) + ", $" + (n - 1) + ", $" + n + ", 'pending')");
-        }
-        return db.query("insert into mailspool_item (batch, idx, email, status)\nvalues " + values.join(',') + "\nreturning key, idx", params).then(function(r2){
-          var vars, i$, ref$, len$, it;
-          r2 == null && (r2 = {});
-          vars = {};
-          for (i$ = 0, len$ = (ref$ = r2.rows || (r2.rows = [])).length; i$ < len$; ++i$) {
-            it = ref$[i$];
-            vars[it.key] = (rows[it.idx] || {}).vars || {};
+      return checkQuota(scope, rows.length).then(function(){
+        var meta;
+        meta = {
+          subject: detail.subject,
+          sender: detail.sender,
+          sendername: detail.sendername,
+          replyto: detail.replyto,
+          lng: detail.lng
+        };
+        return db.query("insert into mailspool (owner, scope, name, detail, status, record,\n  resumable, expected, starttime, expiretime)\nvalues ($1, $2, $3, $4, 'draft', 'none', false, $5, now(), $6)\nreturning *", [req.user.key, scope, detail.subject.substring(0, 256), meta, rows.length, new Date(Date.now() + cfg.retentionDays * 86400000)]).then(function(r){
+          var batch, values, params, i$, ref$, len$, i, row, n;
+          r == null && (r = {});
+          batch = (r.rows || (r.rows = []))[0];
+          if (!batch) {
+            return lderror.reject(500);
           }
-          vault.set(batch.key, {
-            detail: detail,
-            vars: vars
+          values = [];
+          params = [];
+          for (i$ = 0, len$ = (ref$ = rows).length; i$ < len$; ++i$) {
+            i = i$;
+            row = ref$[i$];
+            params.push(batch.key, i, row.email);
+            n = params.length;
+            values.push("($" + (n - 2) + ", $" + (n - 1) + ", $" + n + ", 'pending')");
+          }
+          return db.query("insert into mailspool_item (batch, idx, email, status)\nvalues " + values.join(',') + "\nreturning key, idx", params).then(function(r2){
+            var vars, i$, ref$, len$, it;
+            r2 == null && (r2 = {});
+            vars = {};
+            for (i$ = 0, len$ = (ref$ = r2.rows || (r2.rows = [])).length; i$ < len$; ++i$) {
+              it = ref$[i$];
+              vars[it.key] = (rows[it.idx] || {}).vars || {};
+            }
+            vault.set(batch.key, {
+              detail: detail,
+              vars: vars
+            });
+            return db.query("update mailspool set status = 'sending' where key = $1 returning *", [batch.key]);
+          }).then(function(r3){
+            r3 == null && (r3 = {});
+            worker.tick();
+            return res.send((r3.rows || (r3.rows = []))[0] || batch);
           });
-          return db.query("update mailspool set status = 'sending' where key = $1 returning *", [batch.key]);
-        }).then(function(r3){
-          r3 == null && (r3 = {});
-          worker.tick();
-          return res.send((r3.rows || (r3.rows = []))[0] || batch);
         });
       });
     });
