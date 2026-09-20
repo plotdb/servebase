@@ -50,6 +50,23 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `.gitignore` excludes `**/.view/.@root/`, and now says what committing
+     `.view/` means rather than leaving it to whatever the patterns happen to do.
+     An app that re-includes its own frontend ( `!frontend/web` ) commits that
+     frontend's `.view/`: `frontend/*` covers the directory, and the per-app
+     `static` / `.view` exclusions under it name only `base` and `auth`. That
+     turns out to be what such an app wants - a precompiled view inlines the text
+     of everything it includes, and the view engine's staleness check compares one
+     `.pug` against its own `.js` and nothing else, so an `npm i` that swaps an
+     `@/...` include leaves the compiled view holding the old version with nothing
+     to notice; committing `.view/` next to the lockfile is what keeps the two in
+     step. What it should not have committed is `.@root/`, where srcbuild puts pug
+     compiled from outside `src/pug` - runtime-deployed `user/template/...`
+     included. That subtree carries user data and is the one part of `.view/` that
+     genuinely has to be built per request. Also drops `web/.view` and
+     `module/**/web/.view`, which named a directory layout this project stopped
+     using, and read as protection that was not there. See
+     `doc/base/infrastructure.md` -> Build Artifacts.
    - `backend/base/manager.ls` is no longer loaded as a route. it sits in the demo
      route folder only so that `config.build.block.manager` has somewhere to point,
      but that folder is scanned and everything in it is called as a route: it was

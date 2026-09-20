@@ -357,7 +357,8 @@ per artifact rather than per project.
     <feroot>/static/                    the document root. runtime needs it.
     <feroot>/.bundle-dep/manifest.json  url -> content-addressed url. runtime needs it.
     <feroot>/.bundle-dep/<type>/*.dep   bundle specs. only the builder needs it.
-    <feroot>/.view/                     precompiled pug. self-healing cache.
+    <feroot>/.view/                     precompiled pug. a deploy artifact.
+    <feroot>/.view/.@root/              pug compiled from outside src/pug. runtime state.
 
 **`static/`** is what nginx has as its `root`, and what express serves as a fallback
 when there is no nginx in front. Two kinds of thing live in it, and both are needed:
@@ -383,10 +384,39 @@ ways, silently. Whatever policy `static/` gets, this file gets the same one.
 declares it. A server that does not build never reads it. Committing it only saves a
 first-build pass.
 
-**`.view/`** is a cache and repairs itself: the view engine compiles from `src/pug` on
-demand when a precompiled template is missing. Verified by deleting the whole directory
-while the server was running - pages kept rendering and the directory came back.
-Committing it saves the first compile per page and nothing else.
+**`.view/`** repairs itself only in one direction. A *missing* template is compiled from
+`src/pug` on demand - verified by deleting the whole directory while the server was
+running, pages kept rendering and the directory came back. A *stale* one is not, and
+that is the case that matters, because pug `include` is expanded at compile time: a
+precompiled view has the text of everything it includes inlined into it, `@/...` ones
+resolved out of node_modules included. `frontend/base/.view/index.js` is 46KB against a
+6.7KB `index.pug`; `scriptLoader`, a string that appears nowhere in `index.pug`, appears
+in it 18 times, straight out of `@loadingio/bootstrap.ext/index.pug`. And the view
+engine's check is two `statSync` calls - that one `.pug` against its own `.js` - so an
+`npm i` that swaps the included file leaves the compiled view holding the previous
+version, and nothing ever notices. The builder does not have this problem: it tracks
+dependencies ( `compileClientWithDependenciesTracked` ) and watches node_modules, which
+is why `@/` includes rebuild correctly in development and why node_modules cannot simply
+be excluded from the watch.
+
+So whether to commit `.view/` is not about saving the first compile per page. An app
+that builds locally and deploys artifacts should commit it, because that is what keeps
+the precompiled templates in step with the lockfile they were built against. An app that
+builds on the server should not, because the builder there keeps them in step instead.
+
+**`.@root/` is the exception inside `.view/`, and is never committed.** srcbuild sends a
+pug file that lives outside `src/pug` here, at a path mirroring its own location under
+the project root - `module/base/x/y.pug` becomes `.view/.@root/module/base/x/y.js`. Only
+the view engine produces these ( the builder's `isSupported` requires `src/pug` ), and
+what lands there includes templates deployed at runtime, `.@root/user/template/...`,
+which carry user data and must be compiled per request anyway. The `.gitignore` excludes
+`**/.view/.@root/` for every project.
+
+Which leaves `.@root/` as the one kind of artifact with nothing to invalidate it: not
+committed, not built by the builder, and reached only through the staleness check
+described above - the one that does not look at includes. A runtime-deployed template
+whose shared base changes, while its own entry does not, keeps serving the old base
+indefinitely. See `context/servebase/tasks/todo/20260919-view-atroot-stale.md`.
 
 
 ## Deploying Build Artifacts
