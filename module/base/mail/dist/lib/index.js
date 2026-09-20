@@ -8,7 +8,7 @@
   (function(it){
     return module.exports = it;
   })(function(arg$){
-    var ref$, route, backend, db, rt, reEmail, isEmail, cfg, defaultSender, normalizeRows, normalizeColumns, normalizeDetail, normalizeRecord, getBatch, purgeContent, statOf, worker;
+    var ref$, route, backend, db, rt, reEmail, isEmail, cfg, vault, defaultSender, normalizeRows, normalizeColumns, normalizeDetail, normalizeRecord, getBatch, purgeContent, statOf, worker;
     ref$ = arg$ != null
       ? arg$
       : {}, route = ref$.route, backend = ref$.backend;
@@ -25,9 +25,9 @@
     cfg.staleMinutes == null && (cfg.staleMinutes = 5);
     cfg.retentionDays == null && (cfg.retentionDays = 548);
     cfg.expireInterval == null && (cfg.expireInterval = 3600000);
-    cfg.nowBatchMax == null && (cfg.nowBatchMax = 10);
-    cfg.abortMinutes == null && (cfg.abortMinutes = 15);
+    cfg.nostoreMax == null && (cfg.nostoreMax = 1000);
     cfg.startupDelay == null && (cfg.startupDelay = 15000);
+    vault = new Map();
     defaultSender = function(lng){
       var mcfg;
       mcfg = (backend.mailQueue || {}).cfg || {};
@@ -328,6 +328,7 @@
         }).then(function(r){
           var p;
           r == null && (r = {});
+          vault['delete'](batch.key);
           p = batch.record === 'metadata'
             ? purgeContent([batch.key])
             : Promise.resolve();
@@ -343,6 +344,9 @@
         scope: req.mailmerge.scope
       }).then(function(batch){
         var ref$;
+        if (!batch.resumable) {
+          return lderror.reject(409);
+        }
         if ((ref$ = batch.status) !== 'done' && ref$ !== 'canceled' && ref$ !== 'aborted') {
           return lderror.reject(409);
         }
@@ -360,8 +364,7 @@
       });
     });
     rt.post('/send-now', function(req, res){
-      var ref$, key, final, scope, detail, rows, expected, nowparams, p;
-      ref$ = req.body, key = ref$.key, final = ref$.final;
+      var scope, detail, rows, meta;
       scope = req.mailmerge.scope;
       detail = normalizeDetail(req.body.detail, req.mailmerge.defaults || {});
       if (!(detail.subject && detail.content)) {
@@ -371,102 +374,52 @@
       if (!rows.length) {
         return lderror.reject(400);
       }
-      if (rows.length > cfg.nowBatchMax) {
+      if (rows.length > cfg.nostoreMax) {
         return lderror.reject(400);
       }
-      expected = parseInt(req.body.expected) || rows.length;
-      nowparams = [
-        req.user.key, scope, detail.subject.substring(0, 256), {
-          subject: detail.subject,
-          sender: detail.sender,
-          sendername: detail.sendername,
-          replyto: detail.replyto,
-          lng: detail.lng
-        }, expected, new Date(Date.now() + cfg.retentionDays * 86400000)
-      ];
-      p = key
-        ? getBatch({
-          key: key,
-          scope: scope
-        }).then(function(batch){
-          if (batch.resumable || batch.status !== 'sending') {
-            return lderror.reject(409);
-          }
-          return batch;
-        })
-        : db.query("insert into mailspool (owner, scope, name, detail, status, record,\n  resumable, expected, starttime, expiretime)\nvalues ($1, $2, $3, $4, 'sending', 'none', false, $5, now(), $6)\nreturning *", nowparams).then(function(r){
-          r == null && (r = {});
-          return (r.rows || (r.rows = []))[0];
-        });
-      return p.then(function(batch){
-        var sender;
+      if (!(common.formatSender(detail) || defaultSender(detail.lng))) {
+        return lderror.reject(1015);
+      }
+      meta = {
+        subject: detail.subject,
+        sender: detail.sender,
+        sendername: detail.sendername,
+        replyto: detail.replyto,
+        lng: detail.lng
+      };
+      return db.query("insert into mailspool (owner, scope, name, detail, status, record,\n  resumable, expected, starttime, expiretime)\nvalues ($1, $2, $3, $4, 'draft', 'none', false, $5, now(), $6)\nreturning *", [req.user.key, scope, detail.subject.substring(0, 256), meta, rows.length, new Date(Date.now() + cfg.retentionDays * 86400000)]).then(function(r){
+        var batch, values, params, i$, ref$, len$, i, row, n;
+        r == null && (r = {});
+        batch = (r.rows || (r.rows = []))[0];
         if (!batch) {
           return lderror.reject(500);
         }
-        sender = common.formatSender(detail) || defaultSender(detail.lng);
-        if (!sender) {
-          return lderror.reject(1015);
+        values = [];
+        params = [];
+        for (i$ = 0, len$ = (ref$ = rows).length; i$ < len$; ++i$) {
+          i = i$;
+          row = ref$[i$];
+          params.push(batch.key, i, row.email);
+          n = params.length;
+          values.push("($" + (n - 2) + ", $" + (n - 1) + ", $" + n + ", 'pending')");
         }
-        return db.query("select count(*)::int as c from mailspool_item where batch = $1", [batch.key]).then(function(cnt){
-          var base, results, one;
-          cnt == null && (cnt = {});
-          base = ((cnt.rows || (cnt.rows = []))[0] || {}).c || 0;
-          results = [];
-          one = function(row, i){
-            var mark;
-            mark = function(status, error, msgid){
-              error == null && (error = null);
-              msgid == null && (msgid = null);
-              return db.query("insert into mailspool_item (batch, idx, email, status, error, msgid, sendtime)\nvalues ($1, $2, $3, $4, $5, $6, (case when $4 = 'sent' then now() else null end))", [batch.key, base + i, row.email, status, error, msgid]).then(function(){
-                return results.push({
-                  email: row.email,
-                  ok: status === 'sent',
-                  error: error
-                });
-              });
-            };
-            if (!isEmail(row.email)) {
-              return mark('skipped', 'invalid email');
-            }
-            return backend.mailQueue.inBlacklist(row.email).then(function(blocked){
-              var payload, sending, ref$;
-              if (blocked) {
-                return mark('skipped', 'blacklisted');
-              }
-              payload = common.render(detail, row.vars || {});
-              if (detail.replyto) {
-                payload.replyTo = detail.replyto;
-              }
-              sending = backend.mailQueue.send((ref$ = {
-                to: row.email,
-                from: sender
-              }, ref$.subject = payload.subject, ref$.html = payload.html, ref$.text = payload.text, ref$.replyTo = payload.replyTo, ref$), {
-                now: true,
-                strict: true
-              });
-              return sending.then(function(info){
-                info == null && (info = {});
-                return mark('sent', null, (info || {}).messageId);
-              })['catch'](function(e){
-                return mark('failed', (e.message || e) + "");
-              });
-            });
-          };
-          return rows.reduce(function(q, row, i){
-            return q.then(function(){
-              return one(row, i);
-            });
-          }, Promise.resolve()).then(function(){
-            if (!final) {
-              return;
-            }
-            return db.query("update mailspool set status = 'done', donetime = now() where key = $1", [batch.key]);
-          }).then(function(){
-            return res.send({
-              key: batch.key,
-              results: results
-            });
+        return db.query("insert into mailspool_item (batch, idx, email, status)\nvalues " + values.join(',') + "\nreturning key, idx", params).then(function(r2){
+          var vars, i$, ref$, len$, it;
+          r2 == null && (r2 = {});
+          vars = {};
+          for (i$ = 0, len$ = (ref$ = r2.rows || (r2.rows = [])).length; i$ < len$; ++i$) {
+            it = ref$[i$];
+            vars[it.key] = (rows[it.idx] || {}).vars || {};
+          }
+          vault.set(batch.key, {
+            detail: detail,
+            vars: vars
           });
+          return db.query("update mailspool set status = 'sending' where key = $1 returning *", [batch.key]);
+        }).then(function(r3){
+          r3 == null && (r3 = {});
+          worker.tick();
+          return res.send((r3.rows || (r3.rows = []))[0] || batch);
         });
       });
     });
@@ -532,7 +485,7 @@
         }).then(function(){
           return this$.finalize();
         }).then(function(){
-          return this$.abortStalled();
+          return this$.abortOrphans();
         }).then(function(){
           return this$.expire();
         })['catch'](function(err){
@@ -554,7 +507,7 @@
       },
       drain: function(){
         var this$ = this;
-        return db.query("update mailspool_item set status = 'sending', updatedtime = now()\nwhere key in (\n  select i.key from mailspool_item i\n  join mailspool m on m.key = i.batch\n  where i.status = 'pending' and m.status = 'sending' and m.resumable\n    and m.deleted is not true\n  order by i.batch, i.idx\n  limit $1\n  for update of i skip locked\n)\nreturning *", [cfg.batchSize]).then(function(r){
+        return db.query("update mailspool_item set status = 'sending', updatedtime = now()\nwhere key in (\n  select i.key from mailspool_item i\n  join mailspool m on m.key = i.batch\n  where i.status = 'pending' and m.status = 'sending'\n    and (m.resumable or m.key = any($2::int[]))\n    and m.deleted is not true\n  order by i.batch, i.idx\n  limit $1\n  for update of i skip locked\n)\nreturning *", [cfg.batchSize, arrayFrom$(vault.keys())]).then(function(r){
           var items, keys;
           r == null && (r = {});
           items = (r.rows || (r.rows = [])).sort(function(a, b){
@@ -583,11 +536,17 @@
         });
       },
       sendOne: function(item, batch){
-        var detail, sender, this$ = this;
+        var held, detail, vars, sender, this$ = this;
         if (!batch) {
           return this.mark(item, 'failed', "batch missing");
         }
-        detail = batch.detail || {};
+        held = vault.get(batch.key);
+        detail = held
+          ? held.detail
+          : batch.detail || {};
+        vars = held
+          ? held.vars[item.key] || {}
+          : item.vars || {};
         sender = common.formatSender(detail) || defaultSender(detail.lng);
         if (!sender) {
           return this.mark(item, 'failed', "no sender available");
@@ -599,7 +558,7 @@
           if (blocked) {
             return this$.mark(item, 'skipped', "blacklisted");
           }
-          payload = common.render(detail, item.vars || {});
+          payload = common.render(detail, vars);
           if (detail.replyto) {
             payload.replyTo = detail.replyto;
           }
@@ -628,8 +587,13 @@
         return db.query("update mailspool_item set status = $2, error = $3, msgid = $4,\n  retry = (case when $5 then retry + 1 else retry end),\n  sendtime = (case when $2 = 'sent' then now() else sendtime end),\n  updatedtime = now()\nwhere key = $1", [item.key, status, error, msgid, !!bump]);
       },
       finalize: function(){
-        return db.query("update mailspool set status = 'done', donetime = now()\nwhere status = 'sending' and resumable and not exists (\n  select 1 from mailspool_item i\n  where i.batch = mailspool.key and i.status in ('pending','sending')\n)\nreturning key, record").then(function(r){
+        return db.query("update mailspool set status = 'done', donetime = now()\nwhere status = 'sending' and (resumable or key = any($1::int[]))\n  and not exists (\n    select 1 from mailspool_item i\n    where i.batch = mailspool.key and i.status in ('pending','sending')\n  )\nreturning key, record", [arrayFrom$(vault.keys())]).then(function(r){
+          var i$, ref$, len$, row;
           r == null && (r = {});
+          for (i$ = 0, len$ = (ref$ = r.rows || (r.rows = [])).length; i$ < len$; ++i$) {
+            row = ref$[i$];
+            vault['delete'](row.key);
+          }
           return purgeContent((r.rows || (r.rows = [])).filter(function(it){
             return it.record === 'metadata';
           }).map(function(it){
@@ -637,8 +601,8 @@
           }));
         });
       },
-      abortStalled: function(){
-        return db.query("update mailspool set status = 'aborted', donetime = now()\nwhere status = 'sending' and not resumable\n  and coalesce(starttime, createdtime) < now() - ($1 || ' minutes')::interval\n  and not exists (\n    select 1 from mailspool_item i\n    where i.batch = mailspool.key and i.updatedtime > now() - ($1 || ' minutes')::interval\n  )\nreturning key", [cfg.abortMinutes + ""]).then(function(r){
+      abortOrphans: function(){
+        return db.query("update mailspool set status = 'aborted', donetime = now()\nwhere status = 'sending' and not resumable and deleted is not true\n  and not (key = any($1::int[]))\nreturning key", [arrayFrom$(vault.keys())]).then(function(r){
           r == null && (r = {});
           if (r.rowCount) {
             return backend.logMail.info("mailspool: " + r.rowCount + " non-resumable batch(es) aborted");

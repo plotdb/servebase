@@ -44,15 +44,23 @@ cfg.stale-minutes ?= 5
 cfg.retention-days ?= 548
 # 過期紀錄的清理頻率. 這件事不急, 沒必要每輪 tick 都掃一次全表.
 cfg.expire-interval ?= 3600000ms
-# `send-now` ( 不落地寄送 ) 一次最多幾封. 這支是同步寄完才回應,
-# 一批太大就會撞到 request timeout.
-cfg.now-batch-max ?= 10
-# 不可續傳的批次多久沒新進度就視為中斷. 這是在等瀏覽器送下一批, 所以要比
-# stale-minutes 寬鬆 - 分頁被切到背景 throttle 住是常見的事.
-cfg.abort-minutes ?= 15
+# 不落地批次一次最多幾封. 內容與代換資料整批放在記憶體裡直到寄完,
+# 所以要有個上限 - 也順便擋掉「一次寄十萬封」這種一定是誤操作的情況.
+cfg.nostore-max ?= 1000
 # 開機後多久才跑第一輪. 見 worker.start 的說明.
 cfg.startup-delay ?= 15000ms
 
+
+# 不落地批次 ( record = 'none' ) 的內容. 本文與逐封的代換資料只放在這裡,
+# 從不寫進 DB - 那正是「不落地」的意思.
+#
+#   batch key -> {detail, vars: {item key -> vars}}
+#
+# 只活在這個 process 的記憶體裡: 重啟就沒了, 那批也就接不下去. worker 每輪
+# 都會把「掛著 sending 卻不在這裡」的批次照實收成 aborted ( abort-orphans ),
+# 所以狀態不會騙人. 這是刻意的取捨 - 換來的是使用者送出後就能關掉視窗.
+
+vault = new Map!
 
 # # helpers
 
@@ -316,12 +324,17 @@ rt.post \/cancel, (req, res) ->
     .then (r = {}) ->
       # 取消掉的批次不會再走 finalize, 內容得在這裡清 - 不然勾了
       # 「含敏感資料」卻中途取消的信, 本文就永遠留在 DB 裡.
+      # 不落地的批次內容在記憶體, 取消時一起丟掉.
+      vault.delete batch.key
       p = if batch.record == \metadata => purge-content [batch.key] else Promise.resolve!
       p.then -> res.send (r.[]rows.0 or {})
 
 # 重送失敗的. 把 failed 打回 pending 並重置 retry.
 rt.post \/retry, (req, res) ->
   (batch) <~ get-batch {key: req.body.key, scope: req.mailmerge.scope} .then _
+  # 不落地的批次收尾時內容就從記憶體丟掉了, 沒有東西可以重寄. 放它過的話
+  # item 會被打回 pending, 然後永遠留在那裡 - drain 不收這種批次.
+  if !batch.resumable => return lderror.reject 409
   if batch.status not in <[done canceled aborted]> => return lderror.reject 409
   db.query """
   update mailspool_item set status = 'pending', retry = 0, error = null, updatedtime = now()
@@ -346,76 +359,61 @@ rt.post \/retry, (req, res) ->
 #
 # 前端逐批呼叫: 第一批不帶 key, 拿回新建的批次 key; 之後每批帶著它,
 # 最後一批加上 `final` 收尾.
+# 不落地寄送. 內容與代換資料不進 DB, 放進 vault 之後就交給 worker,
+# 速率與可續傳批次一致 ( batch-size / interval ).
+#
+# 呼叫端送出就可以離開 - 內容在 server 的記憶體裡, 不需要瀏覽器留著續推.
+# 代價是 process 重啟後這批接不下去, 會被收成 aborted.
+#
+# 進 DB 的仍然有: 標題、寄件者 / 回信址、每一位收件者的位址與寄送結果.
+# 不進 DB 的是本文與逐封的代換資料.
 rt.post \/send-now, (req, res) ->
-  {key, final} = req.body
   {scope} = req.mailmerge
   detail = normalize-detail req.body.detail, (req.mailmerge.defaults or {})
   if !(detail.subject and detail.content) => return lderror.reject 400
   rows = normalize-rows req.body.rows, detail.columns
   if !rows.length => return lderror.reject 400
-  # 一次一小批, request 才不會長到被 timeout 砍掉
-  if rows.length > cfg.now-batch-max => return lderror.reject 400
-  expected = parseInt(req.body.expected) or rows.length
+  if rows.length > cfg.nostore-max => return lderror.reject 400
+  if !(common.format-sender(detail) or default-sender(detail.lng)) => return lderror.reject 1015
 
-  # 只留得以辨識這批信的欄位, content / columns 不寫進 DB
-  nowparams = [
-    req.user.key, scope, detail.subject.substring(0, 256)
-    detail{subject, sender, sendername, replyto, lng}
-    expected
+  # 只留得以辨識這批信的欄位.
+  meta = detail{subject, sender, sendername, replyto, lng}
+  # 先建成 draft: worker 只看 sending, 這樣在 items 與 vault 都就位之前,
+  # 中途跑起來的 tick 不會把它當成沒有內容的孤兒收掉.
+  db.query """
+  insert into mailspool (owner, scope, name, detail, status, record,
+    resumable, expected, starttime, expiretime)
+  values ($1, $2, $3, $4, 'draft', 'none', false, $5, now(), $6)
+  returning *
+  """, [
+    req.user.key, scope, detail.subject.substring(0, 256), meta, rows.length
     new Date(Date.now! + cfg.retention-days * 86400000)
   ]
-  p = if key =>
-    get-batch {key, scope}
-      .then (batch) ->
-        if batch.resumable or batch.status != \sending => return lderror.reject 409
-        return batch
-  else
-    db.query """
-    insert into mailspool (owner, scope, name, detail, status, record,
-      resumable, expected, starttime, expiretime)
-    values ($1, $2, $3, $4, 'sending', 'none', false, $5, now(), $6)
-    returning *
-    """, nowparams
-      .then (r = {}) -> r.[]rows.0
-
-  (batch) <~ p.then _
-  if !batch => return lderror.reject 500
-  sender = common.format-sender(detail) or default-sender(detail.lng)
-  if !sender => return lderror.reject 1015
-
-  # idx 要接在既有的後面 - 這是同一批的第幾封, 列表靠它排序.
-  # 逐批依序送, 不會有併發寫入的問題.
-  (cnt = {}) <~ db.query("select count(*)::int as c from mailspool_item where batch = $1", [batch.key]).then _
-  base = (cnt.[]rows.0 or {}).c or 0
-  results = []
-  one = (row, i) ->
-    mark = (status, error = null, msgid = null) ->
+    .then (r = {}) ->
+      batch = r.[]rows.0
+      if !batch => return lderror.reject 500
+      values = []
+      params = []
+      for row, i in rows
+        params.push batch.key, i, row.email
+        n = params.length
+        values.push "($#{n - 2}, $#{n - 1}, $#{n}, 'pending')"
       db.query """
-      insert into mailspool_item (batch, idx, email, status, error, msgid, sendtime)
-      values ($1, $2, $3, $4, $5, $6, (case when $4 = 'sent' then now() else null end))
-      """, [batch.key, (base + i), row.email, status, error, msgid]
-        .then -> results.push {email: row.email, ok: (status == \sent), error}
-    if !is-email(row.email) => return mark \skipped, 'invalid email'
-    backend.mail-queue.in-blacklist row.email
-      .then (blocked) ->
-        if blocked => return mark \skipped, 'blacklisted'
-        payload = common.render detail, (row.vars or {})
-        if detail.replyto => payload.replyTo = detail.replyto
-        sending = backend.mail-queue.send do
-          {to: row.email, from: sender} <<< payload{subject, html, text, replyTo}
-          {now: true, strict: true}
-        sending
-          .then (info = {}) -> mark \sent, null, (info or {}).messageId
-          .catch (e) -> mark \failed, "#{e.message or e}"
-
-  # 依序寄, 不併發 - 併發只會讓 SMTP 更容易擋我們
-  rows.reduce ((q, row, i) -> q.then -> one row, i), Promise.resolve!
-    .then ->
-      if !final => return
-      db.query """
-      update mailspool set status = 'done', donetime = now() where key = $1
-      """, [batch.key]
-    .then -> res.send {key: batch.key, results}
+      insert into mailspool_item (batch, idx, email, status)
+      values #{values.join(',')}
+      returning key, idx
+      """, params
+        .then (r2 = {}) ->
+          vars = {}
+          for it in r2.[]rows => vars[it.key] = (rows[it.idx] or {}).vars or {}
+          vault.set batch.key, {detail, vars}
+          db.query """
+          update mailspool set status = 'sending' where key = $1 returning *
+          """, [batch.key]
+        .then (r3 = {}) ->
+          # 不等下一輪 tick
+          worker.tick!
+          res.send (r3.[]rows.0 or batch)
 
 rt.post \/test, (req, res) ->
   {detail, vars} = req.body
@@ -466,7 +464,7 @@ worker =
       .then ~> @activate!
       .then ~> @drain!
       .then ~> @finalize!
-      .then ~> @abort-stalled!
+      .then ~> @abort-orphans!
       .then ~> @expire!
       .catch (err) -> backend.log-mail.error {err}, "mailmerge worker tick failed"
       .then ~> @running = false
@@ -502,20 +500,24 @@ worker =
   #
   # `for update ... skip locked` 讓多個 instance 同時跑也不會重複寄同一封.
   # 目前是單一 process, 但這個成本很低, 之後要橫向擴充時不用回頭改。
+  #
+  # 不落地的批次另外用 vault 的 key 圈住: 它的內容只在某一個 process 的
+  # 記憶體裡, 別的 instance 就算認領到也寄不出來.
   drain: ->
     db.query """
     update mailspool_item set status = 'sending', updatedtime = now()
     where key in (
       select i.key from mailspool_item i
       join mailspool m on m.key = i.batch
-      where i.status = 'pending' and m.status = 'sending' and m.resumable
+      where i.status = 'pending' and m.status = 'sending'
+        and (m.resumable or m.key = any($2::int[]))
         and m.deleted is not true
       order by i.batch, i.idx
       limit $1
       for update of i skip locked
     )
     returning *
-    """, [cfg.batch-size]
+    """, [cfg.batch-size, [...vault.keys!]]
       .then (r = {}) ~>
         # 子查詢的 order by 只決定選中哪幾封, returning 的順序不保證跟著它,
         # 所以這裡自己排 - 不排的話同一批的寄送順序會跳來跳去,
@@ -535,14 +537,17 @@ worker =
 
   send-one: (item, batch) ->
     if !batch => return @mark item, \failed, "batch missing"
-    detail = batch.detail or {}
+    # 不落地的批次內容在 vault 裡, DB 的 detail 只有標題與寄件資訊.
+    held = vault.get batch.key
+    detail = if held => held.detail else (batch.detail or {})
+    vars = if held => (held.vars[item.key] or {}) else (item.vars or {})
     sender = common.format-sender(detail) or default-sender(detail.lng)
     if !sender => return @mark item, \failed, "no sender available"
     Promise.resolve!
       .then ~> backend.mail-queue.in-blacklist item.email
       .then (blocked) ~>
         if blocked => return @mark item, \skipped, "blacklisted"
-        payload = common.render detail, (item.vars or {})
+        payload = common.render detail, vars
         # nodemailer 的欄位是 `replyTo`, 不是 detail 裡存的 `replyto`.
         if detail.replyto => payload.replyTo = detail.replyto
         # 先存成變數再接 .then - 直接接在 `do` 的最後一個參數後面,
@@ -573,34 +578,33 @@ worker =
     """, [item.key, status, error, msgid, !!bump]
 
   # 沒有待處理 item 的批次收尾.
+  # 沒有待處理 item 的批次收尾. 不落地的批次也走這裡 - 它的 item 是送出時
+  # 一次建好的, 「沒有 pending 也沒有 sending」就真的是寄完了.
   finalize: ->
-    # 只收 resumable 的批次. 不可續傳的那種由 send-now 自己在最後一批收尾 -
-    # 它隨時都「沒有 pending item」( item 是寄一封寫一封 ), 交給這裡判斷的話
-    # 第一批才寄完就會被當成整批完成.
     db.query """
     update mailspool set status = 'done', donetime = now()
-    where status = 'sending' and resumable and not exists (
-      select 1 from mailspool_item i
-      where i.batch = mailspool.key and i.status in ('pending','sending')
-    )
-    returning key, record
-    """
-      .then (r = {}) ->
-        purge-content r.[]rows.filter(-> it.record == \metadata).map(-> it.key)
-
-  # 不可續傳的批次停了太久沒有新進度, 表示前端那邊斷了 ( 關視窗 / 斷線 ).
-  # 沒有內容可以接手, 只能照實標成 aborted - 剩下的沒寄出去.
-  abort-stalled: ->
-    db.query """
-    update mailspool set status = 'aborted', donetime = now()
-    where status = 'sending' and not resumable
-      and coalesce(starttime, createdtime) < now() - ($1 || ' minutes')::interval
+    where status = 'sending' and (resumable or key = any($1::int[]))
       and not exists (
         select 1 from mailspool_item i
-        where i.batch = mailspool.key and i.updatedtime > now() - ($1 || ' minutes')::interval
+        where i.batch = mailspool.key and i.status in ('pending','sending')
       )
+    returning key, record
+    """, [[...vault.keys!]]
+      .then (r = {}) ->
+        # 寄完就把內容從記憶體拿掉, 不要留著.
+        for row in r.[]rows => vault.delete row.key
+        purge-content r.[]rows.filter(-> it.record == \metadata).map(-> it.key)
+
+  # 掛著 sending 的不落地批次, 內容卻不在 vault 裡 - 那只可能是 process
+  # 重啟過. 沒有內容可以接手, 照實標成 aborted, 不要讓它一直掛著假裝在寄.
+  # 每輪都掃, 所以重啟後第一輪 tick 就會把狀態修正, 不必等逾時.
+  abort-orphans: ->
+    db.query """
+    update mailspool set status = 'aborted', donetime = now()
+    where status = 'sending' and not resumable and deleted is not true
+      and not (key = any($1::int[]))
     returning key
-    """, ["#{cfg.abort-minutes}"]
+    """, [[...vault.keys!]]
       .then (r = {}) ->
         if r.rowCount => backend.log-mail.info "mailspool: #{r.rowCount} non-resumable batch(es) aborted"
 

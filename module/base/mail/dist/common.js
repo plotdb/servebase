@@ -16,13 +16,23 @@ common = {
     });
   },
   renderHtml: function(tpl, vars){
-    var self, re;
+    var self, re, html;
     vars == null && (vars = {});
     self = this;
     re = /<span[^>]*\sdata-var="([^"]*)"[^>]*>(?:<span[^>]*>[\s\S]*?<\/span>|[^<])*<\/span>/g;
-    return ((tpl || '') + "").replace(re, function(m, name){
+    html = ((tpl || '') + "").replace(re, function(m, name){
       name = (name + "").trim();
       return self.escapeHtml(vars[name] != null ? vars[name] : '');
+    });
+    return self.tighten(html);
+  },
+  tighten: function(html){
+    return ((html || '') + "").replace(/<p(\s[^>]*)?>/g, function(m, attr){
+      attr = attr || '';
+      if (/\sstyle\s*=/.exec(attr)) {
+        return m;
+      }
+      return "<p" + attr + " style=\"margin:0\">";
     });
   },
   usedVars: function(arg$){

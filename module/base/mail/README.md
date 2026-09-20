@@ -35,8 +35,8 @@ promise 要自己 `.catch next`.
 
 ## 資料表
 
-`mailspool` / `mailspool_item`, 定義在 servebase 的 `config/base/db/mailspool.sql`,
-與 `consent.sql` / `sharedb.sql` 一樣需要手動套用.
+`mailspool` / `mailspool_item`, 定義在這個模組的 `index.sql`, 與
+`consent.sql` / `sharedb.sql` 一樣需要手動套用.
 
 ## 三種保存層級
 
@@ -46,11 +46,22 @@ promise 要自己 `.catch next`.
 | --- | --- |
 | `full` | 內容照常保存, 可排程、可續傳、可重送失敗的 |
 | `metadata` | 照常排程, 但到終態 ( 完成或取消 ) 就清掉 content 與 vars |
-| `none` | 內容從不寫進 DB. 由呼叫端逐批推送、立即寄出 |
+| `none` | 內容從不寫進 DB, 只放在這個 process 的記憶體裡 |
 
 `none` 是給「使用者可能把密碼打進信裡」這種情境的: 內容連一次 backup 的窗口
-都沒有. 代價是斷了補不回來 — 這種批次 `resumable = false`, 中斷時收斂成
-`aborted` 而不是 `done`.
+都沒有.
+
+送出時整份內容與逐封的代換資料進一個 module-level 的 `vault` ( `Map`,
+batch key 為 key ), 之後由 worker 照一般速率寄 — 與 `full` 走同一條
+`drain` / `send-one`, 呼叫端送出就能離開.
+
+**進 DB 的仍然有**: 標題、寄件者與回信址、每一位收件者的位址、每封的
+寄送結果與 message id. 不進 DB 的是**本文**與**逐封的代換資料**.
+
+代價是 process 重啟後接不下去 — 這種批次 `resumable = false`, 每輪 tick 的
+`abort-orphans` 會把「掛著 `sending` 卻不在 vault 裡」的批次收成 `aborted`,
+所以重啟後第一輪就會把狀態修正, 不會有假裝還在寄的批次.
+`pause` / `resume` / `retry` 都不收這種批次 — 沒有內容可以接手.
 
 ## 設定
 
@@ -64,6 +75,5 @@ promise 要自己 `.catch next`.
 | `stale-minutes` | 5 | `sending` 卡住多久視為 process 死掉, 回收重寄 |
 | `retention-days` | 548 | 紀錄保留多久. email 是個資, 不該無限期留著 |
 | `expire-interval` | 3600000 | 過期清理的頻率 (ms) |
-| `now-batch-max` | 10 | `send-now` 單次上限, 避免撞 request timeout |
-| `abort-minutes` | 15 | 不可續傳的批次多久沒進度視為中斷 |
+| `nostore-max` | 1000 | 不落地批次的收件者上限. 內容整批留在記憶體, 要有個上限 |
 | `startup-delay` | 15000 | 開機後多久跑第一輪 (ms)。避開 session store 的啟動清理 |

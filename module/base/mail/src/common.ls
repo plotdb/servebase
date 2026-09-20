@@ -39,9 +39,24 @@ common =
   render-html: (tpl, vars = {}) ->
     self = @
     re = /<span[^>]*\sdata-var="([^"]*)"[^>]*>(?:<span[^>]*>[\s\S]*?<\/span>|[^<])*<\/span>/g
-    "#{tpl or ''}".replace re, (m, name) ->
+    html = "#{tpl or ''}".replace re, (m, name) ->
       name = "#{name}".trim!
       return self.escape-html(if vars[name]? => vars[name] else '')
+    return self.tighten html
+
+  # quill 把每一行都包成一個 <p>, 而它自己的 css 把 p 的 margin 歸零 - 在
+  # 編輯器裡「一行就是一行, 空行才是空行」. email client 沒有那份 css, 預設
+  # 會給 p 上下各約 1em, 同一份內容寄出去行距就散開了, 而且跟作者打字時看到
+  # 的不一樣.
+  #
+  # 所以代換完順手把 margin 寫死在 style 上 - email 只認 inline style.
+  # 預覽走的是同一支 render, 於是編輯器 / 預覽 / 實際收到的信三邊一致.
+  # 已經自己帶 style 的 p 不動 ( 目前 toolbar 不會產生, 留著以防日後放寬 ).
+  tighten: (html) ->
+    "#{html or ''}".replace /<p(\s[^>]*)?>/g, (m, attr) ->
+      attr = attr or ''
+      if /\sstyle\s*=/.exec attr => return m
+      return "<p#attr style=\"margin:0\">"
 
   # template 用到哪些欄位. 供寄出前 lint ( 有沒有用到不存在的欄位 ) 與
   # 「哪些 row 的這個欄位是空的」提示.
