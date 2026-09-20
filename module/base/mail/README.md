@@ -1,0 +1,69 @@
+# @servebase/mail
+
+群發信: 收件清單 + 樣板 → 逐封個人化的信, 排程寄送並追蹤每封的結果.
+
+寄送本身仍走 `@servebase/backend` 的 `mail-queue`; 這個模組加的是它沒有的
+兩件事 — **持久化的 spool** ( 重啟後接得下去 ) 與 **逐封的結果紀錄**.
+
+## 使用
+
+掛在 host 給的 router 底下. 權限不由這個模組判斷 - host 在 router 上先擋:
+
+```livescript
+route = aux.routecatch express.Router {mergeParams: true}
+api.use \/mailmerge/:scope, route
+route.use aux.signedin
+route.use (req, res, next) ->
+  req.mailmerge = {scope: req.params.scope}
+  myperm.check {slug: req.params.scope, user: req.user, action: <[owner admin]>}
+    .then -> next!
+    .catch next
+
+worker = mail {backend, route}
+```
+
+模組只認 `req.mailmerge.scope`, **不在乎它從哪來** - path param、上游的
+middleware、子網域、寫死的常數都行. router 底下的每一支
+都已經是「這個 user 對這個 scope 有權」, 所以模組不做任何權限判斷, 只負責
+確認帶進來的 `key` 真的屬於這個 scope ( 見 `get-batch` ).
+
+`aux.routecatch` 只包 `get/post/put/delete`, 不包 `use` - middleware 裡的
+promise 要自己 `.catch next`.
+
+回傳 worker, 讓 host 能程式化觸發 (`worker.tick!`) — 例如另一個排程建好批次後
+直接開跑, 不必等下一輪 tick.
+
+## 資料表
+
+`mailspool` / `mailspool_item`, 定義在 servebase 的 `config/base/db/mailspool.sql`,
+與 `consent.sql` / `sharedb.sql` 一樣需要手動套用.
+
+## 三種保存層級
+
+`mailspool.record` 決定信件內容留不留在 DB:
+
+| 值 | 行為 |
+| --- | --- |
+| `full` | 內容照常保存, 可排程、可續傳、可重送失敗的 |
+| `metadata` | 照常排程, 但到終態 ( 完成或取消 ) 就清掉 content 與 vars |
+| `none` | 內容從不寫進 DB. 由呼叫端逐批推送、立即寄出 |
+
+`none` 是給「使用者可能把密碼打進信裡」這種情境的: 內容連一次 backup 的窗口
+都沒有. 代價是斷了補不回來 — 這種批次 `resumable = false`, 中斷時收斂成
+`aborted` 而不是 `done`.
+
+## 設定
+
+`config.mail.mailmerge` 底下, 全部可省略:
+
+| 名稱 | 預設 | 說明 |
+| --- | --- | --- |
+| `interval` | 6000 | worker tick 間隔 (ms) |
+| `batch-size` | 1 | 每輪寄幾封. 與 interval 一起決定速率 ( 預設 10 封/分 ) |
+| `max-retry` | 3 | 單封重試上限 |
+| `stale-minutes` | 5 | `sending` 卡住多久視為 process 死掉, 回收重寄 |
+| `retention-days` | 548 | 紀錄保留多久. email 是個資, 不該無限期留著 |
+| `expire-interval` | 3600000 | 過期清理的頻率 (ms) |
+| `now-batch-max` | 10 | `send-now` 單次上限, 避免撞 request timeout |
+| `abort-minutes` | 15 | 不可續傳的批次多久沒進度視為中斷 |
+| `startup-delay` | 15000 | 開機後多久跑第一輪 (ms)。避開 session store 的啟動清理 |

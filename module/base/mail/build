@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+echo "prepare..."
+rm -rf dist .built
+mkdir -p dist
+
+bin=../../../node_modules/.bin
+echo "transpile src --> .built ..."
+$bin/lsc -cb --no-header -o .built src
+
+# 瀏覽器版: index 建出命名空間, common 掛進去, export 收尾.
+echo "compose index.js ..."
+echo "(function(){" > dist/index.js
+cat .built/index.js .built/common.js .built/export.js >> dist/index.js
+echo "})();" >> dist/index.js
+
+# node 版的 common: lib/index.js 用 require("../common") 拿到同一份.
+echo "compose common.js ..."
+cat .built/index.js .built/common.js .built/export.js > dist/common.js
+
+names="index common"
+for name in $names
+do
+  echo "uglify $name.js -> $name.min.js ..."
+  $bin/uglifyjs dist/$name.js -c -m > dist/$name.min.js
+done
+
+echo "build server files ..."
+$bin/lsc -co dist/lib lib
+
+echo "clean up ..."
+rm -rf .built
+
+echo "done"

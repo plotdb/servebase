@@ -1,0 +1,24 @@
+{
+  "name": "@servebase/mail",
+  "version": "0.1.0",
+  "description": "servebase mail merge module: recipient list + template -> personalized mails, scheduled and tracked",
+  "main": "dist/lib/index.js",
+  "browser": "dist/index.min.js",
+  "license": "MIT",
+  "author": "zbryikt",
+  "files": [
+    "dist/**/*",
+    "index.sql"
+  ],
+  "homepage": "https://github.com/plotdb/servebase",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "livescript": "^1.6.0",
+    "uglify-js": "^3.13.1"
+  },
+  "volta": {
+    "extends": "../../../package.json"
+  }
+}

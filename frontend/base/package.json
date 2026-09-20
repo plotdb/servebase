@@ -19,6 +19,7 @@
     "../../module/base/refresh",
     "../../module/base/pugutil",
     "../../module/base/discuss",
+    "../../module/base/mail",
     "../../module/base/connector"
   ],
   "dependencies": {
@@ -100,6 +101,10 @@
       },
       {
         "name": "@servebase/discuss",
+        "dir": "dist"
+      },
+      {
+        "name": "@servebase/mail",
         "dir": "dist"
       },
       {
