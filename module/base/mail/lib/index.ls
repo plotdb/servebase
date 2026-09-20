@@ -277,14 +277,13 @@ rt.post \/send, (req, res) ->
 
 # 暫停. worker 只認 scheduled / sending 兩個狀態, 所以改成 paused 就停了.
 #
-# 只有可續傳的批次能暫停: 不落地的那種 ( record = 'none' ) 是前端在推,
-# 後端沒有內容也沒有主導權, 停不了.
-#
 # 已經在途中的那幾封不攔 - 它們在 mail-queue 手上了. 沒送完的會被
 # `recover` 收回 pending, 就這樣停在暫停的批次底下等繼續.
 rt.post \/pause, (req, res) ->
   (batch) <~ get-batch {key: req.body.key, scope: req.mailmerge.scope} .then _
-  if !batch.resumable => return lderror.reject 409
+  # 不落地的批次也能暫停 - 內容在 vault 裡, 停著不會掉. 唯一不能暫停的是
+  # 既不可續傳又不在 vault 裡的, 那種本來就已經寄不下去了.
+  if !(batch.resumable or vault.has batch.key) => return lderror.reject 409
   if batch.status not in <[scheduled sending]> => return lderror.reject 409
   db.query """
   update mailspool set status = 'paused' where key = $1 and status in ('scheduled','sending')
@@ -299,6 +298,8 @@ rt.post \/pause, (req, res) ->
 rt.post \/resume, (req, res) ->
   (batch) <~ get-batch {key: req.body.key, scope: req.mailmerge.scope} .then _
   if batch.status != \paused => return lderror.reject 409
+  # 暫停期間重啟過的不落地批次: 內容已經不在了, 接不下去.
+  if !(batch.resumable or vault.has batch.key) => return lderror.reject 409
   db.query """
   update mailspool
   set status = (case when starttime is null then 'scheduled' else 'sending' end)
@@ -595,13 +596,14 @@ worker =
         for row in r.[]rows => vault.delete row.key
         purge-content r.[]rows.filter(-> it.record == \metadata).map(-> it.key)
 
-  # 掛著 sending 的不落地批次, 內容卻不在 vault 裡 - 那只可能是 process
-  # 重啟過. 沒有內容可以接手, 照實標成 aborted, 不要讓它一直掛著假裝在寄.
+  # 掛著 sending / paused 的不落地批次, 內容卻不在 vault 裡 - 那只可能是
+  # process 重啟過. 沒有內容可以接手, 照實標成 aborted, 不要讓它一直掛著
+  # 假裝還寄得下去 ( 暫停中的也一樣, 按繼續也救不回來 ).
   # 每輪都掃, 所以重啟後第一輪 tick 就會把狀態修正, 不必等逾時.
   abort-orphans: ->
     db.query """
     update mailspool set status = 'aborted', donetime = now()
-    where status = 'sending' and not resumable and deleted is not true
+    where status in ('sending','paused') and not resumable and deleted is not true
       and not (key = any($1::int[]))
     returning key
     """, [[...vault.keys!]]

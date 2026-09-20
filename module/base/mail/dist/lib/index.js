@@ -281,7 +281,7 @@
         scope: req.mailmerge.scope
       }).then(function(batch){
         var ref$;
-        if (!batch.resumable) {
+        if (!(batch.resumable || vault.has(batch.key))) {
           return lderror.reject(409);
         }
         if ((ref$ = batch.status) !== 'scheduled' && ref$ !== 'sending') {
@@ -302,6 +302,9 @@
         scope: req.mailmerge.scope
       }).then(function(batch){
         if (batch.status !== 'paused') {
+          return lderror.reject(409);
+        }
+        if (!(batch.resumable || vault.has(batch.key))) {
           return lderror.reject(409);
         }
         return db.query("update mailspool\nset status = (case when starttime is null then 'scheduled' else 'sending' end)\nwhere key = $1 and status = 'paused' returning *", [batch.key]).then(function(r){
@@ -602,7 +605,7 @@
         });
       },
       abortOrphans: function(){
-        return db.query("update mailspool set status = 'aborted', donetime = now()\nwhere status = 'sending' and not resumable and deleted is not true\n  and not (key = any($1::int[]))\nreturning key", [arrayFrom$(vault.keys())]).then(function(r){
+        return db.query("update mailspool set status = 'aborted', donetime = now()\nwhere status in ('sending','paused') and not resumable and deleted is not true\n  and not (key = any($1::int[]))\nreturning key", [arrayFrom$(vault.keys())]).then(function(r){
           r == null && (r = {});
           if (r.rowCount) {
             return backend.logMail.info("mailspool: " + r.rowCount + " non-resumable batch(es) aborted");
