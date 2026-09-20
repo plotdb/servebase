@@ -99,11 +99,16 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     if opt.from => payload.from = opt.from
     if opt.cc => payload.cc = opt.cc
     if opt.bcc => payload.bcc = opt.bcc
-    if opt.now => return @send-directly payload
+    if opt.now => return @send-directly payload, opt
     new Promise (res, rej) ~> @add {payload, res, rej}
 
   # directly send
-  send-directly: (payload) -> new Promise (res, rej) ~>
+  #
+  # `opt.strict`: reject on failure instead of resolving silently.
+  # default stays non-strict - existing callers ( notification mails, batch )
+  # treat a failed mail as non-fatal and rely on the log. callers that need to
+  # record per-mail outcome ( e.g. a persistent mail spool ) must opt in.
+  send-directly: (payload, opt = {}) -> new Promise (res, rej) ~>
     cc = if !payload.cc => ' '
     else " [cc:#{if Array.isArray(payload.cc) => payload.cc.join(' ') else payload.cc}] "
     bcc = if !payload.bcc => ''
@@ -112,8 +117,10 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     @log.info "#{if @suppress => '(suppressed)'.gray else ''} sending [from:#{payload.from}] [to:#{payload.to}]#cc#bcc[subject:#{payload.subject}]".cyan
     if @suppress => return res!
     (err,i) <~ @api.sendMail payload, _
-    if !err => return res!
+    # resolve with transport info so callers can keep the message id.
+    if !err => return res(i)
     @log.error {err}, "send mail failed: api.sendMail failed."
+    if opt.strict => return rej(err)
     return res!
 
   # markdown stored in `payload.content` and converted into `payload.text` and `payload.html`
@@ -150,7 +157,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
         return payload
 
   batch: ({sender, recipients, name, payload, params, batch-size, lng}) ->
-    sender = @cfg.default-sender or sender
+    sender = sender or @cfg.default-sender
     if !sender and !(@cfg.sitename and @cfg.domain) => return lderror.reject 1015
     # we may want to make sure sender is a valid recipient
     # since no-reply@xxx probably won't be a correct sender.
