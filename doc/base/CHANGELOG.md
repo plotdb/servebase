@@ -1,6 +1,16 @@
 ## master
 
  - features:
+   - `@servebase/erratum`: `lockdown` - a toggle that routes every error to one
+     dialog instead of answering each on its own terms. The per-error handling
+     is right while the error is the problem, and wrong once the page itself
+     cannot be trusted: from there each further action runs against a state
+     nobody can vouch for. A toggle rather than a constructor option because
+     when it is safe to engage is a runtime question - start-up has its own
+     ordinary permission and fetch failures, and locking on those would break
+     the page for everyone. Fires once per engagement, so a failing page cannot
+     stack covers, and a dialog that throws is reported rather than looped.
+     See `module/base/erratum/README.md` -> Lockdown.
    - the backend runs from the livescript sources everywhere now, production
      included. compiling all of `backend/` costs about 0.25s against a startup
      otherwise spent requiring the npm tree and reaching db / redis, and in
