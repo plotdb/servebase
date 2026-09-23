@@ -175,6 +175,11 @@
         });
       });
     }).then(function(){
+      var ref$;
+      if (this$.ws.status() !== 2) {
+        throw ref$ = new Error(), ref$.id = 1011, ref$.name = 'lderror', ref$;
+      }
+    }).then(function(){
       this$._covered = false;
       return this$._running = false;
     })['catch'](function(e){
@@ -242,7 +247,7 @@
       return this._hint(waited >= this._peekcfg.threshold);
     }
   }, ref$._safeguard = function(){
-    var ref$;
+    var ref$, ref1$;
     if (!this._inited || this._dead) {
       return;
     }
@@ -260,7 +265,7 @@
         ws: this.ws
       });
     } else {
-      throw new Error(1011);
+      throw ref1$ = new Error(), ref1$.id = 1011, ref1$.name = 'lderror', ref1$;
     }
   }, ref$.init = function(){
     var this$ = this;

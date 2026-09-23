@@ -166,6 +166,7 @@ connector.prototype = Object.create(Object.prototype) <<<
         @_hint false
         if !@_covered => return
         debounce 350 .then ~> @_ldcv.offline false, {ws: @ws}
+      .then ~> if @ws.status! != 2 => throw ((new Error!) <<< {id: 1011, name: \lderror})
       .then ~> @_covered = false; @_running = false
       .catch (e) ~>
         # Reconnect failed. Treat it as terminal and make sure of one thing: the
@@ -263,7 +264,7 @@ connector.prototype = Object.create(Object.prototype) <<<
     else if !@_safeguard-tick => @_safeguard-tick = Date.now!
     if Date.now! - @_safeguard-tick < (@_peekcfg.blockAfter or 7000) + 3000 => return
     @_dead = true
-    if @_ldcv.dead => @_ldcv.dead({ws: @ws}) else throw new Error(1011)
+    if @_ldcv.dead => @_ldcv.dead({ws: @ws}) else throw (new Error! <<< id: 1011, name: \lderror)
 
   init: ->
     @ws = new ews {path: @_path}
