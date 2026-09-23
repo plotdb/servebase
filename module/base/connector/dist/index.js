@@ -162,7 +162,6 @@
     return debounce(200).then(function(){
       return this$.open();
     }).then(function(){
-      this$.ws.disconnect();
       if (hold) {
         hold.cancel();
       }

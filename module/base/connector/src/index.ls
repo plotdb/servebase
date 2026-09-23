@@ -162,7 +162,6 @@ connector.prototype = Object.create(Object.prototype) <<<
     debounce 200
       .then ~> @open!
       .then ~>
-        @ws.disconnect!
         if hold => hold.cancel!
         @_hint false
         if !@_covered => return
