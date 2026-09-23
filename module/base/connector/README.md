@@ -96,6 +96,15 @@ And following API:
  - `on(name, cb)`: register an event handler for event `name`.
  - `fire(name, ...args)`: fire an event with `name` and additional options `...args`.
  - `peek()`: actively hint connector to check against pending jobs.
+ - `safeguard()`: poke this from your own write path ( e.g. right after each
+   update ). debounced, so calling it on every keystroke is free. it watches
+   for exactly one thing: local changes still arriving long after the socket
+   went down. by that point the unstable hint, the offline cover and the
+   stalled cover have each had their chance to stop it and demonstrably did
+   not, so the situation is terminal - `ldcv.dead` is called, or an error
+   thrown if no such hook was given. shares nothing with `peek` or the polling
+   loop: it keeps its own clock, cleared whenever the socket comes back. see
+   `_safeguard` in the source.
 
 Available members for customized functions:
 

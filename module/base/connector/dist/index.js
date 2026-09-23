@@ -24,7 +24,8 @@
         : {
           offline: ldcv.offline || function(){},
           hint: ldcv.unstable,
-          stalled: ldcv.stalled
+          stalled: ldcv.stalled,
+          dead: ldcv.dead
         };
     this._error = opt.error || null;
     this._reconnect = opt.reconnect;
@@ -55,11 +56,16 @@
         this._guard = !!pending.guard;
       }
     }
+    this._dead = false;
     this._evthdr = {};
     this.hub = {};
     this.peek = debounce(function(){
       return this._peek();
     });
+    this.safeguard = debounce(function(){
+      return this._safeguard();
+    }, 350);
+    this._safeguardTick = 0;
     return this;
   };
   connector.prototype = (ref$ = Object.create(Object.prototype), ref$.on = function(n, cb){
@@ -99,6 +105,10 @@
       return this$.fire('reconnect');
     }).then(function(){
       return console.log(this$._tag + " connected.");
+    }).then(function(){
+      if (this$.ws.status() === 2) {
+        return this$._safeguardTick = 0;
+      }
     })['catch'](function(e){
       if (this$._error && typeof this$._error === 'function') {
         return this$._error(e);
@@ -152,6 +162,7 @@
     return debounce(200).then(function(){
       return this$.open();
     }).then(function(){
+      this$.ws.disconnect();
       if (hold) {
         hold.cancel();
       }
@@ -180,18 +191,28 @@
       return Promise.reject(e);
     });
   }, ref$._peek = function(){
-    var pending, e, now, ref$, last, up, waited, ctx, this$ = this;
+    var now, e, this$ = this;
     if (this._peekhdr) {
       clearTimeout(this._peekhdr);
     }
-    pending = false;
+    now = Date.now();
+    try {
+      this._peekOnce(now);
+    } catch (e$) {
+      e = e$;
+      console.error(this._tag + " peek/_sweep failed:", e);
+    }
+    return this._peekhdr = setTimeout(function(){
+      return this$._peek();
+    }, this._peekcfg.interval);
+  }, ref$._peekOnce = function(now){
+    var pending, e, ref$, last, up, waited, ctx;
     try {
       pending = !!this._pending();
     } catch (e$) {
       e = e$;
       pending = false;
     }
-    now = Date.now();
     ref$ = [this._peekcfg.last, now], last = ref$[0], this._peekcfg.last = ref$[1];
     up = this.ws && this.ws.status() === 2;
     if (!pending) {
@@ -208,22 +229,40 @@
     if (this._running) {
       if (!this._covered && this._peekcfg.blockAfter > 0 && waited >= this._peekcfg.blockAfter) {
         this._hint(false);
-        this._stall(true, ctx);
+        return this._stall(true, ctx);
       }
     } else if (!up) {
       this._stall(false);
       if (!this._running) {
-        this.reopen();
+        return this.reopen();
       }
     } else if (this._peekcfg.blockAfter > 0 && waited >= this._peekcfg.blockAfter) {
       this._hint(false);
-      this._stall(true, ctx);
+      return this._stall(true, ctx);
     } else if (!this._stalled) {
-      this._hint(waited >= this._peekcfg.threshold);
+      return this._hint(waited >= this._peekcfg.threshold);
     }
-    return this._peekhdr = setTimeout(function(){
-      return this$._peek();
-    }, this._peekcfg.interval);
+  }, ref$._safeguard = function(){
+    var ref$;
+    if (!this._inited || this._dead) {
+      return;
+    }
+    if (((ref$ = this.ws) != null ? typeof ref$.status == 'function' ? ref$.status() : void 8 : void 8) === 2) {
+      return this._safeguardTick = 0;
+    } else if (!this._safeguardTick) {
+      this._safeguardTick = Date.now();
+    }
+    if (Date.now() - this._safeguardTick < (this._peekcfg.blockAfter || 7000) + 3000) {
+      return;
+    }
+    this._dead = true;
+    if (this._ldcv.dead) {
+      return this._ldcv.dead({
+        ws: this.ws
+      });
+    } else {
+      throw new Error(1011);
+    }
   }, ref$.init = function(){
     var this$ = this;
     this.ws = new ews({

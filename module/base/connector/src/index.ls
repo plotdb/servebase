@@ -13,6 +13,10 @@ connector = (opt = {}) ->
   #       while the socket still reports itself up. toggled with true / false
   #       and given {ws, waited, since}; `since` is when the queue last drained,
   #       so the ui can keep its own clock. requires opt.pending.
+  #     - dead: local changes are still arriving long after the socket went
+  #       down, with everything above having had its chance to stop them - see
+  #       `_safeguard`. given {ws}. the only state here a reload is the honest
+  #       answer to; without this hook, connector throws instead.
   #     - ctx: {ws} - connector is the source of ws; take it from here
   #       instead of reaching for closures or `this`.
   # normalized into {offline, hint} regardless of the given form.
@@ -28,6 +32,7 @@ connector = (opt = {}) ->
       offline: (ldcv.offline or (->))
       hint: ldcv.unstable
       stalled: ldcv.stalled
+      dead: ldcv.dead
     }
   @_error = opt.error or null
   @_reconnect = opt.reconnect
@@ -77,9 +82,12 @@ connector = (opt = {}) ->
   if pending and typeof(pending) != \function =>
     for k in <[threshold interval blockAfter]> => if pending[k]? => @_peekcfg[k] = pending[k]
     if pending.guard? => @_guard = !!pending.guard
+  @_dead = false
   @_evthdr = {}
   @hub = {}
   @peek = debounce -> @_peek!
+  @safeguard = debounce (-> @_safeguard!), 350
+  @_safeguard-tick = 0
   @
 
 connector.prototype = Object.create(Object.prototype) <<<
@@ -99,6 +107,7 @@ connector.prototype = Object.create(Object.prototype) <<<
       .then ~> if @_reconnect => @_reconnect!
       .then ~> @fire \reconnect
       .then ~> console.log "#{@_tag} connected."
+      .then ~> if @ws.status! == 2 => @_safeguard-tick = 0
       .catch (e) ~>
         # this may be caused by customized reconnect, which contains initialization code.
         # we should stop and hint user otherwise it may lead to unexpected result.
@@ -153,6 +162,7 @@ connector.prototype = Object.create(Object.prototype) <<<
     debounce 200
       .then ~> @open!
       .then ~>
+        @ws.disconnect!
         if hold => hold.cancel!
         @_hint false
         if !@_covered => return
@@ -184,9 +194,11 @@ connector.prototype = Object.create(Object.prototype) <<<
   # reconnect races - we never miss or double-count anything.
   _peek: ->
     if @_peekhdr => clearTimeout @_peekhdr
-    pending = false
-    try pending = !!@_pending! catch e => pending = false
     now = Date.now!
+    try @_peek-once(now) catch e => console.error "#{@_tag} peek/_sweep failed:", e
+    @_peekhdr = setTimeout (~> @_peek!), @_peekcfg.interval
+  _peek-once: (now) ->
+    try pending = !!@_pending! catch e => pending = false
     [last, @_peekcfg.last] = [@_peekcfg.last, now]
     up = @ws and @ws.status! == 2
     # Accumulate, do not measure from a mark. What we are trying to answer is
@@ -243,7 +255,16 @@ connector.prototype = Object.create(Object.prototype) <<<
       # only in the undetected window ( socket looks connected );
       # summon / dismiss on transitions only - the hint ui keeps time itself.
       @_hint (waited >= @_peekcfg.threshold)
-    @_peekhdr = setTimeout (~> @_peek!), @_peekcfg.interval
+
+  # for any actions that shouldn't happen after offline / retry / stall,
+  # use safeguard to watch and force terminating if it's still active.
+  _safeguard: ->
+    if !@_inited or @_dead => return
+    if @ws?status?! == 2 => return @_safeguard-tick = 0
+    else if !@_safeguard-tick => @_safeguard-tick = Date.now!
+    if Date.now! - @_safeguard-tick < (@_peekcfg.blockAfter or 7000) + 3000 => return
+    @_dead = true
+    if @_ldcv.dead => @_ldcv.dead({ws: @ws}) else throw new Error(1011)
 
   init: ->
     @ws = new ews {path: @_path}
