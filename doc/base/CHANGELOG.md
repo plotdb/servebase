@@ -38,6 +38,8 @@
      `start` with no engine under it is flagged - a server still coming up, or
      one stuck failing to start. `-j` for json.
  - tweaks:
+   - mail-queue: `send-directly` resolves with the transport info, and
+     `opt.strict` rejects on failure ( default stays non-strict ).
    - the server reaches `listen` in about 0.95s rather than 1.36s. nothing about
      express was slow - building the app, mounting every router and taking the
      port is 16ms of that - but three requires that only the builder and the mail
@@ -60,6 +62,12 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `@servebase/connector`: when the socket is down but local changes keep
+     coming in, a safeguard stops the page ( `ldcv.dead` ) instead of letting
+     edits silently go nowhere.
+   - `@servebase/connector`: `reopen` fails if the connection is down again when
+     it finishes, rather than reporting success.
+   - mail-queue: `batch` prefers the caller's sender over the site default.
    - `@servebase/mail`: `render` sanitizes the html body with an allowlist
      matching the editor toolbar, and throws if no DOMPurify is available. set it
      through `get-purify`; the backend injects a jsdom one.
