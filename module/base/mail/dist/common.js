@@ -15,6 +15,22 @@ common = {
       return vars[name] != null ? vars[name] + "" : '';
     });
   },
+  sanitizeHtml: function(html){
+    var p;
+    p = this.getPurify
+      ? this.getPurify()
+      : typeof DOMPurify != 'undefined' && DOMPurify !== null ? DOMPurify : null;
+    if (!p) {
+      throw new Error("[@servebase/mail] DOMPurify is required for sanitizing html");
+    }
+    return p.sanitize((html || '') + "", {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'span'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'contenteditable']
+    });
+  },
+  quillFormats: function(){
+    return ['header', 'bold', 'italic', 'underline', 'strike', 'link', 'list', 'blockquote', 'mmvar'];
+  },
   renderHtml: function(tpl, vars){
     var self, re, html;
     vars == null && (vars = {});
@@ -24,7 +40,7 @@ common = {
       name = (name + "").trim();
       return self.escapeHtml(vars[name] != null ? vars[name] : '');
     });
-    return self.tighten(html);
+    return self.tighten(self.sanitizeHtml(html));
   },
   tighten: function(html){
     return ((html || '') + "").replace(/<p(\s[^>]*)?>/g, function(m, attr){

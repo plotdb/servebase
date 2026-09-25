@@ -1,6 +1,15 @@
 require! <[lderror re2js curegex]>
 common = require "../common"
 
+# render 要 sanitize, 後端用 jsdom 建 window; 很貴, 用到才載
+purify = null
+common.get-purify = ->
+  if !purify =>
+    dompurify = require "dompurify"
+    jsdom = require "jsdom"
+    purify := dompurify (new jsdom.JSDOM '').window
+  return purify
+
 # 群發信: 收件清單 + 樣板 -> 逐封個人化的信, 排程寄送並追蹤每封的結果.
 #
 # 這一層不認識任何 host 的概念, 也不做權限判斷. 批次歸屬只有一個 `scope`

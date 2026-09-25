@@ -24,6 +24,20 @@ common =
       name = "#{name}".trim!
       return if vars[name]? => "#{vars[name]}" else ''
 
+  # 本文當 html 用 ( 預覽、寄出 ) 前一律過這裡 - 帳號被盜時 content 不可信.
+  # 白名單對齊 toolbar; contenteditable 給 var chip 用. DOMPurify 由使用端經
+  # `get-purify` 注入.
+  sanitize-html: (html) ->
+    p = if @get-purify => @get-purify! else if DOMPurify? => DOMPurify else null
+    # 沒有就失敗, 不退回原文
+    if !p => throw new Error "[@servebase/mail] DOMPurify is required for sanitizing html"
+    p.sanitize "#{html or ''}", do
+      ALLOWED_TAGS: <[p br strong b em i u s a ul ol li h1 h2 h3 h4 h5 h6 blockquote span]>
+      ALLOWED_ATTR: <[href target rel class contenteditable]>
+
+  # 編輯器可用的格式, 與白名單成對. 寫成函式: export 會把陣列 merge 壞.
+  quill-formats: -> <[header bold italic underline strike link list blockquote mmvar]>
+
   # quill var chip 代換, 給 html 本文用.
   #
   # 用 regex 而非 DOM parse: 這支函式前後端共用, 後端沒有 document,
@@ -42,7 +56,8 @@ common =
     html = "#{tpl or ''}".replace re, (m, name) ->
       name = "#{name}".trim!
       return self.escape-html(if vars[name]? => vars[name] else '')
-    return self.tighten html
+    # 代換後才清, 清的就是實際輸出
+    return self.tighten self.sanitize-html(html)
 
   # quill 把每一行都包成一個 <p>, 而它自己的 css 把 p 的 margin 歸零 - 在
   # 編輯器裡「一行就是一行, 空行才是空行」. email client 沒有那份 css, 預設

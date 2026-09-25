@@ -60,6 +60,17 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `@servebase/mail`: `render` sanitizes the html body with DOMPurify, after
+     variable substitution, so the browser preview and the sent mail get the same
+     pass. the allowlist matches what the editor toolbar can produce ( `p br strong
+     b em i u s a ul ol li h1-h6 blockquote span`; attributes `href target rel
+     class contenteditable` and `data-*` ) - the transport's own DOMPurify pass
+     uses the defaults, which keep `img`, `form` and `style`. there is no fallback
+     to the raw html: without a sanitizer `sanitize-html` throws. the backend
+     injects a jsdom-backed DOMPurify through `common.get-purify`, built on first
+     use; a browser host sets `sbmail.get-purify` ( a block's js dependencies live
+     in its `ctx`, not on window ), or leaves a global `DOMPurify`. also exported:
+     `sanitize-html` and `quill-formats`, the editor formats the allowlist keeps.
    - `.gitignore` excludes `**/.view/.@root/`, and now says what committing
      `.view/` means rather than leaving it to whatever the patterns happen to do.
      An app that re-includes its own frontend ( `!frontend/web` ) commits that
