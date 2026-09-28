@@ -79,6 +79,8 @@ route: ->
     Promise.resolve!
       .then ->
         if !req.user => return lderror.reject 403
+        # 匿名帳戶沒有舊密碼可驗, 升級成正式帳戶要走另一條路 ( 需驗證 email ), 不在這裡.
+        if aux.is-anonymous req.user => return lderror.reject 403
         if n.length < 8 => return lderror.reject 1031
         db.query "select password from users where key = $1", [req.user.key]
       .then (r = {}) ->

@@ -678,8 +678,13 @@ worker =
     # 卡在 sending 被 recover 一輪一輪打回 pending, 而且那一輪的
     # finalize / expire 也全被跳過.
     sending = Promise.resolve!
-      .then ~> backend.mail-queue.in-blacklist item.email
+      .then ~>
+        # 系統內部帳戶 ( *.invalid ) 本來就不該寄. 不擋的話 send-directly 會略過,
+        # 但這裡會把它記成 sent.
+        if !backend.mail-queue.deliverable item.email => return \undeliverable
+        backend.mail-queue.in-blacklist item.email
       .then (blocked) ~>
+        if blocked == \undeliverable => return @mark item, \skipped, "undeliverable"
         if blocked => return @mark item, \skipped, "blacklisted"
         payload = common.render detail, vars
         # nodemailer 的欄位是 `replyTo`, 不是 detail 裡存的 `replyto`.

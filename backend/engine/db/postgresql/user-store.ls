@@ -78,20 +78,33 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         delete user.password
         return user
 
-  create: ({username, password, method, detail, config, invite-token, force}) ->
+  # `internal`: 系統內部功能建的帳戶 ( 如匿名帳戶 <uuid>@anonymous.invalid ).
+  #  - username 必須是 `*.invalid`; 反過來 `*.invalid` 也只能由 internal 建立, 不開放一般註冊.
+  #  - 不受 accept-signup / invite-token 限制, verified 預設有值.
+  #  - method / username / displayname 有預設值 ( 匿名帳戶 ), 可自行指定.
+  #  - 將來轉成一般帳戶時, 要清掉 verified 並重寄驗證信.
+  create: ({username, password, method, detail, config, invite-token, force, internal}) ->
     policy = @policy.login
+    if internal =>
+      force = true
+      method = method or \anonymous
+      username = username or "#{crypto.randomUUID!}@#{method}.invalid"
+      name = "#{method.charAt(0).toUpperCase!}#{method.slice 1}"
+      detail = {displayname: "#name #{crypto.randomBytes(3).toString \hex}"} <<< (detail or {})
     if !force and policy.accept-signup? and (!policy.accept-signup or policy.accept-signup == \no) =>
       return lderror.reject 1040
 
     username = username.toLowerCase!
     if !config => config = {}
     if !is-email(username) => return lderror.reject 1015
+    if !!internal != /\.invalid$/.test(username) => return lderror.reject 1015
     Promise.resolve!
       .then ~> if method == \local => @hashing(password) else password
       .then (password) ~>
         displayname = if detail => detail.displayname or detail.username
         if !displayname => displayname = username.replace(/@[^@]+$/, "")
-        verified = if method == \local or !(policy and policy.oauth-default-verified) => null
+        verified = if internal => {date: Date.now!}
+        else if method == \local or !(policy and policy.oauth-default-verified) => null
         else {date: Date.now!}
         config.{}consent.cookie = new Date!getTime!
         user = { username, password, method, displayname, detail, config, createdtime: new Date! }

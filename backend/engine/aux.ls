@@ -63,6 +63,9 @@ base = do
     e = (new Error! <<< {name: 'lderror', id: 1021})
     return if next => next(e) else Promise.reject(e)
 
+  # 匿名帳戶 ( internal 帳戶的一種, see user-store.create ): 有一列 users, 但沒有可用的 email 與密碼.
+  is-anonymous: (user) -> !!(user and user.method == \anonymous)
+
   # deprecated. use lderror.reject instead.
   reject: (code=403,msg="") ->
     e = new Error(if typeof(msg) == typeof({}) => JSON.stringify(msg) else msg)

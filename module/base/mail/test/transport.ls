@@ -48,6 +48,7 @@ teardown = (pool) ->
 mode = {}
 mailq =
   cfg: {default-sender: '"Test" <no-reply@example.org>'}
+  deliverable: (email) -> !/\.invalid$/i.exec(email)
   in-blacklist: (email) -> if mode.blacklist => mode.blacklist email else Promise.resolve false
   send: (payload, opt) -> mode.send payload, opt
 

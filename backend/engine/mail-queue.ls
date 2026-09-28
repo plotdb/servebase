@@ -20,6 +20,15 @@ sanitize = (html) ->
 re-email = curegex.tw.get('email', re2js.RE2JS)
 is-email = -> return re-email.exec(it)
 
+# `.invalid` 是保留 TLD ( RFC 2606 ), 系統內部建立的帳戶用它當 username ( see user-store.create ).
+# 所有寄信都會經過 send-directly, 所以在那裡統一濾掉, 呼叫端不用各自判斷.
+is-invalid = (m = "") -> /\.invalid>?\s*$/i.exec("#m")
+drop-invalid = (v) ->
+  # 沒有 .invalid 就原樣返回, 免得把含逗號的顯示名稱 ( "Doe, John" <..> ) 拆壞.
+  if !v or !/\.invalid\b/i.exec("#v") => return v
+  list = (if Array.isArray(v) => v else "#v".split(',')).map(-> "#it".trim!).filter(-> it and !is-invalid it)
+  if list.length => list else null
+
 # # sample code for sending mail
 # backend.mail-queue.add {
 #   from: '"Servebase Dev" <contact@yourserver.address>'
@@ -66,6 +75,8 @@ mail-queue = (opt={}) ->
   @
 
 mail-queue.prototype = Object.create(Object.prototype) <<< do
+  # 能不能寄: `.invalid` 是系統內部帳戶 ( 匿名 / 一次性 ), 根本不該寄, 跟黑名單是兩回事.
+  deliverable: (m = "") -> !is-invalid m
   in-blacklist: (m = "") ->
     return if !@_blacklist => Promise.resolve false
     else if Array.isArray(@_blacklist) =>
@@ -109,6 +120,10 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
   # treat a failed mail as non-fatal and rely on the log. callers that need to
   # record per-mail outcome ( e.g. a persistent mail spool ) must opt in.
   send-directly: (payload, opt = {}) -> new Promise (res, rej) ~>
+    <[to cc bcc]>.for-each (k) -> if payload[k] => payload[k] = drop-invalid payload[k]
+    if !(payload.to or payload.cc or payload.bcc) =>
+      @log.info "skip sending [subject:#{payload.subject}]: no valid recipient".gray
+      return res!
     cc = if !payload.cc => ' '
     else " [cc:#{if Array.isArray(payload.cc) => payload.cc.join(' ') else payload.cc}] "
     bcc = if !payload.bcc => ''
@@ -166,7 +181,7 @@ mail-queue.prototype = Object.create(Object.prototype) <<< do
     params = (params or {}) <<< {domain: @cfg.domain, sitename: @i18n.t(@cfg.sitename, {lng})}
     payload = {} <<< (payload or {}) <<< from: sender
     batch-size = batch-size or 1
-    recipients = (recipients or []).map(-> it).filter(->is-email it)
+    recipients = (recipients or []).filter(-> is-email(it) and !is-invalid(it))
     if !recipients.length => return Promise.resolve!
     if !(name or payload.subject) => return Promise.resolve!
     while recipients.length => batch.push(recipients.splice 0, batch-size)
