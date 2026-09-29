@@ -106,6 +106,16 @@ ldld = core.loader
         .catch (e) ->
           if lderror.id(e) in [1041] => return Promise.reject(e)
           alert "captcha verification failed with id #{lderror.id(e)}"
+    "captcha-once": ~>
+      console.log "test captcha.once /api/demo/post-once ..."
+      @captcha
+        .once cb: (captcha) ->
+          console.log "captcha.once cb with: ", captcha
+          ld$.fetch "/api/demo/post-once", {method: \POST}, {json: {captcha}, type: \text}
+        .then -> ldnotify.send \success, "captcha once: #it"
+        .catch (e) ->
+          console.error "captcha once failed: ", e
+          ldnotify.send \danger, "captcha once failed with id #{lderror.id(e)}"
   init:
     ldcv: ({node}) ~>
       name = node.getAttribute \data-name

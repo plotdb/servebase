@@ -38,6 +38,11 @@ api.get \/password-due, (req, res, next) ->
 api.post \/post, backend.middleware.captcha, (req, res, next) ->
   res.send \pass
 
+# Demonstrate `captcha.once`: verify once, then pass within `ttl` for the same session.
+# ttl is short so expiry can be tested by hand.
+api.post \/post-once, backend.middleware.captcha.once({scope: \demo-once, ttl: 60 * 1000}), (req, res, next) ->
+  res.send \pass
+
 api.post \/post-test/, (req, res, next) ->
   res.send \pass
 
