@@ -73,27 +73,27 @@ include @/auth/web/signup.pug
 ### @servebase/captcha - 驗證碼
 
 #### 功能
-- 圖形驗證碼生成
-- 驗證碼驗證
-- Session 整合
+- 整合第三方驗證服務: recaptcha v3 / recaptcha v2 checkbox / hcaptcha, 依序嘗試
+- 後端 middleware 驗 token; 另有「驗一次, 之後同一個 session 一段時間內放行」
 
-#### 後端 API
+#### 後端
 ```livescript
-captcha = require '@servebase/captcha'
+# 每次都驗
+api.post \/my-api, backend.middleware.captcha, (req, res) -> ...
 
-# 生成驗證碼
-{image, text} = await captcha.generate!
-req.session.captcha = text
-
-# 驗證
-is-valid = captcha.verify req.session.captcha, user-input
+# 驗一次, ttl 內同一個 session 直接放行; 沒驗過回 1048 ( captcha required )
+api.post \/my-api, aux.signedin, throttle, backend.middleware.captcha.once({scope: \my-feature, ttl: 10 * 60 * 1000}), (req, res) -> ...
 ```
 
 #### 前端
-```pug
-img(src="/api/captcha")
-input(name="captcha" placeholder="驗證碼")
+```livescript
+# 搭配 backend.middleware.captcha
+core.captcha.guard cb: (captcha) -> ld$.fetch url, {method: \POST}, {json: {captcha}}
+# 搭配 captcha.once: 先不帶 captcha 送, 收到 1048 才驗並重送
+core.captcha.once cb: (captcha) -> ld$.fetch url, {method: \POST}, {json: {captcha}}
 ```
+
+詳見 `module/base/captcha/README.md`。
 
 ### @servebase/consent - 同意管理
 

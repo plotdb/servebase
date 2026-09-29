@@ -71,6 +71,33 @@ following are some possible ways to pass captcha to backend:
       ld$.fetch "my-url", {method: "POST", body: fd}
 
 
+### Verify once per session
+
+`backend.middleware.captcha` verifies every request. For an API a user calls repeatedly
+( e.g. a helper button ), `backend.middleware.captcha.once` verifies once and then lets
+the same session through for a while without a captcha:
+
+    api.post 'my-url', aux.signedin, throttle, backend.middleware.captcha.once({scope: 'my-feature', ttl: 10 * 60 * 1000}), (req, res) -> ...
+
+ - valid pass in session: pass through, no captcha needed.
+ - no pass and no captcha in request: `1048` ( captcha required ).
+ - captcha in request: verify it. Pass through and record the pass, or `1009` if it fails.
+ - `scope`: passes are per scope. use the same scope to share one verification between APIs. default `default`.
+ - `ttl`: pass lifetime in ms. default 10 minutes.
+ - without `req.session`, it falls back to verifying every request.
+
+The pass only proves the user was human when it was issued and cannot be revoked
+before `ttl`, so keep `ttl` short and keep a throttle on the API. The pass is stored in
+the session, so it is per browser: a new device or cleared cookies means verifying again.
+
+In frontend, use `core.captcha.once` instead of `guard`. It sends the request without a
+captcha first ( `cb` gets `null` ), and only runs `guard` and resends once on `1048`:
+
+    core.captcha.once cb: (captcha) ->
+      ld$.fetch "my-url", {method: "POST"}, {json: {captcha, ...}, type: \json}
+
+Test: `./node_modules/.bin/lsc module/base/captcha/test/once.ls` ( no external service ).
+
 ## Captcha flow
 
 - accessing any API

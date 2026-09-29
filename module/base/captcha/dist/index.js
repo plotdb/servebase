@@ -54,6 +54,20 @@
           });
         });
       }
+    },
+    once: function(arg$){
+      var cb, this$ = this;
+      cb = arg$.cb;
+      return Promise.resolve().then(function(){
+        return cb(null);
+      })['catch'](function(e){
+        if (lderror.id(e) !== 1048) {
+          return Promise.reject(e);
+        }
+        return this$.guard({
+          cb: cb
+        });
+      });
     }
   });
   if (typeof module != 'undefined' && module !== null) {

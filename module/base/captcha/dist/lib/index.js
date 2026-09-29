@@ -5,9 +5,13 @@
   lderror = require('lderror');
   aux = require('@servebase/backend/aux');
   captcha = function(opt){
+    var this$ = this;
     opt == null && (opt = {});
     this.cfg = opt || {};
     this.middleware = this._middleware();
+    this.middleware.once = function(o){
+      return this$.once(o);
+    };
     return this;
   };
   fetch = function(arg$){
@@ -24,8 +28,8 @@
       return Promise.reject(e);
     });
   };
-  captcha.prototype = (ref$ = Object.create(Object.prototype), ref$.verify = function(req, res, next){
-    var obj, e, ref$, cfg;
+  captcha.prototype = (ref$ = Object.create(Object.prototype), ref$._payload = function(req){
+    var obj, e;
     obj = req.body && req.body.captcha
       ? req.body.captcha
       : req.fields ? req.fields.captcha : null;
@@ -36,7 +40,10 @@
         e = e$;
       }
     }
-    if (!(obj && obj.token)) {
+    return obj && obj.token ? obj : null;
+  }, ref$.verify = function(req, res, next){
+    var obj, ref$, cfg;
+    if (!(obj = this._payload(req))) {
       return Promise.resolve({
         score: 0,
         verified: false
@@ -63,6 +70,38 @@
       return this$.verify(req, res, next).then(function(cap){
         if (!cap.score || cap.score < 0.5) {
           return next(lderror(1009));
+        }
+        return next();
+      })['catch'](function(e){
+        return next(e);
+      });
+    };
+  }, ref$.once = function(opt){
+    var scope, ttl, this$ = this;
+    opt == null && (opt = {});
+    if (!(this.cfg && (!(this.cfg.enabled != null) || this.cfg.enabled))) {
+      return function(req, res, next){
+        return next();
+      };
+    }
+    scope = opt.scope || 'default';
+    ttl = opt.ttl || 10 * 60 * 1000;
+    return function(req, res, next){
+      var pass, that;
+      pass = (that = req.session && req.session.captchaPass) ? that[scope] : 0;
+      if (pass && pass > Date.now()) {
+        return next();
+      }
+      if (!this$._payload(req)) {
+        return next(lderror(1048));
+      }
+      return this$.verify(req, res, next).then(function(cap){
+        var ref$;
+        if (!cap.score || cap.score < 0.5) {
+          return next(lderror(1009));
+        }
+        if (req.session) {
+          ((ref$ = req.session).captchaPass || (ref$.captchaPass = {}))[scope] = Date.now() + ttl;
         }
         return next();
       })['catch'](function(e){
