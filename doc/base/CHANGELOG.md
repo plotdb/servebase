@@ -1,6 +1,13 @@
 ## master
 
  - features:
+   - `@servebase/captcha`: `backend.middleware.captcha.once {scope, ttl}` - verify once,
+     then let the same session through for `ttl` ( default 10 minutes ) without a captcha.
+     Without a pass and without a captcha it answers `1048` ( captcha required ); the
+     frontend's `core.captcha.once` sends first without a captcha and only runs `guard`
+     and resends on `1048`. Passes are per scope and stored in the session. For APIs a
+     user calls repeatedly, where a captcha on every call is too much. Keep a throttle
+     on them: a pass cannot be revoked before it expires.
    - `@servebase/erratum`: `lockdown` - a toggle that routes every error to one
      dialog instead of answering each on its own terms. The per-error handling
      is right while the error is the problem, and wrong once the page itself
@@ -11,6 +18,25 @@
      the page for everyone. Fires once per engagement, so a failing page cannot
      stack covers, and a dialog that throws is reported rather than looped.
      See `module/base/erratum/README.md` -> Lockdown.
+   - `@servebase/mail` ( `module/base/mail` ): mail merge - a recipient list and
+     a template become one personalized mail each, scheduled, rate-limited and
+     tracked per recipient. Sending still goes through the engine's `mail-queue`;
+     what this adds is the two things that queue has no room for - a spool that
+     survives a restart ( `mailspool` / `mailspool_item`, in the module's own
+     `index.sql`, applied by hand like `consent.sql` ) and a per-mail record of
+     what happened. Eleven POST endpoints under a router the host mounts and
+     guards; the module itself makes no permission decision, it only reads
+     `req.mailmerge.scope` ( and an optional `defaults` for sender / reply-to )
+     and checks that a `key` really belongs to that scope. Three retention
+     levels decide whether the mail body reaches the database at all: `full`,
+     `metadata` ( content dropped once the batch reaches a terminal state ) and
+     `none` ( body and per-recipient variables never leave this process's
+     memory, for batches where a user might type a password into the mail ) -
+     the last is not resumable by construction, and a restart has the worker
+     reap such batches as `aborted` rather than leave them pretending to send.
+     The template substitution in `src/common.ls` is shared with the browser
+     ( fedep, `window.sbmail` ), so a preview cannot disagree with what is sent.
+     See `module/base/mail/README.md`.
    - the backend runs from the livescript sources everywhere now, production
      included. compiling all of `backend/` costs about 0.25s against a startup
      otherwise spent requiring the npm tree and reaching db / redis, and in
