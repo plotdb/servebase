@@ -16,6 +16,9 @@ with following constructor options:
    `connect` that fails only because the socket is already up is not a
    failure - it is checked by socket state, not by error code.
  - `path`: websocket server path. default `/ws`.
+ - `challenge`: a `captcha.cfchallenge` instance ( e.g. `core.challenge` ). optional. if
+   still not connected 3s into a connect, `path` is probed over http and a Cloudflare
+   challenge is solved, so ews's next retry gets through. see `@servebase/captcha` README.
  - `grace`: delay (ms) between disconnection confirmed and `ldcv.offline`
    actually summoned. reconnection starts right away regardless; if it
    completes within the window the blocking cover never shows - no cover

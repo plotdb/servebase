@@ -79,6 +79,10 @@ servebase =
     # so it can access core context.
     if typeof(@_cfg) == \function => @_cfg = @_cfg!
     @ <<< global: {}, user: {}
+    # cloudflare challenge: wrap ld$.fetch before any api call. config from corecfg, not
+    # /api/auth/info - that api may be the one challenged. see @servebase/captcha challenge.ls
+    @challenge = new captcha.cfchallenge(@_cfg.challenge or {})
+    @challenge.wrap ld$
     @ <<<
       hint: {} # additional hints for config and status.
       zmgr: new zmgr!

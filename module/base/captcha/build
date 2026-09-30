@@ -7,6 +7,8 @@ mkdir -p dist
 bin=../../../node_modules/.bin
 echo "build captcha.ls -> index.js ..."
 $bin/lsc -cp src/captcha.ls > dist/index.js
+echo "build challenge.ls -> index.js ( appended ) ..."
+$bin/lsc -cp src/challenge.ls >> dist/index.js
 echo "minify index.js -> index.min.js ..."
 $bin/uglifyjs dist/index.js > dist/index.min.js
 

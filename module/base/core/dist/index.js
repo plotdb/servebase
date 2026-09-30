@@ -113,6 +113,8 @@
       }
       this.global = {};
       this.user = {};
+      this.challenge = new captcha.cfchallenge(this._cfg.challenge || {});
+      this.challenge.wrap(ld$);
       this.hint = {};
       this.zmgr = new zmgr();
       this.manager = this._cfg.manager || new block.manager({

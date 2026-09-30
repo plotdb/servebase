@@ -93,6 +93,11 @@ core.captcha.guard cb: (captcha) -> ld$.fetch url, {method: \POST}, {json: {capt
 core.captcha.once cb: (captcha) -> ld$.fetch url, {method: \POST}, {json: {captcha}}
 ```
 
+#### Cloudflare challenge
+- `core.challenge` ( `captcha.cfchallenge` ): `ld$.fetch` 被 cloudflare challenge ( 403 + `cf-mitigated: challenge` ) 時跑 turnstile pre-clearance 後重送
+- 設定在前端 `corecfg.challenge.sitekey`; websocket 用 connector 的 `challenge` 選項
+- 本機測試: config `dev.cf-challenge-mock`
+
 詳見 `module/base/captcha/README.md`。
 
 ### @servebase/consent - 同意管理

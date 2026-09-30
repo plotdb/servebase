@@ -27,3 +27,10 @@ ldc.register \corecfg, <[locales]>, ({locales}) -> ->
       return "/modules/block/#name/#path"
     "/assets/lib/#{name}/#{version or 'main'}/#path"
   auth: authpanel: {ns: \local, name: "authpanel"}
+  # cloudflare challenge ( turnstile pre-clearance ), see @servebase/captcha src/challenge.ls.
+  # demo uses cloudflare's test sitekey ( always passes ) and the dev mock's clear endpoint
+  # ( backend/engine/cf-challenge-mock.ls ). a real site uses its own pre-clearance widget
+  # and no `clear`.
+  challenge:
+    sitekey: \1x00000000000000000000AA
+    clear: \/__cf-mock/clear

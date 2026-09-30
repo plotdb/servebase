@@ -1,6 +1,19 @@
 ## master
 
  - features:
+   - `@servebase/captcha`: `captcha.cfchallenge` - Cloudflare challenge handling with
+     Turnstile pre-clearance. When Cloudflare challenges a `fetch` or websocket request
+     ( `403` + `cf-mitigated: challenge` ), the browser cannot solve it in the background;
+     a pre-clearance widget gets `cf_clearance` set on the domain instead. `core` creates
+     `core.challenge` from `corecfg.challenge` ( not `/api/auth/info`, which may itself be
+     challenged ) and wraps `ld$.fetch` to solve and resend once. Concurrent requests
+     share one solve; no backend verification involved. See
+     `module/base/captcha/README.md` -> Cloudflare challenge.
+   - `@servebase/connector`: `challenge` option - probe `path` over http when a connect is
+     still pending after 3s, and solve a Cloudflare challenge so ews's next retry passes.
+   - engine: `dev.cf-challenge-mock` - dev-only mock of a Cloudflare challenge on given
+     paths, for testing the above locally. See `backend/engine/cf-challenge-mock.ls`.
+   - demo: `POST /api/demo/post-once` and a `Captcha (Once)` button for `captcha.once`.
    - `@servebase/captcha`: `backend.middleware.captcha.once {scope, ttl}` - verify once,
      then let the same session through for `ttl` ( default 10 minutes ) without a captcha.
      Without a pass and without a captcha it answers `1048` ( captcha required ); the

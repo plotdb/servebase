@@ -8,7 +8,7 @@ require! <[@plotdb/srcbuild/dist/view/pug]>
 # srcbuild's ext/pug ); required here so that moving those requires around
 # cannot silently break loading the config.
 require! <[livescript]>
-require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql ./localctl]>
+require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql ./localctl ./cf-challenge-mock]>
 require! <[@servebase/auth @servebase/consent @servebase/captcha @servebase/config]>
 
 libdir = path.dirname fs.realpathSync(__filename.replace(/\(js\)$/,''))
@@ -220,6 +220,8 @@ backend.prototype = Object.create(Object.prototype) <<< do
           auto-logging: (!@production)
 
         app.use cookie-parser!
+        # dev only: simulate cloudflare challenge for testing turnstile pre-clearance.
+        cf-challenge-mock @
 
         app.use body-parser.json do
           limit: @config.limit

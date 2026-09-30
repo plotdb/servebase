@@ -37,6 +37,9 @@ connector = (opt = {}) ->
   @_error = opt.error or null
   @_reconnect = opt.reconnect
   @_path = opt.path or \/ws
+  # opt.challenge - `cfchallenge` instance ( e.g. `core.challenge` ). ws handshake status
+  # is not exposed, so a slow connect probes `path` over http instead ( see `open` ).
+  @_challenge = opt.challenge or null
   # opt.grace - delay (ms) between disconnection confirmed and the offline
   # cover actually summoned. a reconnect within the window stays completely
   # silent - no cover flash for transient outages. local changes made in the
@@ -95,7 +98,11 @@ connector.prototype = Object.create(Object.prototype) <<<
   fire: (n, ...v) -> for cb in (@_evthdr[n] or []) => cb.apply @, v
   open: ->
     console.log "#{@_tag} ws reconnect ..."
+    # ews retries until connected and never rejects, so probe once if still not connected
+    # after 3s. once solved, ews's next retry carries the clearance cookie.
+    probe = if @_challenge => setTimeout (~> if @ws.status! != 2 => @_challenge.probe @_path), 3000
     @ws.connect!
+      .finally -> if probe => clearTimeout probe
       # ews rejects `connect` when there is already a socket ( 1011, a generic
       # "resource conflict" - it is raised from more than one place and does not
       # by itself mean "already connected" ). what we actually need to know is

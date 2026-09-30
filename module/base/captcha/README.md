@@ -98,6 +98,47 @@ captcha first ( `cb` gets `null` ), and only runs `guard` and resends once on `1
 
 Test: `./node_modules/.bin/lsc module/base/captcha/test/once.ls` ( no external service ).
 
+## Cloudflare challenge ( turnstile pre-clearance )
+
+When Cloudflare ( WAF / bot protection ) challenges a `fetch` or websocket request, the
+request only gets `403` with `cf-mitigated: challenge` - a browser can't solve a challenge
+page in the background. `captcha.cfchallenge` handles this with a Turnstile widget that has
+pre-clearance enabled: once solved, Cloudflare sets `cf_clearance` on the domain and later
+requests ( websocket handshake included ) pass. No backend verification is involved.
+
+`core` sets it up as `core.challenge` and wraps `ld$.fetch` before any API call, so every
+`ld$.fetch` that gets challenged runs Turnstile and is resent once. Config comes from
+`corecfg` rather than `/api/auth/info`, since that API may be the one challenged:
+
+    ldc.register \corecfg, <[]>, -> ->
+      challenge: sitekey: '<pre-clearance widget sitekey>'
+
+options:
+
+ - `sitekey`: a Turnstile widget with pre-clearance enabled, in the same Cloudflare zone as
+   the site. without it, nothing is wrapped.
+ - `timeout`: give up ( and return the original error ) if no result before interaction, in ms.
+   default 30s. once the widget asks for interaction, the user's pace applies.
+ - `clear`: POST the token here after solving. for the local mock only - never set in production.
+
+API:
+
+ - `wrap(ld$)`: wrap `ld$.fetch`. done by `core`.
+ - `solve()`: run Turnstile. concurrent callers share one run.
+ - `probe(url)`: GET `url` and solve if it is challenged; resolves whether it solved. for
+   websocket, whose handshake status the browser doesn't expose. `@servebase/connector`
+   does this with its `challenge` option: `new connector {challenge: core.challenge, ...}`.
+
+A challenge is recognized by the `cf-mitigated` header ( needs `@loadingio/ldquery` >= 3.0.7,
+which exposes `e.headers` ) and otherwise by the challenge page's markers in the body.
+
+Local test: set `dev.cf-challenge-mock` in config ( see `backend/engine/cf-challenge-mock.ls` )
+and use Cloudflare's test sitekeys, e.g. `1x00000000000000000000AA` ( passes ),
+`2x00000000000000000000AB` ( fails ), `3x00000000000000000000FF` ( forces interaction ).
+To test against real Cloudflare, add a WAF custom rule with `Managed Challenge` scoped to
+yourself ( e.g. by a cookie ), and delete `cf_clearance` to retest.
+
+
 ## Captcha flow
 
 - accessing any API

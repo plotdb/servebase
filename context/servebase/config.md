@@ -344,6 +344,20 @@ module.exports =
     level: 'debug'
 ```
 
+### 開發用設定 (dev)
+
+只在非 production 生效的開發 / 測試用設定, 放在設定檔的 `dev` 下:
+
+```livescript
+dev:
+  # 模擬 cloudflare challenge: 符合 paths ( 前綴 ) 的請求沒有模擬 clearance cookie 就回
+  # 403 + `cf-mitigated: challenge`. 用來測前端 turnstile pre-clearance ( captcha.cfchallenge ).
+  # 前端 corecfg.challenge 要設 clear: '/__cf-mock/clear'. ttl 秒後 clearance 失效.
+  cf-challenge-mock: {paths: <[/api/auth/info /ws]>, ttl: 60}
+```
+
+見 `backend/engine/cf-challenge-mock.ls`。
+
 ### 測試環境
 ```livescript
 # config/private/test.ls

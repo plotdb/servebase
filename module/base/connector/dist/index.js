@@ -30,6 +30,7 @@
     this._error = opt.error || null;
     this._reconnect = opt.reconnect;
     this._path = opt.path || '/ws';
+    this._challenge = opt.challenge || null;
     this._grace = opt.grace != null ? opt.grace : 2000;
     this._covered = false;
     this._hintOn = false;
@@ -89,9 +90,18 @@
     }
     return results$;
   }, ref$.open = function(){
-    var this$ = this;
+    var probe, this$ = this;
     console.log(this._tag + " ws reconnect ...");
-    return this.ws.connect()['catch'](function(e){
+    probe = this._challenge ? setTimeout(function(){
+      if (this$.ws.status() !== 2) {
+        return this$._challenge.probe(this$._path);
+      }
+    }, 3000) : void 8;
+    return this.ws.connect()['finally'](function(){
+      if (probe) {
+        return clearTimeout(probe);
+      }
+    })['catch'](function(e){
       if (this$.ws.status() === 2) {} else {
         return Promise.reject(e);
       }
