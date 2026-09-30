@@ -29,6 +29,10 @@ module.exports = do
     fallback-lng: 'en'
   base: 'base'
   srcbuild: [] # value in `base` will be added by default
+  # dev only ( ignored in production ). see context/servebase/config.md -> 開發用設定 (dev)
+  dev:
+    # test cf challenge with a mock middleware
+    cf-challenge-mock: {paths: <[/api/auth/info /ws]>, ttl: 60}
   redis:
     enabled: false
     url: \redis://localhost:6379
