@@ -31,7 +31,10 @@
     "@loadingio/transition.css": "^3.0.0",
     "@plotdb/block": "^5.0.7",
     "@plotdb/csscope": "^5.0.2",
+    "@plotdb/datahub": "^0.7.5",
+    "@plotdb/ews": "^0.2.3",
     "@plotdb/httputil": "^0.0.5",
+    "@plotdb/json0": "^0.0.5",
     "@plotdb/rescope": "^5.0.11",
     "@plotdb/semver": "^0.0.3",
     "@sentry/tracing": "^6.19.7",
@@ -75,6 +78,9 @@
       "@plotdb/csscope",
       "@plotdb/semver",
       "@plotdb/block",
+      "@plotdb/json0",
+      "@plotdb/ews",
+      "@plotdb/datahub",
       {
         "name": "@servebase/auth",
         "dir": "dist"

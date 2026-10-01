@@ -38,7 +38,7 @@ connector = (opt = {}) ->
   @_reconnect = opt.reconnect
   @_path = opt.path or \/ws
   # opt.challenge - `cfchallenge` instance ( e.g. `core.challenge` ). ws handshake status
-  # is not exposed, so a slow connect probes `path` over http instead ( see `open` ).
+  # is not exposed, so a slow connect probes `path` over http instead ( see `_probe` ).
   @_challenge = opt.challenge or null
   # opt.grace - delay (ms) between disconnection confirmed and the offline
   # cover actually summoned. a reconnect within the window stays completely
@@ -96,11 +96,23 @@ connector = (opt = {}) ->
 connector.prototype = Object.create(Object.prototype) <<<
   on: (n, cb) -> (if Array.isArray(n) => n else [n]).map (n) ~> @_evthdr.[][n].push cb
   fire: (n, ...v) -> for cb in (@_evthdr[n] or []) => cb.apply @, v
+  # challenged: solve it. reachable over http but ws still down ( e.g. only the ws handshake
+  # is challenged ): prompt the user once per connector. then retry now instead of waiting
+  # for ews's backoff.
+  _probe: ->
+    @_challenge.probe @_path
+      .then (r) ~>
+        if @ws.status! == 2 => return false
+        if r == \solved => return true
+        if r != \reachable or @_prompted => return false
+        @_prompted = true
+        @_challenge.prompt!then (-> true), (-> false)
+      .then (retry) ~> if retry and @ws.status! != 2 => @ws.connect({now: true}).catch(->)
+      .catch ->
   open: ->
     console.log "#{@_tag} ws reconnect ..."
-    # ews retries until connected and never rejects, so probe once if still not connected
-    # after 3s. once solved, ews's next retry carries the clearance cookie.
-    probe = if @_challenge => setTimeout (~> if @ws.status! != 2 => @_challenge.probe @_path), 3000
+    # ews retries until connected and never rejects, so probe if still not connected after 3s.
+    probe = if @_challenge => setTimeout (~> if @ws.status! != 2 => @_probe!), 3000
     @ws.connect!
       .finally -> if probe => clearTimeout probe
       # ews rejects `connect` when there is already a socket ( 1011, a generic

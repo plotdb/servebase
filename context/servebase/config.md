@@ -353,7 +353,8 @@ dev:
   # 模擬 cloudflare challenge: 符合 paths ( 前綴 ) 的請求沒有模擬 clearance cookie 就回
   # 403 + `cf-mitigated: challenge`. 用來測前端 turnstile pre-clearance ( captcha.cfchallenge ).
   # 前端 corecfg.challenge 要設 clear: '/__cf-mock/clear'. ttl 秒後 clearance 失效.
-  cf-challenge-mock: {paths: <[/api/auth/info /ws]>, ttl: 60}
+  # ws: true 時 websocket 握手也要 clearance. paths 不含 /ws 就是「GET 放行, 只擋 ws 握手」.
+  cf-challenge-mock: {paths: <[/api/auth/info /ws]>, ws: false, ttl: 60}
 ```
 
 見 `backend/engine/cf-challenge-mock.ls`。

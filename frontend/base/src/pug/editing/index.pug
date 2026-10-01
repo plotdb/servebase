@@ -1,0 +1,62 @@
+//- demo: 即時共同編輯 ( connector + sharehub ), 也用來測 websocket 被 cloudflare challenge 的處理.
+//- 後端見 backend/base/sharedb.ls. 開兩個分頁編輯同一份文字即可看到同步.
+extends /base.pug
+block body
+  include /modules/navtop.pug
+  .mx-auto.py-5(style="max-width:768px")
+    h3.mb-3 Realtime Editing
+    .mb-2.text-muted
+      span ws:
+      span.ml-1(ld="status") connecting ...
+    textarea.form-control(ld="text",rows="12",disabled)
+block script
+  +script([
+    {name: "@servebase/connector", version: "main"},
+    {url: "/assets/bundle/sharedb.min.js"}
+  ])
+  script(type="module"): :lsc
+    ({core}) <- ldc.register <[core navtop]>, _
+    <- core.init!then _
+    get = (n) -> document.querySelector "[ld=#n]"
+    status = (t) -> get(\status).textContent = t
+    text = get \text
+    # 最後一次和 doc 對齊的內容, 用來算 diff.
+    local = {text: ''}
+
+    # 遠端更新時保留游標位置 ( 只做簡單的保留, 不依 op 位移 ).
+    sync = ->
+      data = conn.hub.get! or {}
+      local := {text: data.text or ''}
+      if text.value == local.text => return
+      [s, e] = [text.selection-start, text.selection-end]
+      text.value = local.text
+      text.set-selection-range s, e
+
+    text.addEventListener \input, ->
+      if !conn.hub.doc => return
+      ops = json0.diff local, {text: text.value}
+      local := {text: text.value}
+      if ops.length => conn.hub.ops-out ops
+
+    conn = new connector do
+      challenge: core.challenge
+      init: ->
+        @ping = new ews ws: @ws, scope: \ping, ping-interval: 20
+        @hub = new sharehub do
+          ews: @ws, init-connect: false
+          create: -> {text: ''}
+          watch: (ops, source) -> if !source => sync!
+        @hub.on \reload, -> sync!
+      reconnect: ->
+        Promise.resolve!
+          # ews 的 ping 不回 promise
+          .then ~> @ping.ping!
+          .then ~> @hub.connect {id: \editing, collection: \demo}
+          .then ->
+            sync!
+            text.disabled = false
+            status \connected
+      ldcv: offline: (v) ->
+        text.disabled = v
+        if v => status \offline
+    conn.init!

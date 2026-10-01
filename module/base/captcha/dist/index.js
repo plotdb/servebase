@@ -89,6 +89,7 @@
     this.sitekey = opt.sitekey || null;
     this.clear = opt.clear || null;
     this.timeout = opt.timeout || 30000;
+    this._prompt = opt.prompt || null;
     this._solving = null;
     return this;
   };
@@ -159,16 +160,21 @@
         ui = this$._ui();
       }
       return new Promise(function(res, rej){
-        if (ui) {
+        var bg;
+        bg = ui && !opt.visible;
+        if (bg) {
           timer = setTimeout(function(){
             return rej(err(1010));
           }, this$.timeout);
+        }
+        if (ui && opt.visible) {
+          ui.ldcv.toggle(true);
         }
         return wid = turnstile.render(ui
           ? ui.box
           : opt.root, {
           sitekey: this$.sitekey,
-          appearance: ui ? 'interaction-only' : 'always',
+          appearance: bg ? 'interaction-only' : 'always',
           callback: function(token){
             return res(token);
           },
@@ -219,24 +225,38 @@
       }
     });
     return this._solving;
+  }, ref$.prompt = function(){
+    if (this._prompt) {
+      return this._prompt(this);
+    } else {
+      return this.solve({
+        visible: true
+      });
+    }
   }, ref$.probe = function(url){
     var this$ = this;
     if (!this.sitekey) {
-      return Promise.resolve(false);
+      return Promise.resolve('down');
     }
     return fetch(url, {
       method: 'GET',
       credentials: 'same-origin',
       cache: 'no-store'
     }).then(function(r){
-      if (!(r.status === 403 && r.headers.get('cf-mitigated') === 'challenge')) {
-        return false;
+      if (r.status === 403 && r.headers.get('cf-mitigated') === 'challenge') {
+        return this$.solve().then(function(){
+          return 'solved';
+        }, function(){
+          return 'failed';
+        });
       }
-      return this$.solve().then(function(){
-        return true;
-      });
+      if (r.status >= 500) {
+        return 'down';
+      } else {
+        return 'reachable';
+      }
     })['catch'](function(){
-      return false;
+      return 'down';
     });
   }, ref$.wrap = function(ld$){
     var orig, wrapped, this$ = this;

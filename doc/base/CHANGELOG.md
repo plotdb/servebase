@@ -12,6 +12,12 @@
    - `captcha.cfchallenge`: `solve {root}` renders the widget in a given element ( always
      visible, no overlay or timeout ), and a `/turnstile/?next=<path>` page that asks the
      user to verify and then returns - for cases the background solve can't cover.
+   - `captcha.cfchallenge`: `probe` resolves `solved` / `failed` / `reachable` / `down`;
+     `solve {visible}` and `prompt()` ( or `opt.prompt` for a site's own ui ) to ask the
+     user to verify. connector uses them: when the http probe gets through but the ws
+     handshake doesn't, it prompts once and reconnects at once. `dev.cf-challenge-mock`
+     gets a `ws` option to challenge the handshake, and `/editing/` - a realtime editing
+     demo ( connector + sharehub, `backend/base/sharedb.ls` ) - to try it with.
    - `@servebase/connector`: `challenge` option - probe `path` over http when a connect is
      still pending after 3s, and solve a Cloudflare challenge so ews's next retry passes.
    - engine: `dev.cf-challenge-mock` - dev-only mock of a Cloudflare challenge on given

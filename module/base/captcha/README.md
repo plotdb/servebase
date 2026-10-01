@@ -120,14 +120,26 @@ options:
  - `timeout`: give up ( and return the original error ) if no result before interaction, in ms.
    default 30s. once the widget asks for interaction, the user's pace applies.
  - `clear`: POST the token here after solving. for the local mock only - never set in production.
+ - `prompt(cfchallenge)`: a custom ui for asking the user to verify ( see `prompt()` ), returning
+   a promise - e.g. open a site's own cover and call `solve {root}` in it.
 
 API:
 
  - `wrap(ld$)`: wrap `ld$.fetch`. done by `core`.
- - `solve()`: run Turnstile. concurrent callers share one run.
- - `probe(url)`: GET `url` and solve if it is challenged; resolves whether it solved. for
-   websocket, whose handshake status the browser doesn't expose. `@servebase/connector`
-   does this with its `challenge` option: `new connector {challenge: core.challenge, ...}`.
+ - `solve(opt)`: run Turnstile. concurrent callers share one run. by default in the
+   background, with a cover only if interaction is needed. `{root}` renders the widget into
+   `root` instead; `{visible: true}` shows the cover from the start. neither times out.
+ - `prompt()`: ask the user to verify - `opt.prompt` if given, otherwise `solve {visible: true}`.
+ - `probe(url)`: GET `url` and solve if it is challenged. for websocket, whose handshake
+   status the browser doesn't expose. resolves one of:
+   - `solved` / `failed`: challenged, and solved or not.
+   - `reachable`: not challenged and reached the server.
+   - `down`: didn't reach the server ( network error, 5xx ), or no sitekey.
+
+   `@servebase/connector` does this with its `challenge` option:
+   `new connector {challenge: core.challenge, ...}`.
+
+A page at `/turnstile/?next=<path>` asks the user to verify and then returns to `next`.
 
 A challenge is recognized by the `cf-mitigated` header ( needs `@loadingio/ldquery` >= 3.0.7,
 which exposes `e.headers` ) and otherwise by the challenge page's markers in the body.

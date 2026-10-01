@@ -89,12 +89,37 @@
       results$.push(cb.apply(this, v));
     }
     return results$;
+  }, ref$._probe = function(){
+    var this$ = this;
+    return this._challenge.probe(this._path).then(function(r){
+      if (this$.ws.status() === 2) {
+        return false;
+      }
+      if (r === 'solved') {
+        return true;
+      }
+      if (r !== 'reachable' || this$._prompted) {
+        return false;
+      }
+      this$._prompted = true;
+      return this$._challenge.prompt().then(function(){
+        return true;
+      }, function(){
+        return false;
+      });
+    }).then(function(retry){
+      if (retry && this$.ws.status() !== 2) {
+        return this$.ws.connect({
+          now: true
+        })['catch'](function(){});
+      }
+    })['catch'](function(){});
   }, ref$.open = function(){
     var probe, this$ = this;
     console.log(this._tag + " ws reconnect ...");
     probe = this._challenge ? setTimeout(function(){
       if (this$.ws.status() !== 2) {
-        return this$._challenge.probe(this$._path);
+        return this$._probe();
       }
     }, 3000) : void 8;
     return this.ws.connect()['finally'](function(){

@@ -63,6 +63,14 @@
       "static/assets/lib/@servebase/captcha/main/index.min.js",
       "static/assets/lib/@servebase/connector/main/index.min.js",
       "static/assets/lib/@servebase/core/main/index.min.js"
+    ],
+    "sharedb": [
+      "static/assets/lib/@plotdb/json0/main/json0.min.js",
+      "static/assets/lib/@plotdb/ews/main/sharedb.min.js",
+      "static/assets/lib/@plotdb/ews/main/index.min.js",
+      "static/assets/lib/@plotdb/ews/main/sdb-client.min.js",
+      "static/assets/lib/@plotdb/datahub/main/datahub.min.js",
+      "static/assets/lib/@plotdb/datahub/main/sharehub.min.js"
     ]
   }
 }

@@ -51,8 +51,10 @@ covered by challenge rules - keep it that way.
 
 ## Testing
 
- - locally: `dev.cf-challenge-mock` in config mocks the challenge on given paths.
-   See `context/servebase/config.md` -> 開發用設定 (dev).
+ - locally: `dev.cf-challenge-mock` in config mocks the challenge on given paths, and with
+   `ws: true` on the websocket handshake too. See `context/servebase/config.md` ->
+   開發用設定 (dev). `/editing/` is a small realtime editing demo ( connector + sharehub ) to
+   try the websocket side with.
  - against Cloudflare: add a WAF custom rule with `Managed Challenge`, scoped to yourself
    ( e.g. `http.cookie contains "cf_test=1"` ), and delete `cf_clearance` to retest. Remove
    the rule afterwards.
@@ -63,3 +65,8 @@ covered by challenge rules - keep it that way.
  - it only makes the frontend cope with a challenge. Why requests get challenged is still
    decided by Cloudflare's rules - check Security Events.
  - whether pre-clearance clears challenges from Bot Fight Mode is not verified.
+ - websocket: a challenged handshake can't be detected directly - the browser hides its
+   status. connector probes the path over http instead; if http gets through but ws doesn't,
+   it asks the user to verify once. Cloudflare may still refuse the handshake with a valid
+   `cf_clearance` ( it has been seen in practice ); then only a Cloudflare rule skipping the
+   ws path helps - not possible for Bot Fight Mode, which can't be skipped.
