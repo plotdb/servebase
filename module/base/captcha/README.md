@@ -139,9 +139,6 @@ API:
    - `reachable`: not challenged and reached the server.
    - `down`: didn't reach the server ( network error, 5xx ), or no sitekey.
 
-   `@servebase/connector` does this with its `challenge` option:
-   `new connector {challenge: core.challenge, ...}`.
-
 A page at `/turnstile/?next=<path>` asks the user to verify and then returns to `next`.
 
 A challenge is recognized by the `cf-mitigated` header ( needs `@loadingio/ldquery` >= 3.0.7,

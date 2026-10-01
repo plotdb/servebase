@@ -17,14 +17,12 @@ with following constructor options:
    failure - it is checked by socket state, not by error code.
  - `path`: websocket server path. default `/ws`.
  - `challenge`: a `captcha.cfchallenge` instance ( e.g. `core.challenge` ). optional. if
-   still not connected 3s into a connect, `path` is probed over http:
-   - challenged: solve it.
-   - reachable, yet ws still down ( e.g. Cloudflare challenges only the ws handshake ):
-     `challenge.prompt()` asks the user to verify, once per connector.
-
-   either way the socket then reconnects at once instead of waiting for ews's backoff. if it
+   the **first** connect is still not up after 5s, `challenge.prompt()` asks the user to
+   verify, and the socket then reconnects at once instead of waiting for ews's backoff. if it
    connects while the prompt is still up, the prompt is dismissed ( `challenge.dismiss()` ).
-   see `@servebase/captcha` README -> Cloudflare challenge.
+   reconnects never prompt: the browser doesn't expose why a handshake failed, and a later
+   drop is far more likely the network than a challenge. a site's own ui goes in the
+   challenge's `prompt` option. see `@servebase/captcha` README -> Cloudflare challenge.
  - `grace`: delay (ms) between disconnection confirmed and `ldcv.offline`
    actually summoned. reconnection starts right away regardless; if it
    completes within the window the blocking cover never shows - no cover

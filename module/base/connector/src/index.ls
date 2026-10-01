@@ -38,7 +38,7 @@ connector = (opt = {}) ->
   @_reconnect = opt.reconnect
   @_path = opt.path or \/ws
   # opt.challenge - `cfchallenge` instance ( e.g. `core.challenge` ). ws handshake status
-  # is not exposed, so a slow connect probes `path` over http instead ( see `_probe` ).
+  # is not exposed, so a first connect that stalls asks the user to verify ( see `init` ).
   @_challenge = opt.challenge or null
   # opt.grace - delay (ms) between disconnection confirmed and the offline
   # cover actually summoned. a reconnect within the window stays completely
@@ -96,25 +96,20 @@ connector = (opt = {}) ->
 connector.prototype = Object.create(Object.prototype) <<<
   on: (n, cb) -> (if Array.isArray(n) => n else [n]).map (n) ~> @_evthdr.[][n].push cb
   fire: (n, ...v) -> for cb in (@_evthdr[n] or []) => cb.apply @, v
-  # challenged: solve it. reachable over http but ws still down ( e.g. only the ws handshake
-  # is challenged ): prompt the user once per connector. then retry now instead of waiting
-  # for ews's backoff.
-  _probe: ->
-    @_challenge.probe @_path
-      .then (r) ~>
-        if @ws.status! == 2 => return false
-        if r == \solved => return true
-        if r != \reachable or @_prompted => return false
-        @_prompted = true
-        @_challenge.prompt!then (-> true), (-> false)
-      .then (retry) ~> if retry and @ws.status! != 2 => @ws.connect({now: true}).catch(->)
-      .catch ->
+  # ask the user to verify, then retry now instead of waiting for ews's backoff.
+  # closed by `dismiss` in `open` if ws connects on its own meanwhile.
+  _verify: ->
+    @_challenge.prompt!
+      .then ~> if @ws.status! != 2 => @ws.connect({now: true})
+      .catch (e) ~>
+        # 999: dismissed ( ws connected on its own ); 1011: connected right after the check.
+        if e and e.name == \lderror and e.id in [999 1011] => return
+        # anything else is a real failure: same as `open`, hand it on rather than swallow.
+        if @_error and typeof(@_error) == \function => return @_error(e)
+        Promise.reject e
   open: ->
     console.log "#{@_tag} ws reconnect ..."
-    # ews retries until connected and never rejects, so probe if still not connected after 3s.
-    probe = if @_challenge => setTimeout (~> if @ws.status! != 2 => @_probe!), 3000
     @ws.connect!
-      .finally -> if probe => clearTimeout probe
       # ews rejects `connect` when there is already a socket ( 1011, a generic
       # "resource conflict" - it is raised from more than one place and does not
       # by itself mean "already connected" ). what we actually need to know is
@@ -295,7 +290,10 @@ connector.prototype = Object.create(Object.prototype) <<<
       @reopen!
     @ws.on \close, ~> @reopen!
     if @_init => @_init!
-    <~ @open!then _
+    # only on the first connect: a reconnect that stalls is far more likely the network,
+    # and a failed handshake looks the same either way. ews never rejects, hence the timer.
+    verify = if @_challenge => setTimeout (~> if @ws.status! != 2 => @_verify!), 5000
+    <~ @open!finally(-> if verify => clearTimeout verify).then _
     @_inited = true
     if @_pending and @_ldcv.hint =>
       @_peekcfg.last = Date.now!

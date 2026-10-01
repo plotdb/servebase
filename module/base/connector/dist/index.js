@@ -89,44 +89,28 @@
       results$.push(cb.apply(this, v));
     }
     return results$;
-  }, ref$._probe = function(){
+  }, ref$._verify = function(){
     var this$ = this;
-    return this._challenge.probe(this._path).then(function(r){
-      if (this$.ws.status() === 2) {
-        return false;
-      }
-      if (r === 'solved') {
-        return true;
-      }
-      if (r !== 'reachable' || this$._prompted) {
-        return false;
-      }
-      this$._prompted = true;
-      return this$._challenge.prompt().then(function(){
-        return true;
-      }, function(){
-        return false;
-      });
-    }).then(function(retry){
-      if (retry && this$.ws.status() !== 2) {
+    return this._challenge.prompt().then(function(){
+      if (this$.ws.status() !== 2) {
         return this$.ws.connect({
           now: true
-        })['catch'](function(){});
-      }
-    })['catch'](function(){});
-  }, ref$.open = function(){
-    var probe, this$ = this;
-    console.log(this._tag + " ws reconnect ...");
-    probe = this._challenge ? setTimeout(function(){
-      if (this$.ws.status() !== 2) {
-        return this$._probe();
-      }
-    }, 3000) : void 8;
-    return this.ws.connect()['finally'](function(){
-      if (probe) {
-        return clearTimeout(probe);
+        });
       }
     })['catch'](function(e){
+      var ref$;
+      if (e && e.name === 'lderror' && ((ref$ = e.id) === 999 || ref$ === 1011)) {
+        return;
+      }
+      if (this$._error && typeof this$._error === 'function') {
+        return this$._error(e);
+      }
+      return Promise.reject(e);
+    });
+  }, ref$.open = function(){
+    var this$ = this;
+    console.log(this._tag + " ws reconnect ...");
+    return this.ws.connect()['catch'](function(e){
       if (this$.ws.status() === 2) {} else {
         return Promise.reject(e);
       }
@@ -307,7 +291,7 @@
       throw ref1$ = new Error(), ref1$.id = 1011, ref1$.name = 'lderror', ref1$;
     }
   }, ref$.init = function(){
-    var this$ = this;
+    var verify, this$ = this;
     this.ws = new ews({
       path: this._path
     });
@@ -320,7 +304,16 @@
     if (this._init) {
       this._init();
     }
-    return this.open().then(function(){
+    verify = this._challenge ? setTimeout(function(){
+      if (this$.ws.status() !== 2) {
+        return this$._verify();
+      }
+    }, 5000) : void 8;
+    return this.open()['finally'](function(){
+      if (verify) {
+        return clearTimeout(verify);
+      }
+    }).then(function(){
       this$._inited = true;
       if (this$._pending && this$._ldcv.hint) {
         this$._peekcfg.last = Date.now();
