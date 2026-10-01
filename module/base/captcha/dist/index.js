@@ -142,8 +142,9 @@
         resident: true
       })
     };
-  }, ref$.solve = function(){
+  }, ref$.solve = function(opt){
     var ui, wid, timer, this$ = this;
+    opt == null && (opt = {});
     if (!this.sitekey) {
       return Promise.reject(err(1010));
     }
@@ -154,14 +155,20 @@
     wid = null;
     timer = null;
     this._solving = this._script().then(function(){
-      ui = this$._ui();
+      if (!opt.root) {
+        ui = this$._ui();
+      }
       return new Promise(function(res, rej){
-        timer = setTimeout(function(){
-          return rej(err(1010));
-        }, this$.timeout);
-        return wid = turnstile.render(ui.box, {
+        if (ui) {
+          timer = setTimeout(function(){
+            return rej(err(1010));
+          }, this$.timeout);
+        }
+        return wid = turnstile.render(ui
+          ? ui.box
+          : opt.root, {
           sitekey: this$.sitekey,
-          appearance: 'interaction-only',
+          appearance: ui ? 'interaction-only' : 'always',
           callback: function(token){
             return res(token);
           },
@@ -179,7 +186,9 @@
           },
           "before-interactive-callback": function(){
             clearTimeout(timer);
-            return ui.ldcv.toggle(true);
+            if (ui) {
+              return ui.ldcv.toggle(true);
+            }
           }
         });
       });

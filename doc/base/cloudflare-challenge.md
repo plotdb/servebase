@@ -31,6 +31,24 @@ The `site.ls` shipped with servebase uses Cloudflare's test sitekey and the loca
 `clear` endpoint. Replace the sitekey and remove `clear` in your own site.
 
 
+## Loading the Sitekey
+
+A pre-clearance widget works for the Cloudflare zone its hostname belongs to, so a site
+served on domains in different zones needs a sitekey per zone. `corecfg` is evaluated in the
+browser at boot, so it can take the sitekey from wherever the page has it by then:
+
+ - single domain: hardcode it in `corecfg`, as above.
+ - per deployment: load a small static script before `core` that each deployment can replace
+   ( e.g. served from a per-deployment folder by nginx ), and have `corecfg` read from it:
+
+       challenge: (window.sitecfg or {}).challenge or {}
+
+ - several zones in one deployment: pick by `location.hostname` in `corecfg`.
+
+Avoid getting it from an API: the API may be challenged too. A static script is rarely
+covered by challenge rules - keep it that way.
+
+
 ## Testing
 
  - locally: `dev.cf-challenge-mock` in config mocks the challenge on given paths.

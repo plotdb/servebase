@@ -1,0 +1,31 @@
+//- 主動請使用者做 cloudflare turnstile 驗證, 重新取得 cf_clearance.
+//- 給背景驗證處理不了的情況用 ( 例如 websocket 一直連不上 ). 驗證完回到 `?next=` ( 站內路徑 ).
+extends /base.pug
+block head
+  style(type="text/css"): :stylus
+    html, body { height: 100%; width: 100% }
+block body
+  include /modules/navtop.pug
+  .w-100.d-flex(style="min-height:100%"): .m-auto.py-5.text-center(style="max-width:420px")
+    h3.mb-3 連線驗證
+    p.text-muted.mb-4 為了確認連線安全, 請完成下方驗證. 完成後會自動返回原頁面.
+    div(ld="box",style="min-height:65px")
+    .mt-3(ld="status")
+    .mt-3.d-none(ld="retry"): .btn.btn-outline-secondary(onclick="location.reload()") 重試
+block script
+  script(type="module"): :lsc
+    ({core}) <- ldc.register <[core navtop]>, _
+    <- core.init!then _
+    get = (n) -> document.querySelector "[ld=#n]"
+    status = (t) -> get(\status).textContent = t
+    # 只接受站內路徑, 避免被拿來導去別的網站.
+    next = (new URLSearchParams(location.search)).get(\next) or ''
+    next = if /^\/(?![\/\\])/.exec(next) => next else null
+    if !core.challenge.sitekey => return status '此站未啟用連線驗證.'
+    core.challenge.solve root: get(\box)
+      .then ->
+        status '驗證完成' + (if next => ', 正在返回 ...' else '.')
+        if next => setTimeout (-> location.replace next), 800
+      .catch ->
+        status '驗證失敗, 請重試.'
+        get(\retry).classList.remove \d-none

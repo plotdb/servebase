@@ -9,6 +9,9 @@
      challenged ) and wraps `ld$.fetch` to solve and resend once. Concurrent requests
      share one solve; no backend verification involved. See
      `module/base/captcha/README.md` -> Cloudflare challenge.
+   - `captcha.cfchallenge`: `solve {root}` renders the widget in a given element ( always
+     visible, no overlay or timeout ), and a `/turnstile/?next=<path>` page that asks the
+     user to verify and then returns - for cases the background solve can't cover.
    - `@servebase/connector`: `challenge` option - probe `path` over http when a connect is
      still pending after 3s, and solve a Cloudflare challenge so ews's next retry passes.
    - engine: `dev.cf-challenge-mock` - dev-only mock of a Cloudflare challenge on given

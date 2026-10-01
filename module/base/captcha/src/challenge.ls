@@ -5,7 +5,7 @@
 #
 #  - `wrap(ld$)`: 包 `ld$.fetch`, 被 challenge 就跑 turnstile 後重送一次.
 #  - `probe(url)`: GET 探 `url` 是否被 challenge, 是就解. 給拿不到 status 的 websocket 用.
-#  - `solve()`: 跑 turnstile. 同時多個請求被擋只跑一次.
+#  - `solve(opt)`: 跑 turnstile. 同時多個請求被擋只跑一次. `opt.root` 則直接畫在頁面上.
 #
 # opt:
 #  - `sitekey`: 開了 pre-clearance 的 widget. 沒給就不作用.
@@ -53,7 +53,8 @@ cfchallenge.prototype = Object.create(Object.prototype) <<<
     # resident: 不然 ldcover 會把 node 移出 document, turnstile 就不會跑.
     {node, box: node.querySelector('[ld=box]'), ldcv: new ldcover(root: node, escape: false, resident: true)}
 
-  solve: ->
+  # `opt.root`: 直接畫在這個元素裡 ( 一直顯示, 不開遮罩也不逾時 ), 給主動請使用者驗證的頁面用.
+  solve: (opt = {}) ->
     if !@sitekey => return Promise.reject err(1010)
     if @_solving => return @_solving
     ui = null
@@ -61,14 +62,14 @@ cfchallenge.prototype = Object.create(Object.prototype) <<<
     timer = null
     @_solving = @_script!
       .then ~>
-        ui := @_ui!
+        if !opt.root => ui := @_ui!
         (res, rej) <~ new Promise _
         # 背景階段沒結果就放棄. 進入互動後交給使用者, 逾時由 turnstile 的 timeout-callback 處理.
-        timer := setTimeout (-> rej err(1010)), @timeout
+        if ui => timer := setTimeout (-> rej err(1010)), @timeout
         # `interaction-only`: 需要互動才開遮罩.
-        wid := turnstile.render ui.box, do
+        wid := turnstile.render (if ui => ui.box else opt.root), do
           sitekey: @sitekey
-          appearance: \interaction-only
+          appearance: if ui => \interaction-only else \always
           callback: (token) -> res token
           "error-callback": -> rej err(1010)
           "expired-callback": -> rej err(1010)
@@ -76,7 +77,7 @@ cfchallenge.prototype = Object.create(Object.prototype) <<<
           "unsupported-callback": -> rej err(1010)
           "before-interactive-callback": ->
             clearTimeout timer
-            ui.ldcv.toggle true
+            if ui => ui.ldcv.toggle true
       .then (token) ~>
         if !@clear => return
         fetch @clear, {method: \POST, headers: {'content-type': 'application/json'}, body: JSON.stringify({token})}
