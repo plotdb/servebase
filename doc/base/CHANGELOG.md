@@ -15,7 +15,8 @@
    - `captcha.cfchallenge`: `probe` resolves `solved` / `failed` / `reachable` / `down`;
      `solve {visible}` and `prompt()` ( or `opt.prompt` for a site's own ui ) to ask the
      user to verify. connector uses them: when the http probe gets through but the ws
-     handshake doesn't, it prompts once and reconnects at once. `dev.cf-challenge-mock`
+     handshake doesn't, it prompts once and reconnects at once; `dismiss()` closes the
+     prompt if the socket connects on its own meanwhile. `dev.cf-challenge-mock`
      gets a `ws` option to challenge the handshake, and `/editing/` - a realtime editing
      demo ( connector + sharehub, `backend/base/sharedb.ls` ) - to try it with.
    - `@servebase/connector`: `challenge` option - probe `path` over http when a connect is

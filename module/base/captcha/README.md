@@ -130,6 +130,9 @@ API:
    background, with a cover only if interaction is needed. `{root}` renders the widget into
    `root` instead; `{visible: true}` shows the cover from the start. neither times out.
  - `prompt()`: ask the user to verify - `opt.prompt` if given, otherwise `solve {visible: true}`.
+ - `dismiss()`: close a prompt in progress ( e.g. the socket connected on its own ). aborts its
+   `solve` with `999` and fires `dismiss` ( `on('dismiss', cb)` ) for a custom prompt ui to close
+   itself. background solves for challenged requests are left alone.
  - `probe(url)`: GET `url` and solve if it is challenged. for websocket, whose handshake
    status the browser doesn't expose. resolves one of:
    - `solved` / `failed`: challenged, and solved or not.

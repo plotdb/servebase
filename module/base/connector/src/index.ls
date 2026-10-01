@@ -127,6 +127,8 @@ connector.prototype = Object.create(Object.prototype) <<<
       .then ~> @fire \reconnect
       .then ~> console.log "#{@_tag} connected."
       .then ~> if @ws.status! == 2 => @_safeguard-tick = 0
+      # connected on its own while a verify prompt is still up: no need to verify anymore.
+      .then ~> if @_challenge and @ws.status! == 2 => @_challenge.dismiss!
       .catch (e) ~>
         # this may be caused by customized reconnect, which contains initialization code.
         # we should stop and hint user otherwise it may lead to unexpected result.

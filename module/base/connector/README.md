@@ -22,7 +22,8 @@ with following constructor options:
    - reachable, yet ws still down ( e.g. Cloudflare challenges only the ws handshake ):
      `challenge.prompt()` asks the user to verify, once per connector.
 
-   either way the socket then reconnects at once instead of waiting for ews's backoff.
+   either way the socket then reconnects at once instead of waiting for ews's backoff. if it
+   connects while the prompt is still up, the prompt is dismissed ( `challenge.dismiss()` ).
    see `@servebase/captcha` README -> Cloudflare challenge.
  - `grace`: delay (ms) between disconnection confirmed and `ldcv.offline`
    actually summoned. reconnection starts right away regardless; if it

@@ -91,13 +91,29 @@
     this.timeout = opt.timeout || 30000;
     this._prompt = opt.prompt || null;
     this._solving = null;
+    this._hdr = {};
     return this;
   };
   err = function(id){
     var ref$;
     return ref$ = new Error(), ref$.name = 'lderror', ref$.id = id, ref$;
   };
-  cfchallenge.prototype = (ref$ = Object.create(Object.prototype), ref$.isChallenge = function(e){
+  cfchallenge.prototype = (ref$ = Object.create(Object.prototype), ref$.on = function(n, cb){
+    var ref$;
+    return ((ref$ = this._hdr)[n] || (ref$[n] = [])).push(cb);
+  }, ref$.fire = function(n){
+    var v, res$, i$, to$, ref$, len$, cb, results$ = [];
+    res$ = [];
+    for (i$ = 1, to$ = arguments.length; i$ < to$; ++i$) {
+      res$.push(arguments[i$]);
+    }
+    v = res$;
+    for (i$ = 0, len$ = (ref$ = this._hdr[n] || []).length; i$ < len$; ++i$) {
+      cb = ref$[i$];
+      results$.push(cb.apply(this, v));
+    }
+    return results$;
+  }, ref$.isChallenge = function(e){
     var d;
     if (!e || (e.id !== 403 && e.status !== 403)) {
       return false;
@@ -161,6 +177,9 @@
       }
       return new Promise(function(res, rej){
         var bg;
+        this$._abort = function(){
+          return rej(err(999));
+        };
         bg = ui && !opt.visible;
         if (bg) {
           timer = setTimeout(function(){
@@ -214,6 +233,7 @@
     })['finally'](function(){
       clearTimeout(timer);
       this$._solving = null;
+      this$._abort = null;
       if (wid != null && window.turnstile) {
         try {
           turnstile.remove(wid);
@@ -226,13 +246,27 @@
     });
     return this._solving;
   }, ref$.prompt = function(){
-    if (this._prompt) {
-      return this._prompt(this);
-    } else {
-      return this.solve({
-        visible: true
-      });
+    var this$ = this;
+    this._prompting = true;
+    return Promise.resolve().then(function(){
+      if (this$._prompt) {
+        return this$._prompt(this$);
+      } else {
+        return this$.solve({
+          visible: true
+        });
+      }
+    })['finally'](function(){
+      return this$._prompting = false;
+    });
+  }, ref$.dismiss = function(){
+    if (!this._prompting) {
+      return;
     }
+    if (this._abort) {
+      this._abort();
+    }
+    return this.fire('dismiss');
   }, ref$.probe = function(url){
     var this$ = this;
     if (!this.sitekey) {

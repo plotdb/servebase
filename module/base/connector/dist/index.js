@@ -144,6 +144,10 @@
       if (this$.ws.status() === 2) {
         return this$._safeguardTick = 0;
       }
+    }).then(function(){
+      if (this$._challenge && this$.ws.status() === 2) {
+        return this$._challenge.dismiss();
+      }
     })['catch'](function(e){
       if (this$._error && typeof this$._error === 'function') {
         return this$._error(e);

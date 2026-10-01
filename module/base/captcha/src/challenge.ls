@@ -8,6 +8,7 @@
 #  - `solve(opt)`: 跑 turnstile. 同時多個請求被擋只跑一次.
 #    `opt.root` 直接畫在頁面上; `opt.visible` 遮罩一開始就顯示. 兩者都不逾時.
 #  - `prompt()`: 主動請使用者驗證. 有 `opt.prompt` 就用它, 否則 `solve {visible: true}`.
+#  - `dismiss()`: 收掉進行中的 prompt ( 例如 ws 自己連上了 ), 並發 `dismiss` 事件給自訂 ui.
 #
 # opt:
 #  - `sitekey`: 開了 pre-clearance 的 widget. 沒給就不作用.
@@ -20,11 +21,15 @@ cfchallenge = (opt = {}) ->
   @timeout = opt.timeout or 30000
   @_prompt = opt.prompt or null
   @_solving = null
+  @_hdr = {}
   @
 
 err = (id) -> new Error! <<< {name: \lderror, id}
 
 cfchallenge.prototype = Object.create(Object.prototype) <<<
+  on: (n, cb) -> @_hdr[][n].push cb
+  fire: (n, ...v) -> for cb in (@_hdr[n] or []) => cb.apply @, v
+
   # 有 header ( ldquery >= 3.0.7 ) 就看 header, 沒有就認 challenge 頁的特徵.
   is-challenge: (e) ->
     if !e or (e.id != 403 and e.status != 403) => return false
@@ -69,6 +74,7 @@ cfchallenge.prototype = Object.create(Object.prototype) <<<
       .then ~>
         if !opt.root => ui := @_ui!
         (res, rej) <~ new Promise _
+        @_abort = -> rej err(999)
         # 背景階段沒結果就放棄. 進入互動後交給使用者, 逾時由 turnstile 的 timeout-callback 處理.
         bg = ui and !opt.visible
         if bg => timer := setTimeout (-> rej err(1010)), @timeout
@@ -91,13 +97,24 @@ cfchallenge.prototype = Object.create(Object.prototype) <<<
       .finally ~>
         clearTimeout timer
         @_solving = null
+        @_abort = null
         if wid? and window.turnstile => try turnstile.remove wid
         if ui =>
           ui.ldcv.toggle false
           ui.node.parentNode.removeChild ui.node
     @_solving
 
-  prompt: -> if @_prompt => @_prompt(@) else @solve {visible: true}
+  prompt: ->
+    @_prompting = true
+    Promise.resolve!
+      .then ~> if @_prompt => @_prompt(@) else @solve {visible: true}
+      .finally ~> @_prompting = false
+
+  # 只收 prompt, 不影響背景驗證 ( 那些請求還在等結果 ). 進行中的 solve 以 999 reject.
+  dismiss: ->
+    if !@_prompting => return
+    if @_abort => @_abort!
+    @fire \dismiss
 
   # 探 `url`, 被 challenge 就解. 回傳:
   #  - `solved`: 被 challenge, 已解. `failed`: 被 challenge, 沒解成.
