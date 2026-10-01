@@ -31,8 +31,8 @@ module.exports = do
   srcbuild: [] # value in `base` will be added by default
   # dev only ( ignored in production ). see context/servebase/config.md -> 開發用設定 (dev)
   dev:
-    # test cf challenge with a mock middleware
-    cf-challenge-mock: {paths: <[/api/auth/info /ws]>, ttl: 60}
+    # test cf challenge with a mock middleware in path listed in `paths` and ws if ws is true
+    cf-challenge-mock: {paths: <[/api/auth/info]>, ws: true, ttl: 60}
   redis:
     enabled: false
     url: \redis://localhost:6379
