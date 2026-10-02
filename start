@@ -184,7 +184,8 @@ while [ 1 ]; do
 
   # back off a little further each time, so the few retries before giving up
   # also leave room for whatever is holding the port to let go of it.
-  backoff=$(( 1 << (crashes - 1) ))
+  # crashes is 0 after a run that lasted, and `1 << -1` overflows to a negative number.
+  backoff=$(( crashes > 0 ? 1 << (crashes - 1) : 1 ))
   [ "$backoff" -gt 30 ] && backoff=30
   echo "server down; try to auto restart after ${backoff}s."
   sleep $backoff
