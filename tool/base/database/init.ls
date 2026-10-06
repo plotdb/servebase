@@ -2,6 +2,7 @@ require! <[path child_process os]>
 {exec-sync} = child_process
 fs = require \fs-extra
 {grant-sql} = require \./grant
+{settings, required} = require \./settings
 
 root    = path.join __dirname, \../../..
 sql-dir = path.join root, \config/base/db
@@ -14,7 +15,7 @@ cfg-name = do ->
   if idx >= 0 and argv[idx + 1] => argv[idx + 1] else \secret
 
 secret = require path.join(root, "config/private/#cfg-name")
-cfg      = secret.db.postgresql
+cfg      = required settings(secret.db.postgresql)
 dbname   = cfg.database
 username = cfg.user
 password = cfg.password
