@@ -5,6 +5,7 @@ secret.*
 secret
 .*.swp
 .swp
+.worktree
 config/gen
 config/**/private
 config/dev
