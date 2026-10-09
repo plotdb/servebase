@@ -4,7 +4,7 @@
   route = function(o){
     var supportedActions, n, k, redirect, ref$;
     o == null && (o = {});
-    supportedActions = ['auth', 'mail-expire', 'mail-verified', 'oauth-done', 'oauth-failed', 'passwd-change', 'passwd-expire', 'passwd-done', 'passwd-reset'];
+    supportedActions = ['auth', 'mail-expire', 'mail-verified', 'oauth-done', 'oauth-failed', 'mfa-required', 'passwd-change', 'passwd-expire', 'passwd-done', 'passwd-reset'];
     if (!(n = (function(){
       var results$ = [];
       for (k in httputil.qs()) {

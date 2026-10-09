@@ -2,7 +2,7 @@ route = (o = {}) ->
   supported-actions = <[
     auth
     mail-expire mail-verified
-    oauth-done oauth-failed
+    oauth-done oauth-failed mfa-required
     passwd-change passwd-expire passwd-done passwd-reset
   ]>
 

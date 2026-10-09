@@ -1,0 +1,55 @@
+div
+  script(type="@plotdb/block"): include:lsc index.ls
+  style(type="text/css"): include:stylus index.styl
+  h3(t) title
+  hr
+  div(ld="state",data-state="off")
+    p(t) off.desc
+    .btn.btn-primary.ld-ext-right(ld="setup")
+      span(t) off.enable
+      .ld.ldld.bare.em-1
+  div(ld="state",data-state="setup")
+    p(t) setup.step1
+    .d-flex.flex-wrap.align-items-center.mb-4
+      .mfa-qr.border.rounded.mr-4.mb-2(ld="qr")
+      .mb-2
+        .text-sm.text-muted.mb-1(t) setup.manual
+        code.mfa-secret(ld="secret")
+    p(t) setup.step2
+    .row
+      .col-md-6: .form-group
+        label(t) setup.code
+        input.form-control(ld="code",autocomplete="one-time-code",inputmode="numeric",placeholder="000000")
+        .invalid-feedback(t) invalid
+      .col-md-6: .form-group(ld="need-password")
+        label(t) setup.password
+        input.d-none(type="text",autocomplete="username")
+        input.form-control(ld="password",type="password",autocomplete="current-password")
+        .invalid-feedback(t) nomatch
+    .d-flex
+      .btn.btn-outline-secondary.mr-2(ld="cancel",t) cancel
+      .btn.btn-primary.ld-ext-right(ld="enable")
+        span(t) setup.enable
+        .ld.ldld.bare.em-1
+  div(ld="state",data-state="codes")
+    p(t) codes.desc
+    pre.mfa-codes.border.rounded.p-3.bg-light(ld="codes")
+    .d-flex.flex-wrap
+      .btn.btn-outline-secondary.mr-2.mb-2(ld="copy",t) codes.copy
+      .btn.btn-outline-secondary.mr-2.mb-2(ld="download",t) codes.download
+      .btn.btn-primary.mb-2(ld="done",t) codes.done
+  div(ld="state",data-state="on")
+    p #[span.text-success.mr-1 ✔] #[span(t) on.desc]
+    p.text-sm.text-muted(ld="remain")
+    .row
+      .col-md-6: .form-group
+        label(t) on.code
+        input.form-control(ld="verify-code",autocomplete="one-time-code")
+        .invalid-feedback(ld="verify-feedback")
+    .d-flex.flex-wrap
+      .btn.btn-outline-secondary.mr-2.mb-2.ld-ext-right(ld="regen")
+        span(t) on.regen
+        .ld.ldld.bare.em-1
+      .btn.btn-outline-danger.mb-2.ld-ext-right(ld="disable")
+        span(t) on.disable
+        .ld.ldld.bare.em-1

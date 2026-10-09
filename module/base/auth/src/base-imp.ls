@@ -138,6 +138,13 @@ base-imp =
               # try logging in again. if it still fails, fallback to normal error handling process
               ld$.fetch "#{@_auth.api-root!}#{@_tab}", {method: \POST}, {json: body, type: \json}
         .then (ret = {}) ~>
+          # 2FA: 帳密通過但還沒登入, 要再驗第二因素. see block `mfa-verify`
+          if !ret.mfa => return ret
+          (r) <~ core.ldcvmgr.get {name: "@servebase/auth", path: "mfa-verify"}, ret.mfa .then _
+          # 取消, 或是無法再試 ( mfa-verify 已經告訴使用者原因 ): 都當成取消, 回到登入畫面
+          if !r or r.error => return lderror.reject 999
+          return r
+        .then (ret = {}) ~>
           (g) <~ @_auth.fetch!then _
           if !(type = ret.password-should-renew) => return g
           <~ core.ldcvmgr.get {name: "@servebase/auth", path: "passwd-renew"}, {type} .then _
@@ -154,6 +161,8 @@ base-imp =
         .catch (e) ~>
           console.log e
           id = lderror.id e
+          # 999: 2FA canceled, or ended by mfa-verify
+          if id == 999 => return
           if id >= 500 and id < 599 => return lderror.reject 1007
           # session data corrupted
           if id == 1029 => return Promise.reject e
@@ -167,6 +176,7 @@ base-imp =
           else if id in [1012 1030] => t("Password mismatched")
           else if id in [1009 1010] => t("Captcha failed")
           else if id == 1041 => t("Resource issue")
+          # 2FA: pending login expired, too many attempts, or too many failures on this account
           else t("#{@_tab} failed")
           @info "#{@_tab}-failed"
           @_failed-hint = true

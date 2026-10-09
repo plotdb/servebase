@@ -1,6 +1,22 @@
 ## master
 
  - features:
+   - `@servebase/auth`: two-factor authentication with TOTP ( Google Authenticator
+     and the like ) and one-time recovery codes. Off unless `config.auth.mfa` is
+     set, with its own encryption keys ( rotatable, same shape as `pepper` ).
+     Login becomes two steps for users who enable it: the password ( or oauth,
+     when `config.auth.mfa.oauth` is on ) only opens a pending login in the
+     session, and `POST /api/auth/mfa/verify` finishes it. Every login path goes
+     through `mfa.gate`, so a new login method cannot skip it by accident. The
+     authpanel, the oauth popup and the settings page each get a block
+     ( `mfa-verify`, `mfa-required`, `mfa-setup` ). Secrets live in the new `mfa`
+     table, not in `users`, because `users` is copied into every session; codes
+     can be reused only within the session that used them ( `config.auth.mfa.reuse` ),
+     and failures are capped per login and per account.
+     Designed so email / sms can be added as another method without touching
+     the login flow. Needs `config/base/db/migrate/002.sql` on existing
+     databases, and the new dependency `qrcode`. See `module/base/auth/README.md`
+     -> Two-Factor Authentication.
    - engine: `session.delete {user, except}` - keep one session ( e.g.
      `req.sessionID` ) while logging out the user's others.
    - tests: `npm test` runs every test of the root and all workspaces, without a framework.

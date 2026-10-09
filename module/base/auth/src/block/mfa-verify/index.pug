@@ -1,0 +1,17 @@
+.ldcv.autogap.scroll: .base.w-480.rwd: .inner
+  include @/ldview/index.pug
+  script(type="@plotdb/block"): include:lsc index.ls
+  h2.mb-2.text-center(t="title")
+  .text-muted(ld="mode",data-mode="totp",t="totp.desc")
+  .text-muted(ld="mode",data-mode="recovery",t="recovery.desc")
+  .form-group.my-4.pb-1
+    input.form-control.form-control-lg.text-center(ld="code",name="code",autocomplete="one-time-code")
+    .invalid-feedback(ld="feedback",style="margin-bottom:-.75em")
+  .text-center.text-sm.mb-4
+    a.clickable(ld="switch",data-mode="recovery",t="recovery.use")
+    a.clickable(ld="switch",data-mode="totp",t="totp.use")
+  .d-flex.g-4.flex-wrap
+    .btn.btn-lg.flex-grow-1.btn-outline-secondary(ld="cancel",t="cancel")
+    .btn.btn-lg.flex-grow-1.btn-primary.ld-ext-right(ld="submit")
+      span(t="submit")
+      .ld.ldld.bare.em-1

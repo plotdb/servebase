@@ -326,6 +326,20 @@ baseImp = {
           });
         }).then(function(ret){
           ret == null && (ret = {});
+          if (!ret.mfa) {
+            return ret;
+          }
+          return core.ldcvmgr.get({
+            name: "@servebase/auth",
+            path: "mfa-verify"
+          }, ret.mfa).then(function(r){
+            if (!r || r.error) {
+              return lderror.reject(999);
+            }
+            return r;
+          });
+        }).then(function(ret){
+          ret == null && (ret = {});
           return this$._auth.fetch().then(function(g){
             var type;
             if (!(type = ret.passwordShouldRenew)) {
@@ -357,6 +371,9 @@ baseImp = {
           var id;
           console.log(e);
           id = lderror.id(e);
+          if (id === 999) {
+            return;
+          }
           if (id >= 500 && id < 599) {
             return lderror.reject(1007);
           }

@@ -11,6 +11,8 @@ ldc.register <[core]>, ({core}) ->
     .then (ret) -> blocks.push ret
     .then -> core.manager.from {name: \@servebase/auth, path: \account-info}, {root: view.get('account-info')}
     .then (ret) -> blocks.push ret
+    .then -> core.manager.from {name: \@servebase/auth, path: \mfa-setup}, {root: view.get('mfa-setup')}
+    .then (ret) -> blocks.push ret
   core.i18n.on \languageChanged, ->
     blocks.map -> it.instance.transform \i18n
   

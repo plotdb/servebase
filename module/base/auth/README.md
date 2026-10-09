@@ -214,6 +214,8 @@ engine/auth.ls. API endpoints:
      - return optional `{passwordDue, passwordShouldRenew}` when necessary with following meaning:
        - `passwordDue`: how many time password has been due.
        - `passwordShouldRenew`: should password be renewed.
+     - return `{mfa: {methods}}` instead, without logging in, if the user has 2FA enabled.
+       see Two-Factor Authentication below.
    - POST / `@api/auth/logout` - logout. no params.
    - POST / `@api/auth/reset` - logout, clear cookie
    - POST / `@api/auth/clear` - logout, clear cookie from all devices
@@ -242,6 +244,77 @@ engine/auth.ls. API endpoints:
  - 1012 - permission denied
  - 1034 - user not found
  - 500 - internal server error
+
+
+## Two-Factor Authentication ( 2FA )
+
+TOTP ( Google Authenticator and similar apps ) plus one-time recovery codes. Off unless configured:
+
+    auth:
+      mfa:
+        enabled: true
+        # also require 2FA on oauth ( google / facebook / line ) login. default false:
+        # the oauth provider usually has its own 2FA.
+        oauth: false
+        # name shown in the authenticator app. default: `sitename`, then `domain`.
+        issuer: 'My Site'
+        # using the same code twice ( within its 30 second window ):
+        #  - 'session' ( default ): fine within one session - e.g. log in, then change a
+        #    setting with the same code - but refused from any other session, which is
+        #    where a stolen code would be used.
+        #  - true: always fine ( npm works this way ).
+        #  - false: never ( RFC 6238 5.2 ).
+        reuse: 'session'
+        # keys for encrypting TOTP secrets and hashing recovery codes, same shape as `auth.pepper`.
+        # to rotate: add a new key, point `current` to it, and keep the old one - data made
+        # under the old key still needs it. key names must not contain `:`.
+        keys: {k1: 'a long random string'}
+        current: 'k1'
+
+The server refuses to start if `enabled` is set but `keys[current]` is missing. Needs `migrate/002.sql`
+( tables `mfa`, `mfarecovery` ) on existing databases.
+
+Login takes two steps once a user has 2FA enabled:
+
+ 1. password ( or oauth ) passes. Instead of logging in, the server keeps a pending login in the session
+    ( 5 minutes, 5 attempts ) and answers `{mfa: {methods}}`; oauth redirects the popup to `/auth?mfa-required`.
+ 2. `POST /api/auth/mfa/verify {method, code}` - `method` is `totp` or `recovery`. On success the user is
+    logged in and the reply is what `/login` would have answered, plus `{recovery: {remain}}` when a recovery
+    code was used.
+
+The authpanel handles both steps with the `mfa-verify` block; nothing to do on the frontend beyond that.
+
+Endpoints ( all under `/api/auth` ):
+
+ - `POST /mfa/verify` - second login step, see above.
+ - `GET  /mfa` - `{enabled, methods: [{method, createdtime, lastused}], recovery: {remain}, password}`.
+   `password`: whether enabling asks for the current password ( false for oauth-only accounts ).
+ - `POST /mfa/totp/setup` - start enrolling: `{secret, uri, qr}` ( `qr`: svg ). The secret waits,
+   encrypted, in the session for 10 minutes; nothing is stored until `enable`.
+ - `POST /mfa/totp/enable {code, password}` - finish enrolling. Replies `{recovery: [codes]}`, the only
+   time the codes are shown in plain text. Logs out the user's other sessions.
+ - `POST /mfa/totp/disable {method, code}` - needs a current code ( `method: totp` ) or a recovery code.
+ - `POST /mfa/recovery {method, code}` - replace all recovery codes, same proof as `disable`.
+ - `POST /admin/mfa/reset {key | username}` - admin only. Removes the user's 2FA entirely.
+
+Frontend blocks: `mfa-verify` ( the second login step ), `mfa-required` ( its page for the oauth popup ) and
+`mfa-setup` ( for the settings page: enable, show / regenerate recovery codes, disable ). `global.policy.mfa`
+is set when the feature is on. Whether a user has 2FA is not in `global.user`: ask `GET /mfa`, or join the `mfa` table.
+
+Errors: `1045` wrong code, `1050` code consumed - right code, but already used in its 30 second window and
+`reuse` refuses it here; wait for the next one. Not counted as a failure. `1013` pending login or setup expired, `1049` too many attempts - 5 on one pending
+login, or 10 in a row on one account within 15 minutes ( a success resets it; counted in process memory ), `1011` already enabled, `1030` wrong
+password.
+
+Notes:
+
+ - a TOTP code whose time step is not newer than the last accepted one counts as used again - see `reuse`.
+ - nothing 2FA related goes into `users`: that row is copied into every session. The `mfa` table is the only
+   record of who has it.
+ - turning `enabled` off skips 2FA for everyone, but keeps their settings for when it comes back.
+ - admin `su` ( `session.login` ) bypasses 2FA, as it bypasses the password.
+ - adding email / sms later: see the comment at the top of `lib/mfa.ls`. The login flow, recovery codes
+   and failure counting stay as they are; `mfa.target` is there for the phone number / address.
 
 
 ## Additional Notes

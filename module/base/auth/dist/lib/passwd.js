@@ -130,6 +130,9 @@
             if (!req.user) {
               return lderror.reject(403);
             }
+            if (aux.isAnonymous(req.user)) {
+              return lderror.reject(403);
+            }
             if (n.length < 8) {
               return lderror.reject(1031);
             }

@@ -60,6 +60,35 @@ create table if not exists pwresettoken (
 
 create index if not exists idx_pwresettoken on pwresettoken (token);
 
+-- 2FA: 每個已啟用的第二因素一列. secret 不能放 users, 因為 users 整列會被寫進 session.
+--  - method: totp ( 之後可加 email / sms / webauthn ).
+--  - secret: totp secret, 用 config.auth.mfa 的金鑰加密後存放.
+--  - target: 寄送對象 ( sms 手機號碼等 ), totp 不用.
+--  - detail: 各方法自己的狀態, 如 totp 的 laststep ( 防 replay ).
+create table if not exists mfa (
+  key serial primary key,
+  owner int not null references users(key) on delete cascade,
+  method text not null,
+  secret text,
+  target text,
+  detail jsonb,
+  createdtime timestamp not null default now(),
+  lastused timestamp
+);
+
+create index if not exists idx_mfa_owner on mfa (owner);
+
+-- 2FA 復原碼, 只存雜湊. 用過的留著 used 時間, 重新產生時整批換掉.
+create table if not exists mfarecovery (
+  key serial primary key,
+  owner int not null references users(key) on delete cascade,
+  hash text not null,
+  createdtime timestamp not null default now(),
+  used timestamp
+);
+
+create index if not exists idx_mfarecovery_owner on mfarecovery (owner);
+
 create table if not exists invitetoken (
   key serial primary key,
   owner int, -- no cascade and foreign key since we should keep it even if owner is gone.

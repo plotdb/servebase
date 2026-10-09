@@ -17,7 +17,7 @@
       return f.call({}, it);
     };
   })(function(backend){
-    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, normalize, getUser, strategy, globalPayload, injectInviteToken, x$, this$ = this;
+    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, loginDone, mfa, normalize, getUser, strategy, globalPayload, injectInviteToken, x$, this$ = this;
     db = backend.db, app = backend.app, config = backend.config, route = backend.route, session = backend.session;
     captcha = Object.fromEntries((function(){
       var ref$, results$ = [];
@@ -48,7 +48,8 @@
       }
       return results$;
     }()).map(function(it){
-      return it[0] === 'local'
+      var ref$;
+      return (ref$ = it[0]) === 'local' || ref$ === 'pepper' || ref$ === 'mfa'
         ? null
         : [
           it[0], {
@@ -63,6 +64,43 @@
       (policy.login || (policy.login = {})).acceptSignup = backend.config.policy.login.acceptSignup;
     }
     limitSessionAmount = false;
+    loginDone = function(arg$){
+      var req, user, p;
+      req = arg$.req, user = arg$.user;
+      p = new Promise(function(res, rej){
+        return req.login(user, function(e){
+          if (e) {
+            return rej(e);
+          } else {
+            return res();
+          }
+        });
+      });
+      return p.then(function(){
+        return db.userStore.passwordDue({
+          user: user
+        });
+      }).then(function(span){
+        var payload, ref$, ref1$;
+        payload = {};
+        if (span > 0) {
+          payload.passwordDue = span;
+          payload.passwordShouldRenew = 'suggest';
+        }
+        if (user != null && ((ref$ = user.config) != null && ((ref1$ = ref$.authinfo) != null && ref1$.renewpw))) {
+          payload.passwordShouldRenew = 'force';
+        }
+        return payload;
+      });
+    };
+    this.mfa = mfa = require('./mfa')(backend, {
+      login: loginDone
+    });
+    if (this.mfa.enabled) {
+      policy.mfa = {
+        enabled: true
+      };
+    }
     normalize = function(arg$){
       var key, username;
       key = arg$.key, username = arg$.username;
@@ -121,7 +159,11 @@
           return session['delete']({
             user: u.key
           }).then(function(){
-            return db.query("update users\nset (username,displayname,method,password,deleted)\n= ($2, $3, 'local', '', true)\nwhere key = $1", [u.key, "deleted(" + u.username + ")/" + u.key, "(deleted user " + u.key + ")"]);
+            return mfa.reset({
+              key: u.key
+            }).then(function(){
+              return db.query("update users\nset (username,displayname,method,password,deleted)\n= ($2, $3, 'local', '', true)\nwhere key = $1", [u.key, "deleted(" + u.username + ")/" + u.key, "(deleted user " + u.key + ")"]);
+            });
           });
         });
       }
@@ -334,12 +376,21 @@
             if (!u) {
               return res.redirect('/auth?oauth-failed');
             }
-            return req.logIn(u, function(e){
-              if (e) {
-                return next(e);
+            return mfa.gate({
+              req: req,
+              user: u,
+              provider: name
+            }).then(function(ret){
+              if (ret) {
+                return res.redirect('/auth?mfa-required');
               }
-              return res.redirect('/auth?oauth-done');
-            });
+              return req.logIn(u, function(e){
+                if (e) {
+                  return next(e);
+                }
+                return res.redirect('/auth?oauth-done');
+              });
+            })['catch'](next);
           })(req, res, next);
         };
       }(name));
@@ -447,25 +498,24 @@
         if (err || !user) {
           return next(err || lderror(1000));
         }
-        return req.login(user, function(err){
-          if (err) {
-            return next(err);
+        return mfa.gate({
+          req: req,
+          user: user,
+          provider: 'local'
+        }).then(function(ret){
+          if (ret) {
+            return {
+              mfa: ret
+            };
+          } else {
+            return loginDone({
+              req: req,
+              user: user
+            });
           }
-          db.userStore.passwordDue({
-            user: user
-          }).then(function(span){
-            var payload, ref$, ref1$;
-            payload = {};
-            if (span > 0) {
-              payload.passwordDue = span;
-              payload.passwordShouldRenew = 'suggest';
-            }
-            if (user != null && ((ref$ = user.config) != null && ((ref1$ = ref$.authinfo) != null && ref1$.renewpw))) {
-              payload.passwordShouldRenew = 'force';
-            }
-            return res.send(payload);
-          });
-        });
+        }).then(function(payload){
+          return res.send(payload);
+        })['catch'](next);
       })(req, res, next);
     });
     x$.post('/logout', function(req, res){
@@ -579,6 +629,7 @@
     this.mail = mail(backend);
     this.passwd.route();
     this.mail.route();
+    this.mfa.route();
     return this;
   });
   function import$(obj, src){

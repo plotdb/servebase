@@ -12,7 +12,8 @@ captcha = Object.fromEntries [[k,v] for k,v of config.captcha].map ->
 providers = config.auth.providers or config.auth
 oauth = Object.fromEntries(
   [[k,v] for k,v of providers]
-    .map -> return if it.0 == \local => null else [it.0, {enabled: !(it.1.enabled?) or it.1.enabled }]
+    # without `providers`, `config.auth` itself is the provider list - skip its non-provider entries.
+    .map -> return if it.0 in <[local pepper mfa]> => null else [it.0, {enabled: !(it.1.enabled?) or it.1.enabled }]
     .filter -> it
 )
 policy = {}
@@ -20,6 +21,25 @@ if backend.config.{}policy.{}login.accept-signup? =>
   policy.{}login.accept-signup = backend.config.policy.login.accept-signup
 
 limit-session-amount = false
+
+# the last step of every login: log the user in, and tell frontend whether the password should be renewed.
+# with 2FA this runs only after the second factor passes ( see ./mfa ), so call it
+# only after `@mfa.gate` has said no second factor is needed.
+login-done = ({req, user}) ->
+  p = new Promise (res, rej) -> req.login user, (e) -> if e => rej e else res!
+  p
+    .then -> db.user-store.password-due {user}
+    .then (span) ->
+      payload = {}
+      # TODO we can add a policy to force update
+      if span > 0 => payload <<< {password-due: span, password-should-renew: \suggest}
+      # TODO we may also do this before login and redirect user to a dedicate page,
+      #      so reload to skip won't work to skip this force check
+      if user?config?authinfo?renewpw => payload.password-should-renew = \force
+      payload
+
+@mfa = mfa = (require \./mfa) backend, {login: login-done}
+if @mfa.enabled => policy.mfa = {enabled: true}
 
 normalize = ({key, username}) ->
   username = "#{username or ''}".trim!toLowerCase! or null
@@ -55,6 +75,7 @@ normalize = ({key, username}) ->
     """, [if key => key else username] .then _
     if !(u = r.[]rows.0) => return lderror.reject 404
     <- session.delete {user: u.key} .then _
+    <- mfa.reset {key: u.key} .then _
     db.query """
     update users
     set (username,displayname,method,password,deleted)
@@ -243,9 +264,13 @@ inject-invite-token = (req, res, next) ->
         (e,u,i) <- passport.authenticate name, _
         if e => return res.redirect "/auth?oauth-failed&code=#{lderror.id(e)}"
         if !u => return res.redirect \/auth?oauth-failed
-        (e) <- req.logIn u, _
-        if e => return next e
-        res.redirect \/auth?oauth-done
+        mfa.gate {req, user: u, provider: name}
+          .then (ret) ->
+            if ret => return res.redirect \/auth?mfa-required
+            (e) <- req.logIn u, _
+            if e => return next e
+            res.redirect \/auth?oauth-done
+          .catch next
       )(req, res, next)
     )(name)
 
@@ -302,17 +327,11 @@ route.auth
   ..post \/login, backend.middleware.captcha, (req, res, next) ->
     ((err,user,info) <- passport.authenticate \local, _
     if err or !user => return next(err or lderror(1000))
-    (err) <-! req.login user, _
-    if err => return next err
-    # check if we should notify user to update password
-    (span) <- db.user-store.password-due {user} .then _
-    payload = {}
-    # TODO we can add a policy to force update
-    if span > 0 => payload <<< {password-due: span, password-should-renew: \suggest}
-    # TODO we may also do this before login and redirect user to a dedicate page,
-    #      so reload to skip won't work to skip this force check
-    if user?config?authinfo?renewpw => payload.password-should-renew = \force
-    res.send payload
+    # with 2FA enabled, reply `{mfa: {methods}}` without logging in. see ./mfa
+    mfa.gate {req, user, provider: \local}
+      .then (ret) -> if ret => {mfa: ret} else login-done {req, user}
+      .then (payload) -> res.send payload
+      .catch next
     )(req, res, next)
   ..post \/logout, (req, res) -> req.logout(!-> res.send!)
 
@@ -376,5 +395,6 @@ app.post \/api/auth/reset, (req, res) ->
 @mail = mail backend
 @passwd.route!
 @mail.route!
+@mfa.route!
 
 @
