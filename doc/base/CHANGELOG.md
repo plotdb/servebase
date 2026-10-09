@@ -1,6 +1,8 @@
 ## master
 
  - features:
+   - engine: `session.delete {user, except}` - keep one session ( e.g.
+     `req.sessionID` ) while logging out the user's others.
    - tests: `npm test` runs every test of the root and all workspaces, without a framework.
      A test is a plain script that asserts for itself and answers by exit code ( `0` pass,
      `77` skip, anything else fail ), so it also runs alone with `lsc`. Tests live in

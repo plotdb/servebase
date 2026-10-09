@@ -8,8 +8,10 @@ session = (opt = {}) ->
 
 session.prototype = Object.create(Object.prototype) <<<
   middleware: -> if arguments.length => @mdw = it else @mdw
-  delete: ({user}) ->
+  delete: ({user, except}) ->
     # alternatively use session store clear?
+    # `except`: session id to keep, e.g. `req.sessionID` to log out all other devices only.
+    if except => return @db.query "delete from session where owner = $1 and key != $2", [user, except]
     @db.query "delete from session where owner = $1", [user]
   sync: ({req, user, obj}) ->
     # - sync update all session for the same user with the same user object
