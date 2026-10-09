@@ -242,7 +242,9 @@ Three traps, all silent:
    whole server-level set, so every new location has to repeat the security headers.
  - regex `location` blocks match in source order, first match wins. An extension rule
    like `location ~ \.(?:css|js|...)$` placed early will swallow `/assets/lib` and
-   `/assets/bundle` before their own rules are reached.
+   `/assets/bundle` before their own rules are reached. The same goes for a rule that only
+   adds a fallback: `/modules/error/` ( project dialogs, then @servebase/erratum's builtin
+   ones ) has to sit before the plain `/modules/` rule, or every builtin dialog 404s.
  - `location` never sees the query string. `mode: 'query'` without the `map` above gets
    `no-cache` on every asset and buys nothing at all - and looks like it is working,
    because the urls do carry the hash.

@@ -126,6 +126,11 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - nginx: builtin error dialogs from `@servebase/erratum` ( e.g. 1007 server down )
+     answered 404 since the asset cache rules arrived: the plain `/modules/` rule matched
+     `/modules/error/*` first, so the fallback to erratum was never reached. The error
+     dialog rule now comes before it, with the same headers and cache policy. Regenerate
+     the project's nginx config and reload nginx.
    - `@servebase/connector`: when the socket is down but local changes keep
      coming in, a safeguard stops the page ( `ldcv.dead` ) instead of letting
      edits silently go nowhere.
