@@ -46,6 +46,35 @@ catch e
   console.log "if this file doesn't exist, you should add one. check config/private/demo.ls for reference"
   console.log "error message: ", e.toString!
   process.exit -1
+
+# config overrides, deep merged over the config above in this order. objects merge key by key;
+# anything else ( arrays included ) replaces. both are gitignored, and each one applied is
+# announced on start so a forgotten override can't pass unnoticed.
+#  - `config/private/<config>.local.ls`: a person's own override. may hold secrets, like
+#    the config itself.
+#  - `config/dev/<config>.ls`: development / testing override, e.g. `captcha: enabled: false`.
+#    no secrets here: unlike `private`, this is where coding agents may read and write.
+#    never applied in production.
+override = do
+  merge: (a, b) ->
+    for k,v of b =>
+      a[k] = if v and typeof(v) == \object and !Array.isArray(v) and
+      a[k] and typeof(a[k]) == \object and !Array.isArray(a[k]) => override.merge(a[k], v) else v
+    a
+  exists: (n) -> <[.ls .js]>.some -> fs.exists-sync path.join(rootdir, \config, "#n#it")
+  apply: (n) ->
+    try
+      secret := override.merge secret, config.from(n)
+    catch e
+      console.log "failed to load config override `config/#n`: #{e.toString!}".red
+      process.exit -1
+    console.log "[config] override applied: config/#n".yellow
+override-name = cfg-name or \secret
+if override.exists("private/#override-name.local") => override.apply "private/#override-name.local"
+if override.exists("dev/#override-name") =>
+  if process.env.NODE_ENV == \production =>
+    console.log "[config] override skipped in production: config/dev/#override-name".yellow
+  else override.apply "dev/#override-name"
 if secret.sitename => process.title += ":#{secret.sitename}"
 
 with-default = (cfg = {}, defcfg = {}) ->

@@ -1,6 +1,13 @@
 ## master
 
  - features:
+   - engine: config overrides, deep merged over `config/private/<config>.ls` on start:
+     `config/private/<config>.local.ls` for a person's own changes ( may hold secrets ),
+     then `config/dev/<config>.ls` for development and testing ( no secrets - the place
+     coding agents may touch, since `private` is off limits to them; skipped in
+     production ). Change a setting for a while, e.g. turn captcha off to test locally,
+     without editing the real config. Objects merge key by key, anything else replaces;
+     every override applied is printed on start. See `config/README.md` -> overrides.
    - `@servebase/captcha`: `captcha.cfchallenge` - Cloudflare challenge handling with
      Turnstile pre-clearance. When Cloudflare challenges a `fetch` or websocket request
      ( `403` + `cf-mitigated: challenge` ), the browser cannot solve it in the background;
