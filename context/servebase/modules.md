@@ -317,8 +317,9 @@ module/base/mymodule/
 │  ├─ index.pug
 │  ├─ style.styl
 │  └─ script.ls
-├─ test/             # 測試
-│  └─ index.ls
+├─ test/             # 測試, 見 doc/base/testing.md
+│  ├─ unit/          # 不需外部服務
+│  └─ integration/   # 需要 postgres 等
 ├─ package.json      # 模組設定
 └─ README.md         # 說明文件
 ```
@@ -367,20 +368,14 @@ module.exports =
 
 ## 測試
 
-### 單元測試
-```livescript
-# module/base/mymodule/test/index.ls
-require! <[assert @servebase/mymodule]>
+不用測試框架: 每個測試是一支自己斷言的腳本, 用 exit code 回報 ( 0 通過、77 跳過、其他失敗 ).
+放在各 workspace 的 `test/unit/` ( 不需外部服務 ) 或 `test/integration/` ( 需要 postgres 等 ).
+詳見 `doc/base/testing.md`.
 
-describe 'mymodule', ->
-  it 'should work', ->
-    result = mymodule.do-something {data}
-    assert.equal result, expected
-```
-
-### 執行測試
 ```bash
-npm test
+npm test                        # 所有 unit 測試
+npm test -- --integration       # 加上 integration 測試
+npm test -- auth                # 只跑路徑含 auth 的
 ```
 
 ## 發布

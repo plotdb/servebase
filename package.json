@@ -51,9 +51,7 @@
     "docker-db": "docker-compose -f config/base/docker/compose.yaml up -d db",
     "trivy": "trivy fs --skip-files \"*.log\" --skip-dirs config/private -f template --template \"@tool/security/trivy/html.tpl\" -o trivy-report.html .",
     "cannon": "cd tool; ./cannon",
-    "test": "echo '[note] mocha/nyc is on its way out; new tests need no framework, see npm run test:script' && npx mocha --require livescript ./test/index.ls",
-    "test:script": "./node_modules/.bin/lsc module/base/mail/test/transport.ls && ./node_modules/.bin/lsc module/base/captcha/test/once.ls",
-    "coverage": "npx nyc --reporter=text npm run test"
+    "test": "./node_modules/.bin/lsc test/index.ls"
   },
   "dependencies": {
     "@plotdb/block": "^5.2.0",
@@ -85,11 +83,9 @@
     "livescript": "^1.6.0",
     "ls-lint": "^0.1.2",
     "marked": "^4.0.10",
-    "mocha": "^11.7.5",
     "node-fetch": "^2.7.0",
     "nodemailer": "^9.0.3",
     "nodemailer-mailgun-transport": "^2.1.5",
-    "nyc": "^15.1.0",
     "passport": "^0.6.0",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",

@@ -373,6 +373,6 @@ api.get '/data', (req, res) ->
 
 ### 測試
 ```bash
-npm test                 # 執行測試
-npm run coverage         # 測試覆蓋率
+npm test                 # 執行 unit 測試 ( 見 doc/base/testing.md )
+npm test -- --integration  # 加上 integration 測試
 ```

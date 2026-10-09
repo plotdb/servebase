@@ -96,7 +96,7 @@ captcha first ( `cb` gets `null` ), and only runs `guard` and resends once on `1
     core.captcha.once cb: (captcha) ->
       ld$.fetch "my-url", {method: "POST"}, {json: {captcha, ...}, type: \json}
 
-Test: `./node_modules/.bin/lsc module/base/captcha/test/once.ls` ( no external service ).
+Test: `npm test -- captcha` ( `test/unit/once.ls`, no external service ).
 
 ## Cloudflare challenge ( turnstile pre-clearance )
 

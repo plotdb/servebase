@@ -1,6 +1,14 @@
 ## master
 
  - features:
+   - tests: `npm test` runs every test of the root and all workspaces, without a framework.
+     A test is a plain script that asserts for itself and answers by exit code ( `0` pass,
+     `77` skip, anything else fail ), so it also runs alone with `lsc`. Tests live in
+     `test/unit/` ( no outside service ) or `test/integration/` ( postgres and the like, run
+     with `--integration` ); `npm test -- <word>` filters by path. `test/index.ls` is now
+     the runner, and mocha / nyc are gone along with `test:script` and `coverage`. The mail
+     transport test moved to `module/base/mail/test/integration/`, the captcha.once test to
+     `module/base/captcha/test/unit/`. See `doc/base/testing.md`.
    - engine: config overrides, deep merged over `config/private/<config>.ls` on start:
      `config/private/<config>.local.ls` for a person's own changes ( may hold secrets ),
      then `config/dev/<config>.ls` for development and testing ( no secrets - the place

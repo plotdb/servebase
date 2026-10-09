@@ -1,10 +1,11 @@
 # captcha.once: 驗一次, 之後 ttl 內同一個 session 直接放行.
 # 不打外部服務: 把 verifier 換成假的, 直接用假的 req / session 驅動 middleware.
 #
-#   ./node_modules/.bin/lsc module/base/captcha/test/once.ls
+#   npm test -- captcha
+#   ./node_modules/.bin/lsc module/base/captcha/test/unit/once.ls
 
 require! <[path]>
-captcha = require path.join(__dirname, \../dist/lib/index.js)
+captcha = require path.join(__dirname, \../../dist/lib/index.js)
 lderror = require \lderror
 
 score = 1

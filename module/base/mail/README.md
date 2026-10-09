@@ -254,11 +254,12 @@ batch key 為 key ), 之後由 worker 照一般速率寄 — 與 `full` 走同�
 ## 測試
 
 ```
-npx lsc module/base/mail/test/transport.ls
+npm test -- --integration mail
 ```
 
-不用測試框架, 自己跑自己斷言, 有失敗就 exit 1. 需要本機的 postgres
-( 連不上就跳過, 不當成失敗 ), 會自己建一個 scratch db 再丟掉.
+integration 測試 ( `test/integration/transport.ls` ), 需要本機的 postgres
+( 連不上就跳過, 不當成失敗 ), 會自己建一個 scratch db 再丟掉. 測試的寫法見
+`doc/base/testing.md`.
 
 測的是**寄信失敗**的那些路徑 - 那是平常碰不到的部分: 開發機的 mail-queue
 通常開著 suppress, `send-directly` 根本走不到 `api.sendMail`, 所以 mailgun /

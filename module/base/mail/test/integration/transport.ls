@@ -2,9 +2,10 @@
 #
 # transport 失效測試.
 #
-#   npx lsc module/base/mail/test/transport.ls
+#   npm test -- --integration mail
+#   npx lsc module/base/mail/test/integration/transport.ls
 #
-# 不用 mocha - 這支自己跑自己斷言, 失敗時 exit code 非 0.
+# 不用測試框架 - 這支自己跑自己斷言, 失敗時 exit code 非 0 ( 見 doc/base/testing.md ).
 #
 # 為什麼要有這支: 寄信失敗的路徑平常測不到. 開發機的 mail-queue 通常開著
 # suppress, send-directly 根本走不到 api.sendMail, 所以 mailgun / nodemailer
@@ -12,14 +13,14 @@
 # 的假貨, 用一個獨立的 scratch db, 直接驅動 worker, 看每一種失敗最後在 DB
 # 裡長成什麼樣子.
 #
-# 需要本機的 postgres ( 連不上就 skip, 不當成失敗 ).
+# 需要本機的 postgres ( 連不上就 skip, exit 77, 不當成失敗 ).
 
 require! <[pg child_process path]>
 {Pool} = pg
 {exec-sync} = child_process
 
 DB = \mailmerge_transport_test
-root = path.join __dirname, \..
+root = path.join __dirname, \.., \..
 
 psql = (args) ->
   try exec-sync "psql #args", {stdio: <[ignore pipe ignore]>, encoding: \utf8}
@@ -30,7 +31,7 @@ psql = (args) ->
 setup = ->
   if psql("-d postgres -tAc 'select 1'") == null
     console.log "postgres 連不上, 跳過這支測試."
-    process.exit 0
+    process.exit 77
   psql "-d postgres -q -c 'drop database if exists #DB'"
   psql "-d postgres -q -c 'create database #DB'"
   # index.sql 的 owner 欄位 FK 到 users, 這裡只需要一張能對得上的空殼

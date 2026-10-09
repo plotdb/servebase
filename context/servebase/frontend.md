@@ -434,5 +434,5 @@ ln -s /mnt/storage/uploads frontend/base/static/s
 - 查看 console.log
 
 ### 測試
-- 單元測試: 使用 mocha
+- 單元測試: 不用框架, 見 `doc/base/testing.md`
 - E2E 測試: 自行選擇工具（Playwright, Cypress）
