@@ -172,4 +172,7 @@ if module? => module.exports = servebase
 # merge rather than replace: this bundle is loaded with `defer`, so anything the page
 # put on window.servebase from an inline script ( e.g. pugutil's +register-global )
 # ran earlier and would otherwise be wiped out here.
-else if window? => window.servebase = (window.servebase or {}) <<< servebase
+else if window? =>
+  window.servebase = (window.servebase or {}) <<< servebase
+  # one object: code above uses both `@` and `servebase`.
+  servebase = window.servebase

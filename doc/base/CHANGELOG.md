@@ -144,6 +144,11 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `@servebase/core`: `servebase.config()` called from a page was silently ignored -
+     `window.servebase` is a copy of the module object, so `config` set `_cfg` on the copy
+     while `_init` read the original ( the after-init warning never fired either ). The
+     module variable now points at `window.servebase` too, so both are one object.
+     `corecfg` was not affected.
    - nginx: builtin error dialogs from `@servebase/erratum` ( e.g. 1007 server down )
      answered 404 since the asset cache rules arrived: the plain `/modules/` rule matched
      `/modules/error/*` first, so the fallback to erratum was never reached. The error
