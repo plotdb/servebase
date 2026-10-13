@@ -149,6 +149,12 @@
      while `_init` read the original ( the after-init warning never fired either ). The
      module variable now points at `window.servebase` too, so both are one object.
      `corecfg` was not affected.
+   - engine: i18n accepts only the configured languages. Without `supportedLngs` any
+     `?lng=` / cookie / Accept-Language value was taken as a language: a load attempt of
+     `locales/<value>/...` per new value ( failures kept in memory ) and echoed back as
+     `req.language`. It now defaults to `lng` + `preload` + `fallbackLng` unless the
+     config sets `supportedLngs`; `supportedLngs: false` opts out. A browser language
+     outside the list ( e.g. `ja-JP` ) now resolves to a configured one in `req.language`.
    - nginx: builtin error dialogs from `@servebase/erratum` ( e.g. 1007 server down )
      answered 404 since the asset cache rules arrived: the plain `/modules/` rule matched
      `/modules/error/*` first, so the fallback to erratum was never reached. The error

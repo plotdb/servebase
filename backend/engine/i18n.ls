@@ -8,6 +8,14 @@ ret = (opt) ->
     backend: loadPath: 'locales/{{lng}}/{{ns}}.yaml'
   } <<< (opt or {})
 
+  # whitelist configured languages so arbitrary `?lng=` values aren't loaded.
+  # `supportedLngs: false` opts out.
+  if !(options.supportedLngs?) =>
+    lngs = [options.lng, options.preload, options.fallback-lng]
+      .map -> if typeof(it) == \string => [it] else if Array.isArray(it) => it else []
+      .reduce ((a, b) -> a ++ b), []
+    if lngs.length => options.supported-lngs = Array.from(new Set(lngs))
+
   return i18next
     .use i18next-fs-backend
     .use i18next-http-middleware.LanguageDetector
