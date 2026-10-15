@@ -1,4 +1,4 @@
-require! <[@servebase/backend @servebase/config yargs re2 curegex ./init]>
+require! <[@servebase/backend @servebase/config yargs re2js curegex ./init]>
 
 argv = yargs process.argv.slice 2
   .option \user, do
@@ -8,7 +8,7 @@ argv = yargs process.argv.slice 2
   .help \help
   .alias \help, \h
   .check (argv, options) ->
-    if curegex.tw.get('email', re2).exec(argv.u) => return true
+    if curegex.tw.get('email', re2js.RE2JS).exec(argv.u) => return true
     if argv.u and !isNaN(argv.u) => return true
     throw new Error("user key required and should be a number")
   .argv
