@@ -25,5 +25,8 @@ wss.on \connection, (ws, req) ->
   ping = new ews ws: ws, scope: \ping
   ping.addEventListener \message, -> ping.send \pong
 
+# 停機時關掉 websocket ( 1001 going away ), connector 會自己重連. 不關的話 npm stop 要等到 shutdown-timeout
+backend.on-stop -> wss.clients.forEach -> it.close 1001, \restarting
+
 backend.sharedb = sharedb
 backend.server = server

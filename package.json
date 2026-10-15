@@ -34,7 +34,7 @@
     "start": "NODE_ENV=production ./start",
     "dev": "./start",
     "demo": "./start base",
-    "stop": "if [ -f .server.pid ]; then PID=$(cat .server.pid); kill $PID 2>/dev/null; pkill -TERM -P $PID 2>/dev/null; echo 'server stopped.'; else echo 'no .server.pid found; server not running?'; fi",
+    "stop": "./tool/base/stop",
     "ping": "./tool/base/ping",
     "servers": "./tool/base/servers",
     "cachecheck": "./tool/base/cachecheck",

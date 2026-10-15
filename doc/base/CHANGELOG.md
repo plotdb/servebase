@@ -120,6 +120,11 @@
      `start` with no engine under it is flagged - a server still coming up, or
      one stuck failing to start. `-j` for json.
  - tweaks:
+   - `npm stop` ( now `tool/base/stop` ) stops gently: requests in flight are answered
+     before exit ( `config.shutdown-timeout`, 10s ), and the log pipeline is left to end
+     by itself. systemd units should set `ExecStop=` to it. `backend.on-stop(fn)` runs `fn`
+     on SIGTERM - close websockets there, or they hold the stop until the timeout. See
+     `doc/base/infrastructure.md` -> Stopping.
    - mail-queue: `send-directly` resolves with the transport info, and
      `opt.strict` rejects on failure ( default stays non-strict ).
    - the server reaches `listen` in about 0.95s rather than 1.36s. nothing about

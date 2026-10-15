@@ -132,6 +132,31 @@ backend.prototype = Object.create(Object.prototype) <<< do
       else @server.listen @config.port, ((e) -> if e => rej e else res @server)
     p.then (server) ~> @localctl.init!then -> server
 
+  # on-stop(fn): run `fn` on SIGTERM, after new connections stop. for connections that never
+  # end by themselves ( websocket ), which would otherwise hold the stop until the timeout
+  on-stop: (fn) -> @[]_on-stop.push fn
+
+  # SIGTERM ( `npm stop` ): take no new connections, answer the requests in flight, then exit
+  # ( up to `config.shutdown-timeout` seconds ). SIGINT still exits at once. see infrastructure.md -> Stopping
+  stop-on-term: ->
+    stopping = false
+    process.on \SIGTERM, ~>
+      if stopping => return
+      stopping := true
+      timeout = (@config.shutdown-timeout or 10)
+      @log-server.info "SIGTERM: no new connections; waiting up to #{timeout}s for requests in flight".yellow
+      # idle keep-alive connections would hold `close` open ( node >= 18.2 )
+      idle = set-interval (~> if @server.close-idle-connections => @server.close-idle-connections!), 500
+      @server.close ~>
+        @log-server.info "all requests answered, exiting".green
+        process.exit 0
+      for fn in (@_on-stop or []) =>
+        try fn! catch err => @log-server.warn {err}, "on-stop handler failed"
+      set-timeout (~>
+        @log-server.warn "requests still running after #{timeout}s, exiting anyway".red
+        process.exit 0
+      ), timeout * 1000
+
   watch: ({logger, i18n}) ->
     @version = 'na'
     update-version = ~>
@@ -347,6 +372,7 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @listen!
       .then ~>
         @log-server.info "listening on port #{@server.address!port}".cyan
+        @stop-on-term!
         @watch {logger: @log-build, i18n: @i18n}
         @
       .catch (err) ~>

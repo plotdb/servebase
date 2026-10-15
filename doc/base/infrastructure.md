@@ -20,6 +20,8 @@ Node server should run as a Daemon with auto-restart mechanism. This can be done
          WorkingDirectory=/path/to/project
          Environment=NODE_ENV=production
          ExecStart=/path/to/project/start --noloop
+         ExecStop=/path/to/project/tool/base/stop
+         TimeoutStopSec=60
          Restart=always
          RestartSec=1
 
@@ -32,7 +34,7 @@ Node server should run as a Daemon with auto-restart mechanism. This can be done
  - as a process, through `screen` - not reboot-proof but it's acceptable.
    - auto restart when process crashed with bash while loop.
    - identify process by `ps` ( argv carries `start:<dirname>` / `--home <pwd>` );
-     stop with `npm stop` ( kills pid in `.server.pid`, trap takes down the group ).
+     stop with `npm stop` ( see Stopping below ).
 
 
 ### Prebuilt or Source
@@ -133,6 +135,27 @@ This is the same call as the timeout above: this layer can guarantee a local
 file and an exit code, and nothing else. Anything that needs something else to
 still be alive belongs outside it.
 
+
+### Stopping
+
+`npm stop` ( `tool/base/stop` ) stops gently: the server gets SIGTERM, takes no
+new connections and answers the requests in flight before exiting - a card
+charged but not yet recorded is what dying at once could leave. It returns once
+everything is gone, so a `start` right after it finds the port free.
+
+ - the server waits `config.shutdown-timeout` seconds ( 10 ); `npm stop` waits
+   20 ( `--wait <s>` ), then kills what is left.
+ - only the server is signalled; `tee` / `pino-pretty` end with its output, so
+   its last lines still reach `server.log`. ctrl-c still stops at once.
+ - systemd: set `ExecStop=` as above, or the log pipeline is killed with it.
+ - websocket ( and SSE ) connections never end by themselves, so each one holds
+   the stop until the timeout. close them in `backend.on-stop`, which runs on
+   SIGTERM; `@servebase/connector` reconnects to the new server by itself:
+
+       backend.on-stop -> wss.clients.forEach -> it.close 1001, \restarting
+
+   ( `backend/base/sharedb.ls` does this for the `/editing/` demo. )
+ - non-request work ( a job queue ) is the project's to wind down before `npm stop`.
 
 ## Note
 
