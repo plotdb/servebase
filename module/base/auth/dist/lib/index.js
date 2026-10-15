@@ -439,7 +439,7 @@
     app.use(passport.session());
     x$ = route.auth;
     x$.post('/signup', backend.middleware.captcha, function(req, res, next){
-      var ref$, username, displayname, password, inviteToken;
+      var ref$, username, displayname, password, inviteToken, cfg;
       ref$ = {
         username: (ref$ = req.body).username,
         displayname: ref$.displayname,
@@ -449,6 +449,10 @@
       if (!username || !displayname || password.length < 8) {
         return next(lderror(400));
       }
+      cfg = {};
+      if (((ref$ = req.body.config) != null ? ref$.newsletter : void 8) != null) {
+        cfg.newsletter = !!req.body.config.newsletter;
+      }
       return db.userStore.create({
         username: username,
         password: password,
@@ -457,7 +461,7 @@
         detail: {
           displayname: displayname
         },
-        config: req.body.config || {}
+        config: cfg
       }).then(function(user){
         var ref$;
         if (((ref$ = config.policy || (config.policy = {})).login || (ref$.login = {})).skipVerify) {

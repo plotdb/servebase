@@ -306,8 +306,11 @@ route.auth
     # config skipped here to prevent var shadowing of the global config object
     {username,displayname,password,invite-token} = req.body{username,displayname,password,invite-token}
     if !username or !displayname or password.length < 8 => return next(lderror 400)
+    # config 只收認得的欄位 ( 註冊面板的 newsletter 勾選 ), 其他的不讓用戶自己寫進 users.config
+    cfg = {}
+    if req.body.config?newsletter? => cfg.newsletter = !!req.body.config.newsletter
     db.user-store.create {username, password, invite-token} <<< {
-      method: \local, detail: {displayname}, config: (req.body.config or {})
+      method: \local, detail: {displayname}, config: cfg
     }
       .then (user) ~>
         # here we use the global config object.

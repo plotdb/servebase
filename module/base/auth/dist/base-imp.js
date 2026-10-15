@@ -143,6 +143,11 @@ baseImp = {
                 node = arg$.node;
                 return node.classList.toggle('d-none', this$._tab === 'login');
               },
+              newsletter: function(arg$){
+                var node;
+                node = arg$.node;
+                return node.classList.toggle('d-none', this$._tab === 'login');
+              },
               info: function(arg$){
                 var node, hide;
                 node = arg$.node;
@@ -240,7 +245,7 @@ baseImp = {
         return this.view.render('info');
       },
       submit: function(){
-        var val, body, ref$, this$ = this;
+        var val, body, ref$, nl, this$ = this;
         if (!this.form.ready()) {
           return;
         }
@@ -252,6 +257,11 @@ baseImp = {
         this.view.render('signin-failed-hint');
         val = this.form.values();
         body = (ref$ = {}, ref$.username = val.username, ref$.password = val.password, ref$.displayname = val.displayname, ref$);
+        if (this._tab === 'signup' && (nl = (ref$ = this.view.get('newsletter')) != null ? ref$.querySelector('input[name="newsletter"]') : void 8)) {
+          body.config = {
+            newsletter: !!nl.checked
+          };
+        }
         return this.ldld.on().then(function(){
           return debounce(1000);
         }).then(function(){

@@ -57,6 +57,8 @@ base-imp =
         "submit-text": ({node}) ~>
           node.innerText = t(if @_tab == \login => \login else 'signup')
         displayname: ({node}) ~> node.classList.toggle \d-none, @_tab == \login
+        # 註冊時的 newsletter 勾選 ( 選用: 面板沒放這個元素就不送 ), 只在 signup 顯示
+        newsletter: ({node}) ~> node.classList.toggle \d-none, @_tab == \login
         info: ({node}) ~>
           hide = (node.getAttribute(\data-name) != @_info)
           if node.classList.contains(\d-none) or hide => return node.classList.toggle \d-none, hide
@@ -106,6 +108,9 @@ base-imp =
       @view.render \signin-failed-hint
       val = @form.values!
       body = {} <<< val{username, password, displayname}
+      # 面板有 newsletter 勾選框 ( input[name=newsletter] ) 才送; 後端只收 config.newsletter ( lib/index.ls )
+      if @_tab == \signup and (nl = @view.get(\newsletter)?querySelector 'input[name="newsletter"]') =>
+        body.config = {newsletter: !!nl.checked}
       @ldld.on!
         .then -> debounce 1000
         .then ~>
