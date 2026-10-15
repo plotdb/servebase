@@ -84,7 +84,8 @@ normalize = ({key, username}) ->
     """, [u.key, "deleted(#{u.username})/#{u.key}", "(deleted user #{u.key})"]
 
 get-user = ({username, password, method, detail, create, invite-token, cb, req}) ->
-  db.user-store.get {username, password, method, detail, create, invite-token}
+  config = if create and req => signup-config(req) else void
+  db.user-store.get {username, password, method, detail, create, invite-token, config}
     .then (user) !->
       db.query "select count(ip) from session where owner = $1 group by ip", [user.key]
         .then (r={}) ->
@@ -247,9 +248,16 @@ route.auth.get \/info, (req, res) ~>
   res.send payload
 
 # we check if invite-token when user sign up
+# 第三方登入時面板上的 newsletter 勾選也先記在 session, 回來建帳號時用 ( signup-config )
 inject-invite-token = (req, res, next) ->
   if req.body and (t = req.body.invite-token) => req.session.invite-token = t
+  if req.body?newsletter? => req.session.signup-newsletter = (req.body.newsletter in [1 '1' true 'true'])
+  else delete req.session.signup-newsletter
   next!
+
+# 建立新帳號時寫進 users.config 的 ( 已有帳號的登入不動 ). 只收認得的欄位
+signup-config = (req) ->
+  if req.session?signup-newsletter? => {newsletter: !!req.session.signup-newsletter} else {}
 
 <[local google facebook line]>.for-each (name) ->
   if !providers[name] => return

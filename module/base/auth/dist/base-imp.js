@@ -60,7 +60,8 @@ baseImp = {
                     r == null && (r = {});
                     return this$._auth.oauth({
                       name: node.getAttribute('data-name', {
-                        inviteToken: r.inviteToken
+                        inviteToken: r.inviteToken,
+                        newsletter: this$.newsletter()
                       })
                     });
                   }).then(function(g){
@@ -139,11 +140,6 @@ baseImp = {
                 return node.innerText = t(this$._tab === 'login' ? 'login' : 'signup');
               },
               displayname: function(arg$){
-                var node;
-                node = arg$.node;
-                return node.classList.toggle('d-none', this$._tab === 'login');
-              },
-              newsletter: function(arg$){
                 var node;
                 node = arg$.node;
                 return node.classList.toggle('d-none', this$._tab === 'login');
@@ -240,6 +236,13 @@ baseImp = {
           return p && p.length >= 8;
         }
       },
+      newsletter: function(){
+        var nl, ref$;
+        if (!(nl = (ref$ = this.view.get('newsletter')) != null ? ref$.querySelector('input[name="newsletter"]') : void 8)) {
+          return;
+        }
+        return !!nl.checked;
+      },
       info: function(it){
         this._info = it;
         return this.view.render('info');
@@ -257,9 +260,9 @@ baseImp = {
         this.view.render('signin-failed-hint');
         val = this.form.values();
         body = (ref$ = {}, ref$.username = val.username, ref$.password = val.password, ref$.displayname = val.displayname, ref$);
-        if (this._tab === 'signup' && (nl = (ref$ = this.view.get('newsletter')) != null ? ref$.querySelector('input[name="newsletter"]') : void 8)) {
+        if (this._tab === 'signup' && (nl = this.newsletter()) != null) {
           body.config = {
-            newsletter: !!nl.checked
+            newsletter: nl
           };
         }
         return this.ldld.on().then(function(){

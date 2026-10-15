@@ -214,8 +214,8 @@
         return this.ui.authpanel(true, o);
       },
       oauth: function(arg$){
-        var name, inviteToken, this$ = this;
-        name = arg$.name, inviteToken = arg$.inviteToken;
+        var name, inviteToken, newsletter, this$ = this;
+        name = arg$.name, inviteToken = arg$.inviteToken, newsletter = arg$.newsletter;
         return this.get().then(function(g){
           var e, form, token, login;
           g == null && (g = {});
@@ -236,6 +236,9 @@
           token = !inviteToken
             ? ""
             : "<input type=\"hidden\" name=\"inviteToken\" value=\"" + encodeURIComponent(inviteToken) + "\"/>";
+          if (newsletter != null) {
+            token += "<input type=\"hidden\" name=\"newsletter\" value=\"" + (newsletter ? 1 : 0) + "\"/>";
+          }
           form.innerHTML = "<form target=\"oauth-login\" action=\"" + this$.apiRoot() + name + "/\" method=\"post\">\n  <input type=\"hidden\" name=\"_csrf\" value=\"" + g.csrfToken + "\"/>" + token + "\n</form>";
           document.body.appendChild(form);
           window.oauthLogin = login = proxise(function(){
