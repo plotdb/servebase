@@ -24,7 +24,6 @@
            it's not necessary to actually have this folder physically.
        - assets and other
 
- - .backend: prebuilt backend js
  - backend
    - engine
      - utilities modules including

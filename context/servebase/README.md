@@ -48,8 +48,7 @@ servebase 是一個完整的網路服務基板專案，設計為可 fork 後 reb
 
 ### 部署流程
 1. 前端編譯: srcbuild 將 pug/stylus/ls 編譯
-2. 後端編譯: `npm run prebuild` (ls → .backend/js)
-3. 生產啟動: `npm start`
+2. 生產啟動: `npm start` ( 後端直接跑 livescript source, 不需預編譯 )
 
 ## 關鍵模組
 

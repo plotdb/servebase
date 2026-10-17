@@ -121,17 +121,11 @@ srcbuild 打包
 瀏覽器載入 bundle.min.js/css
 ```
 
-### 後端編譯流程
+### 後端執行
 ```
 backend/*.ls
     ↓
-npm run prebuild
-    ↓
-lsc -co .backend backend
-    ↓
-.backend/*.js
-    ↓
-Node.js 執行
+lsc ./backend/engine/index ( start 直接跑 source, production 也一樣, 不預編譯 )
 ```
 
 ## 核心元件互動

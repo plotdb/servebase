@@ -166,7 +166,6 @@ fedep @plotdb/block
 # 在建置腳本中
 npm install
 fedep
-npm run prebuild
 ```
 
 ## 進階使用

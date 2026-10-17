@@ -73,8 +73,7 @@ srcbuild 打包 → vendor.min.js/css
 1. **安裝套件** - `npm ci --production`
 2. **複製套件** - `fedep`
 3. **編譯資源** - srcbuild 執行編譯
-4. **編譯後端** - `npm run prebuild`
-5. **啟動伺服器** - `npm start`
+4. **啟動伺服器** - `npm start`
 
 ## 其他工具
 

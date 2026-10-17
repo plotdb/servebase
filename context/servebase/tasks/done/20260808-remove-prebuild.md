@@ -40,3 +40,7 @@ flag、沒有設定 ( dev 一律走 source, 跟以前一樣: 留下的 .backend 
 - 確認 source 模式在 production 跑一段時間沒問題後, 拿掉 package.json 的
   `prebuild` script 與 start 裡的 prebuilt 分支 ( ping 的 backend 欄位屆時也可拿掉 )
 - 檢查 derived projects 的 deploy 流程有沒有引用 .backend
+
+2026/10/17: 拆完。`start` 一律跑 source, `.backend` 存在時只 warning 不執行;
+拿掉 `prebuild` script 與 ping 的 `backend` 欄位; `.backend` 加進 .gitignore。
+derived projects 的 deploy 流程不逐一檢查, 寫在 CHANGELOG 由 downstream 自行處理。

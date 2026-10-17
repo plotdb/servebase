@@ -14,7 +14,6 @@ servebase/
 ├─ script/           # 部署腳本
 ├─ dev/              # 開發用工具
 ├─ test/             # 測試
-├─ .backend/         # 編譯後的後端 JS（生成）
 ├─ node_modules/     # 依賴套件
 ├─ package.json      # 專案設定
 ├─ start             # 啟動腳本
@@ -240,7 +239,7 @@ dev/
 - **start** - 啟動腳本
   - 支援 `-c <config>` 指定設定檔
   - 設定 NODE_ENV
-  - 執行 node .backend/engine/index.js
+  - 執行 lsc ./backend/engine/index ( production 也跑 source; .backend 已不使用, 存在時只會 warning )
 
 - **.version** - 版本標記
   - 部署時更新
@@ -259,7 +258,7 @@ dev/
 
 - **.gitignore** - 版本控制排除
   - node_modules/
-  - .backend/
+  - .backend/ ( 已不使用, 防止誤 commit )
   - config/private/
   - config/gen/
   - server.log

@@ -273,7 +273,6 @@ COPY package*.json ./
 RUN npm ci --production
 
 COPY . .
-RUN npm run prebuild
 
 CMD ["npm", "start"]
 ```
