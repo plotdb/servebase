@@ -1,6 +1,10 @@
 ## master
 
  - features:
+   - `@servebase/auth`: authpanel login accepts `<name>@<scope>` ( a domain
+     without `.` ) and sends it as `<name>@<scope>.invalid`, for accounts managed
+     by system admin. Login only; signup still requires a full email. account-info
+     shows such usernames without the `.invalid` suffix.
    - `@servebase/auth`: two-factor authentication with TOTP ( Google Authenticator
      and the like ) and one-time recovery codes. Off unless `config.auth.mfa` is
      set, with its own encryption keys ( rotatable, same shape as `pepper` ).

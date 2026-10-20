@@ -105,4 +105,5 @@ module.exports =
         "is-verified": ({node}) -> node.classList.toggle \d-none, !(core.user.verified)
         "not-verified": ({node}) -> node.classList.toggle \d-none, !!(core.user.verified)
         uid: ({node}) -> node.value = core.user.key
-        username: ({node}) -> node.value = core.user.username
+        # 系統管理者管理的帳號 ( `name@scope.invalid` ) 顯示成登入時打的 `name@scope`
+        username: ({node}) -> node.value = "#{core.user.username or ''}".replace(/\.invalid$/, '')

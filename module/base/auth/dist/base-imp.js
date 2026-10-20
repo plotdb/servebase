@@ -171,7 +171,7 @@ baseImp = {
               return ['username', 'password', 'displayname'];
             },
             afterCheck: function(s, f){
-              if (s.username !== 1 && !this$.isValid.username(f.username.value)) {
+              if (s.username !== 1 && !this$.isValid.username(f.username.value, this$._tab)) {
                 s.username = 2;
               }
               if (s.password !== 1) {
@@ -218,19 +218,29 @@ baseImp = {
     };
   },
   mod: function(ctx){
-    var core, ldview, ldnotify, curegex, t;
+    var core, ldview, ldnotify, curegex, t, scoped;
     core = ctx.core, ldview = ctx.ldview, ldnotify = ctx.ldnotify, curegex = ctx.curegex, t = ctx.t;
+    scoped = function(u){
+      return /^[^@\s]+@[a-z0-9-]+$/i.exec(((u || '') + "").trim());
+    };
     return {
       tab: function(tab){
+        var ref$;
         if (/failed/.exec(this._info)) {
           this._info = 'default';
         }
         this._tab = tab;
+        if ((ref$ = this.form) != null && ref$.fields.username.value) {
+          this.form.check({
+            n: 'username',
+            now: true
+          });
+        }
         return this.view.render();
       },
       isValid: {
-        username: function(u){
-          return curegex.get('email').exec(u);
+        username: function(u, tab){
+          return curegex.get('email').exec(u) || (tab === 'login' && scoped(u));
         },
         password: function(p){
           return p && p.length >= 8;
@@ -260,6 +270,9 @@ baseImp = {
         this.view.render('signin-failed-hint');
         val = this.form.values();
         body = (ref$ = {}, ref$.username = val.username, ref$.password = val.password, ref$.displayname = val.displayname, ref$);
+        if (this._tab === 'login' && scoped(body.username)) {
+          body.username = body.username.trim() + ".invalid";
+        }
         if (this._tab === 'signup' && (nl = this.newsletter()) != null) {
           body.config = {
             newsletter: nl

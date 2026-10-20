@@ -15,7 +15,10 @@ User information is stored in an object called `global`, passed by an API by req
  - `user`: user object with at least following fields:
    - `key`: positive integer if user is logged in. otherwise 0, null or undefined.
    - `displayname`: verbose name
-   - `username`: email
+   - `username`: email. accounts managed by system admin use `<name>@<scope>.invalid`
+     ( created directly in db; `*.invalid` can't be signed up ). users log in to
+     them by typing `<name>@<scope>` in authpanel - a domain without `.` gets
+     `.invalid` appended, login only.
    - `staff`: true if this is staff user.
    - `verified`: if this account if verified.
  - `captcha`: captcha configuration. an object of key(captcha provider) / config (sitekey / enabled) mapping.

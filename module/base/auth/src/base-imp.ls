@@ -70,7 +70,7 @@ base-imp =
     @form = form = new ldform do
       names: -> <[username password displayname]>
       after-check: (s, f) ~>
-        if s.username != 1 and !@is-valid.username(f.username.value) => s.username = 2
+        if s.username != 1 and !@is-valid.username(f.username.value, @_tab) => s.username = 2
         if s.password != 1 =>
           s.password = if !f.password.value => 1 else if !@is-valid.password(f.password.value) => 2 else 0
         if @_tab == \login => s.displayname = 0
@@ -86,12 +86,17 @@ base-imp =
 
   mod: (ctx) ->
     {core, ldview, ldnotify, curegex, t} = ctx
+    # 系統管理者管理的帳號: 登入時打 `name@scope` ( 網域沒有 `.` ), 送出前補成 `name@scope.invalid`.
+    # 只用於登入; signup 照舊要求完整 email ( `*.invalid` 後端只讓 internal 建立 ).
+    scoped = (u) -> /^[^@\s]+@[a-z0-9-]+$/i.exec("#{u or ''}".trim!)
     tab: (tab) ->
       if /failed/.exec(@_info) => @_info = \default
       @_tab = tab
+      # scoped 帳號只能登入, 切到 signup 要重新檢查
+      if @form?fields.username.value => @form.check {n: \username, now: true}
       @view.render!
     is-valid:
-      username: (u) -> curegex.get('email').exec(u)
+      username: (u, tab) -> curegex.get('email').exec(u) or (tab == \login and scoped u)
       password: (p) -> p and p.length >= 8
 
     # 面板上 newsletter 勾選的值; 面板沒放這個元素回傳 undefined ( 不送 )
@@ -111,6 +116,7 @@ base-imp =
       @view.render \signin-failed-hint
       val = @form.values!
       body = {} <<< val{username, password, displayname}
+      if @_tab == \login and scoped(body.username) => body.username = "#{body.username.trim!}.invalid"
       # 面板有 newsletter 勾選框 ( input[name=newsletter] ) 才送; 後端只收 config.newsletter ( lib/index.ls )
       if @_tab == \signup and (nl = @newsletter!)? => body.config = {newsletter: nl}
       @ldld.on!
