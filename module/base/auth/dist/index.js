@@ -217,7 +217,7 @@
         var name, inviteToken, this$ = this;
         name = arg$.name, inviteToken = arg$.inviteToken;
         return this.get().then(function(g){
-          var e, form, token, login;
+          var e, form, input, login;
           g == null && (g = {});
           if ((g.user || (g.user = {})).key) {
             return g;
@@ -233,10 +233,18 @@
           this$.oauth.form = form = ld$.create({
             name: 'div'
           });
-          token = !inviteToken
-            ? ""
-            : "<input type=\"hidden\" name=\"inviteToken\" value=\"" + encodeURIComponent(inviteToken) + "\"/>";
-          form.innerHTML = "<form target=\"oauth-login\" action=\"" + this$.apiRoot() + name + "/\" method=\"post\">\n  <input type=\"hidden\" name=\"_csrf\" value=\"" + g.csrfToken + "\"/>" + token + "\n</form>";
+          form.innerHTML = "<form target=\"oauth-login\" action=\"" + this$.apiRoot() + name + "/\" method=\"post\">\n  <input type=\"hidden\" name=\"_csrf\" value=\"" + g.csrfToken + "\"/>\n</form>";
+          if (inviteToken) {
+            input = ld$.create({
+              name: 'input',
+              attr: {
+                type: 'hidden',
+                name: 'inviteToken'
+              }
+            });
+            input.value = inviteToken;
+            ld$.find(form, 'form', 0).appendChild(input);
+          }
           document.body.appendChild(form);
           window.oauthLogin = login = proxise(function(){
             return ld$.find(form, 'form', 0).submit();

@@ -159,6 +159,9 @@
      `node.getAttribute \data-name, invite-token: ...` compiled to
      `getAttribute('data-name', {inviteToken})`, so with `policy.login.accept-signup`
      set to `invite` a new account could not sign up through oauth.
+     The token is also no longer `encodeURIComponent`-ed into the oauth form, which
+     would have sent custom tokens with non-ASCII, spaces or symbols as their
+     percent-encoded text and failed with 1043.
    - `@servebase/core`: `servebase.config()` called from a page was silently ignored -
      `window.servebase` is a copy of the module object, so `config` set `_cfg` on the copy
      while `_init` read the original ( the after-init warning never fired either ). The

@@ -147,12 +147,15 @@ auth.prototype = Object.create(Object.prototype) <<< do
           @oauth.window.name = 'oauth-login'
         catch e => return Promise.reject(e)
         @oauth.form = form = ld$.create name: \div
-        token = if !invite-token => ""
-        else """<input type="hidden" name="inviteToken" value="#{encodeURIComponent invite-token}"/>"""
         form.innerHTML = """
         <form target="oauth-login" action="#{@api-root!}#name/" method="post">
-          <input type="hidden" name="_csrf" value="#{g.csrf-token}"/>#token
+          <input type="hidden" name="_csrf" value="#{g.csrf-token}"/>
         </form>"""
+        # invite token 可能是管理員自訂的字串 ( 中文、空白、符號 ), 用 .value 設定, 送出時才不會被編碼或插入 html
+        if invite-token =>
+          input = ld$.create name: \input, attr: {type: \hidden, name: \inviteToken}
+          input.value = invite-token
+          ld$.find(form, 'form', 0).appendChild input
         document.body.appendChild form
         window.oauth-login = login = proxise(-> ld$.find(form, 'form', 0).submit!)
         login!then ~> @fetch {renew: true}
