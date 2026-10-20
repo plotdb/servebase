@@ -136,8 +136,7 @@ auth.prototype = Object.create(Object.prototype) <<< do
         new Promise (res, rej) ->
 
   prompt: (o) -> @ui.authpanel true, o
-  # newsletter: 面板上的勾選 ( 沒給就不送 ); 只在這次登入建立新帳號時寫進 users.config
-  oauth: ({name, invite-token, newsletter}) ->
+  oauth: ({name, invite-token}) ->
     @get!
       .then (g = {}) ~>
         if g.{}user.key => return g
@@ -150,7 +149,6 @@ auth.prototype = Object.create(Object.prototype) <<< do
         @oauth.form = form = ld$.create name: \div
         token = if !invite-token => ""
         else """<input type="hidden" name="inviteToken" value="#{encodeURIComponent invite-token}"/>"""
-        if newsletter? => token += """<input type="hidden" name="newsletter" value="#{if newsletter => 1 else 0}"/>"""
         form.innerHTML = """
         <form target="oauth-login" action="#{@api-root!}#name/" method="post">
           <input type="hidden" name="_csrf" value="#{g.csrf-token}"/>#token

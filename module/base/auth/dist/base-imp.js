@@ -60,8 +60,7 @@ baseImp = {
                     r == null && (r = {});
                     return this$._auth.oauth({
                       name: node.getAttribute('data-name', {
-                        inviteToken: r.inviteToken,
-                        newsletter: this$.newsletter()
+                        inviteToken: r.inviteToken
                       })
                     });
                   }).then(function(g){
@@ -246,19 +245,12 @@ baseImp = {
           return p && p.length >= 8;
         }
       },
-      newsletter: function(){
-        var nl, ref$;
-        if (!(nl = (ref$ = this.view.get('newsletter')) != null ? ref$.querySelector('input[name="newsletter"]') : void 8)) {
-          return;
-        }
-        return !!nl.checked;
-      },
       info: function(it){
         this._info = it;
         return this.view.render('info');
       },
       submit: function(){
-        var val, body, ref$, nl, this$ = this;
+        var val, body, ref$, this$ = this;
         if (!this.form.ready()) {
           return;
         }
@@ -272,11 +264,6 @@ baseImp = {
         body = (ref$ = {}, ref$.username = val.username, ref$.password = val.password, ref$.displayname = val.displayname, ref$);
         if (this._tab === 'login' && scoped(body.username)) {
           body.username = body.username.trim() + ".invalid";
-        }
-        if (this._tab === 'signup' && (nl = this.newsletter()) != null) {
-          body.config = {
-            newsletter: nl
-          };
         }
         return this.ldld.on().then(function(){
           return debounce(1000);

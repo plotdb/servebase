@@ -84,8 +84,7 @@ normalize = ({key, username}) ->
     """, [u.key, "deleted(#{u.username})/#{u.key}", "(deleted user #{u.key})"]
 
 get-user = ({username, password, method, detail, create, invite-token, cb, req}) ->
-  config = if create and req => signup-config(req) else void
-  db.user-store.get {username, password, method, detail, create, invite-token, config}
+  db.user-store.get {username, password, method, detail, create, invite-token}
     .then (user) !->
       db.query "select count(ip) from session where owner = $1 group by ip", [user.key]
         .then (r={}) ->
@@ -248,16 +247,9 @@ route.auth.get \/info, (req, res) ~>
   res.send payload
 
 # we check if invite-token when user sign up
-# 第三方登入時面板上的 newsletter 勾選也先記在 session, 回來建帳號時用 ( signup-config )
 inject-invite-token = (req, res, next) ->
   if req.body and (t = req.body.invite-token) => req.session.invite-token = t
-  if req.body?newsletter? => req.session.signup-newsletter = (req.body.newsletter in [1 '1' true 'true'])
-  else delete req.session.signup-newsletter
   next!
-
-# 建立新帳號時寫進 users.config 的 ( 已有帳號的登入不動 ). 只收認得的欄位
-signup-config = (req) ->
-  if req.session?signup-newsletter? => {newsletter: !!req.session.signup-newsletter} else {}
 
 <[local google facebook line]>.for-each (name) ->
   if !providers[name] => return
@@ -314,11 +306,9 @@ route.auth
     # config skipped here to prevent var shadowing of the global config object
     {username,displayname,password,invite-token} = req.body{username,displayname,password,invite-token}
     if !username or !displayname or password.length < 8 => return next(lderror 400)
-    # config 只收認得的欄位 ( 註冊面板的 newsletter 勾選 ), 其他的不讓用戶自己寫進 users.config
-    cfg = {}
-    if req.body.config?newsletter? => cfg.newsletter = !!req.body.config.newsletter
+    # users.config 不收用戶自己傳的 ( req.body.config ), 新帳號一律從空的開始
     db.user-store.create {username, password, invite-token} <<< {
-      method: \local, detail: {displayname}, config: cfg
+      method: \local, detail: {displayname}, config: {}
     }
       .then (user) ~>
         # here we use the global config object.

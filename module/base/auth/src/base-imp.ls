@@ -29,7 +29,7 @@ base-imp =
                 .then (r) -> return if r => r else lderror.reject 999
             p
               .then (r = {}) ~>
-                @_auth.oauth {name: node.getAttribute \data-name, invite-token: r.invite-token, newsletter: @newsletter!}
+                @_auth.oauth {name: node.getAttribute \data-name, invite-token: r.invite-token}
               .then (g) ~>
                 debounce 350, ~> @info \default
                 @form.reset!
@@ -99,11 +99,6 @@ base-imp =
       username: (u, tab) -> curegex.get('email').exec(u) or (tab == \login and scoped u)
       password: (p) -> p and p.length >= 8
 
-    # 面板上 newsletter 勾選的值; 面板沒放這個元素回傳 undefined ( 不送 )
-    newsletter: ->
-      if !(nl = @view.get(\newsletter)?querySelector 'input[name="newsletter"]') => return
-      !!nl.checked
-
     info: ->
       @_info = it
       @view.render \info
@@ -117,8 +112,6 @@ base-imp =
       val = @form.values!
       body = {} <<< val{username, password, displayname}
       if @_tab == \login and scoped(body.username) => body.username = "#{body.username.trim!}.invalid"
-      # 面板有 newsletter 勾選框 ( input[name=newsletter] ) 才送; 後端只收 config.newsletter ( lib/index.ls )
-      if @_tab == \signup and (nl = @newsletter!)? => body.config = {newsletter: nl}
       @ldld.on!
         .then -> debounce 1000
         .then ~>

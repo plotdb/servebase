@@ -17,7 +17,7 @@
       return f.call({}, it);
     };
   })(function(backend){
-    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, loginDone, mfa, normalize, getUser, strategy, globalPayload, injectInviteToken, signupConfig, x$, this$ = this;
+    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, loginDone, mfa, normalize, getUser, strategy, globalPayload, injectInviteToken, x$, this$ = this;
     db = backend.db, app = backend.app, config = backend.config, route = backend.route, session = backend.session;
     captcha = Object.fromEntries((function(){
       var ref$, results$ = [];
@@ -169,17 +169,15 @@
       }
     };
     getUser = function(arg$){
-      var username, password, method, detail, create, inviteToken, cb, req, config;
+      var username, password, method, detail, create, inviteToken, cb, req;
       username = arg$.username, password = arg$.password, method = arg$.method, detail = arg$.detail, create = arg$.create, inviteToken = arg$.inviteToken, cb = arg$.cb, req = arg$.req;
-      config = create && req ? signupConfig(req) : void 8;
       return db.userStore.get({
         username: username,
         password: password,
         method: method,
         detail: detail,
         create: create,
-        inviteToken: inviteToken,
-        config: config
+        inviteToken: inviteToken
       }).then(function(user){
         db.query("select count(ip) from session where owner = $1 group by ip", [user.key]).then(function(r){
           r == null && (r = {});
@@ -353,26 +351,11 @@
       return res.send(payload);
     });
     injectInviteToken = function(req, res, next){
-      var t, ref$, ref1$;
+      var t;
       if (req.body && (t = req.body.inviteToken)) {
         req.session.inviteToken = t;
       }
-      if (((ref$ = req.body) != null ? ref$.newsletter : void 8) != null) {
-        req.session.signupNewsletter = (ref1$ = req.body.newsletter) === 1 || ref1$ === '1' || ref1$ === true || ref1$ === 'true';
-      } else {
-        delete req.session.signupNewsletter;
-      }
       return next();
-    };
-    signupConfig = function(req){
-      var ref$;
-      if (((ref$ = req.session) != null ? ref$.signupNewsletter : void 8) != null) {
-        return {
-          newsletter: !!req.session.signupNewsletter
-        };
-      } else {
-        return {};
-      }
     };
     ['local', 'google', 'facebook', 'line'].forEach(function(name){
       var x$;
@@ -456,7 +439,7 @@
     app.use(passport.session());
     x$ = route.auth;
     x$.post('/signup', backend.middleware.captcha, function(req, res, next){
-      var ref$, username, displayname, password, inviteToken, cfg;
+      var ref$, username, displayname, password, inviteToken;
       ref$ = {
         username: (ref$ = req.body).username,
         displayname: ref$.displayname,
@@ -466,10 +449,6 @@
       if (!username || !displayname || password.length < 8) {
         return next(lderror(400));
       }
-      cfg = {};
-      if (((ref$ = req.body.config) != null ? ref$.newsletter : void 8) != null) {
-        cfg.newsletter = !!req.body.config.newsletter;
-      }
       return db.userStore.create({
         username: username,
         password: password,
@@ -478,7 +457,7 @@
         detail: {
           displayname: displayname
         },
-        config: cfg
+        config: {}
       }).then(function(user){
         var ref$;
         if (((ref$ = config.policy || (config.policy = {})).login || (ref$.login = {})).skipVerify) {
