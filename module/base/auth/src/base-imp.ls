@@ -29,7 +29,7 @@ base-imp =
                 .then (r) -> return if r => r else lderror.reject 999
             p
               .then (r = {}) ~>
-                @_auth.oauth {name: node.getAttribute \data-name, invite-token: r.invite-token}
+                @_auth.oauth {name: node.getAttribute(\data-name), invite-token: r.invite-token}
               .then (g) ~>
                 debounce 350, ~> @info \default
                 @form.reset!

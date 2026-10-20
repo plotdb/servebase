@@ -54,14 +54,13 @@ user-store.prototype = Object.create(Object.prototype) <<< do
       (e, ret) <- bcrypt.compare md5, hash, _
       if ret => res {legacy: true} else rej new lderror 1012
 
-  # config: 只在這次建立新帳號時用 ( 例: 第三方登入時面板上的 newsletter 勾選 )
-  get: ({username, password, method, detail, create, invite-token, config}) ->
+  get: ({username, password, method, detail, create, invite-token}) ->
     username = username.toLowerCase!
     if !(is-email username) => return Promise.reject new lderror(1015)
     @db.query "select * from users where username = $1", [username]
       .then (ret = {}) ~>
         if !(user = ret.[]rows.0) and !create => return lderror.reject 1034
-        if !user => return @create {username, password, method, detail, invite-token, config}
+        if !user => return @create {username, password, method, detail, invite-token}
         if !(method == \local or user.method == \local) =>
           delete user.password
           return user

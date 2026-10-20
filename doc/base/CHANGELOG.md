@@ -122,6 +122,10 @@
      `start` with no engine under it is flagged - a server still coming up, or
      one stuck failing to start. `-j` for json.
  - tweaks:
+   - `@servebase/auth`: signup ( `POST /api/auth/signup` ) no longer writes
+     `req.body.config` into `users.config`; new accounts always start from `{}`.
+     Projects that posted their own fields in `config` on signup should set them
+     after the account is created instead.
    - `npm stop` ( now `tool/base/stop` ) stops gently: requests in flight are answered
      before exit ( `config.shutdown-timeout`, 10s ), and the log pipeline is left to end
      by itself. systemd units should set `ExecStop=` to it. `backend.on-stop(fn)` runs `fn`
@@ -151,6 +155,10 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `@servebase/auth`: oauth login from the authpanel never sent the invite token -
+     `node.getAttribute \data-name, invite-token: ...` compiled to
+     `getAttribute('data-name', {inviteToken})`, so with `policy.login.accept-signup`
+     set to `invite` a new account could not sign up through oauth.
    - `@servebase/core`: `servebase.config()` called from a page was silently ignored -
      `window.servebase` is a copy of the module object, so `config` set `_cfg` on the copy
      while `_init` read the original ( the after-init warning never fired either ). The

@@ -59,9 +59,8 @@ baseImp = {
                   return p.then(function(r){
                     r == null && (r = {});
                     return this$._auth.oauth({
-                      name: node.getAttribute('data-name', {
-                        inviteToken: r.inviteToken
-                      })
+                      name: node.getAttribute('data-name'),
+                      inviteToken: r.inviteToken
                     });
                   }).then(function(g){
                     debounce(350, function(){
