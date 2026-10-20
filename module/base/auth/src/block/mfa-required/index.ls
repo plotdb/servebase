@@ -15,9 +15,11 @@ module.exports =
     (r) <~ core.ldcvmgr.get {name: "@servebase/auth", path: "mfa-verify"}, {} .then _
     if !r or r.error => return window.location.href = "/auth/?oauth-failed#{if r => '&code=' + r.error else ''}"
     ld$.find(root, '[ld=done]', 0).classList.toggle \d-none, false
-    # proxise pending to wait oauth to finish. see oauth-done
+    # 通知開啟這個視窗的頁面. see oauth-done
     try
-      opener.oauth-login.resolve!
+      c = new BroadcastChannel \@servebase/auth/oauth
+      c.postMessage \done
+      c.close!
       window.close!
     catch e
-      console.log "error when trying to resolve oauth-login"
+      console.log "error when trying to notify oauth-login"

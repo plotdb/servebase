@@ -14,10 +14,12 @@
             "ok": "已成功登入"
             "reload": "請關閉此窗並重新載入網站"
       init: ->
-        # proxise pending to wait oauth to finish.
+        # 通知開啟這個視窗的頁面 ( auth.oauth 在等 ). opener 已被切斷, 改用 BroadcastChannel
         try
-          opener.oauth-login.resolve!
+          c = new BroadcastChannel \@servebase/auth/oauth
+          c.postMessage \done
+          c.close!
           window.close!
         catch e
-          console.log "error when trying to resolve oauth-login"
+          console.log "error when trying to notify oauth-login"
 

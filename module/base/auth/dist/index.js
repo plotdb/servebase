@@ -249,12 +249,29 @@
           window.oauthLogin = login = proxise(function(){
             return ld$.find(form, 'form', 0).submit();
           });
+          if (this$.oauth.channel) {
+            this$.oauth.channel.close();
+          }
+          if (typeof BroadcastChannel != 'undefined' && BroadcastChannel !== null) {
+            this$.oauth.channel = new BroadcastChannel('@servebase/auth/oauth');
+            this$.oauth.channel.onmessage = function(arg$){
+              var data;
+              data = arg$.data;
+              if (data === 'done') {
+                return login.resolve();
+              }
+            };
+          }
           return login().then(function(){
             return this$.fetch({
               renew: true
             });
           });
         })['finally'](function(){
+          if (this$.oauth.channel) {
+            this$.oauth.channel.close();
+            this$.oauth.channel = null;
+          }
           if (!(this$.oauth.form && this$.oauth.form.parentNode)) {
             return;
           }

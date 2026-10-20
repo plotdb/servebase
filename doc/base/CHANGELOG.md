@@ -155,6 +155,13 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `@servebase/auth`: oauth login finishes in the page again without a reload - the
+     popup has had no `opener` since it is cut on open ( and by the
+     `Cross-Origin-Opener-Policy` in `config.ngx` ), so `oauth-done` / `mfa-required`
+     could not resolve `window.oauth-login`: the popup stayed open and the authpanel
+     kept waiting. They now post `done` on `BroadcastChannel('@servebase/auth/oauth')`,
+     which `auth.oauth` listens to. Projects with their own `oauth-done` block should
+     do the same.
    - `@servebase/auth`: oauth login from the authpanel never sent the invite token -
      `node.getAttribute \data-name, invite-token: ...` compiled to
      `getAttribute('data-name', {inviteToken})`, so with `policy.login.accept-signup`

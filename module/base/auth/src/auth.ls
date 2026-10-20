@@ -158,8 +158,15 @@ auth.prototype = Object.create(Object.prototype) <<< do
           ld$.find(form, 'form', 0).appendChild input
         document.body.appendChild form
         window.oauth-login = login = proxise(-> ld$.find(form, 'form', 0).submit!)
+        # popup 的 opener 在上面被設成 null, nginx 也有 COOP, popup 碰不到這個頁面;
+        # 改由 oauth-done / mfa-required 透過 BroadcastChannel 通知 ( 同網域即可 )
+        if @oauth.channel => @oauth.channel.close!
+        if BroadcastChannel? =>
+          @oauth.channel = new BroadcastChannel \@servebase/auth/oauth
+          @oauth.channel.onmessage = ({data}) -> if data == \done => login.resolve!
         login!then ~> @fetch {renew: true}
       .finally ~>
+        if @oauth.channel => @oauth.channel.close!; @oauth.channel = null
         if !(@oauth.form and @oauth.form.parentNode) => return
         @oauth.form.parentNode.removeChild @oauth.form
       .then (g = {}) -> if !g.{}user.key => Promise.reject new lderror(1000) else return g
