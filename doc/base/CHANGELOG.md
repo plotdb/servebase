@@ -1,6 +1,23 @@
 ## master
 
  - features:
+   - engine: `aux.client-ip(req)` - the client ip that access control can rely on,
+     computed once and kept in `req.client-ip`. It reads only the socket and the
+     X-Forwarded-For added by the trusted local proxy ( nginx ), never headers such as
+     `cf-connecting-ip` that anyone can send directly to the origin. Behind Cloudflare
+     it is right only once nginx realip is set up ( `config/base/nginx/cloudflare-notice.md` );
+     until then it is a Cloudflare node. `aux.ip` is unchanged and still trusts those
+     headers - fine for logs and throttling, not for deciding who gets in.
+   - engine: `backend.ipguard` - restrict access by client ip. Named policies in
+     `config.policy.ip` ( `allow` / `deny` lists of ips and cidrs, IPv4 and IPv6 );
+     a policy not configured lets everything through, so nothing changes until one is
+     set, and an invalid entry fails the start. `ipguard.middleware(name)` guards a
+     route; `ipguard.check {policy}` rejects with lderror `1051` ( ip not allowed ) and
+     is meant for permission checks deep in the code, where it reads the ip from a
+     request context ( AsyncLocalStorage, mounted after session ) instead of needing
+     `req`. No ip means denied. Checked on every request, since a user's ip changes.
+     `check` already takes `user` and `scope` for per-user / per-org rules later.
+     Needs lderror 2.4.8 ( `1051` ). See `context/servebase/backend.md` -> IP 限制.
    - `@servebase/auth`: authpanel login accepts `<name>@<scope>` ( a domain
      without `.` ) and sends it as `<name>@<scope>.invalid`, for accounts managed
      by system admin. Login only; signup still requires a full email. account-info

@@ -1,5 +1,28 @@
+require! <[proxy-addr]>
+ipaddr = require \ipaddr.js
+
+# 只信任本機轉進來的 X-Forwarded-For ( nginx 與 node 在同一台 ). engine 也用它設定 express 的 `trust proxy`,
+# `client-ip` 則直接拿來算 - ws 握手的 req 不經過 express, 沒有 `req.ip` 可用.
+trust-proxy = '127.0.0.1'
+trust = proxy-addr.compile trust-proxy
+
 base = do
   hostname: (req) -> req.hostname
+  trust-proxy: trust-proxy
+  # 可信的 client ip, 給存取控制 ( `ipguard` ) 用. 算一次存在 `req.client-ip`.
+  #  - 只看 socket 與受信任 proxy 加上的 X-Forwarded-For, 不看 `cf-connecting-ip` 等 header:
+  #    這些 header 任何人都能自己帶, 直連源站就能偽造.
+  #  - 在 Cloudflare 後面時, 要靠 nginx realip ( `set_real_ip_from` + `real_ip_header` ) 把
+  #    `$remote_addr` 換成訪客 ip, 這裡才會正確; 沒設的話拿到的是 CF 節點 ip.
+  #    see config/base/nginx/cloudflare-notice.md
+  #  - IPv4-mapped IPv6 ( `::ffff:1.2.3.4` ) 轉回 IPv4, IPv6 轉成標準寫法.
+  client-ip: (req) ->
+    if req.client-ip => return that
+    ip = try proxy-addr(req, trust) catch e => null
+    return req.client-ip = if ip => base.normalize-ip(ip) else 'unknown-ip'
+  normalize-ip: (ip) -> try ipaddr.process(ip).toString! catch e => ip
+  # 盡量取得 client ip, 給 log / throttle 用. 會相信 `cf-connecting-ip` 等 header, 可被偽造,
+  # 不要拿來做存取控制 - 那要用 `client-ip`.
   ip: (req) ->
     # `req.headers` is kinda case-sensitive. use `req.header()` to get rid of this problem.
     return (

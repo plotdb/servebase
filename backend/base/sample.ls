@@ -30,6 +30,16 @@ app.get \/lderror/reject,  (req, res, next) -> Promise.reject(lderror 1023)
 api.get \/ip, (req, res, next) ->
   res.send aux.ip(req)
 
+# ipguard: policy `sample` 在 config 的 `policy.ip` 裡設 ( 沒設就放行 ), 被擋時回 lderror 1051.
+#  - /ip/guard: 依路徑擋
+#  - /ip/check: 權限判斷裡的寫法 - 不傳 req, 經過 db query 之後從 request context 取 ip
+api.get \/ip/guard, backend.ipguard.middleware(\sample), (req, res, next) ->
+  res.send req.client-ip
+api.get \/ip/check, (req, res, next) ->
+  db.query "select 1"
+    .then -> backend.ipguard.check {policy: \sample}
+    .then -> res.send req.client-ip
+
 api.get \/password-due, (req, res, next) ->
   db.user-store.password-due req{user}
     .then (delta) -> res.send(if delta > 0 => {password-expire: delta} else {})

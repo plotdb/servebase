@@ -8,7 +8,7 @@ require! <[@plotdb/srcbuild/dist/view/pug]>
 # srcbuild's ext/pug ); required here so that moving those requires around
 # cannot silently break loading the config.
 require! <[livescript]>
-require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql ./localctl ./cf-challenge-mock]>
+require! <[./error-handler ./redis-node ./mail-queue ./i18n ./aux ./session ./db/postgresql ./localctl ./cf-challenge-mock ./ipguard]>
 require! <[@servebase/auth @servebase/consent @servebase/captcha @servebase/config]>
 
 libdir = path.dirname fs.realpathSync(__filename.replace(/\(js\)$/,''))
@@ -263,7 +263,10 @@ backend.prototype = Object.create(Object.prototype) <<< do
         @log-server.info "initializing backend in #{app.get \env} mode".cyan
 
         app.disable \x-powered-by # Dont show server detail
-        app.set 'trust proxy', '127.0.0.1' # So we can trust sth like ip from X-Forwarded-*
+        app.set 'trust proxy', aux.trust-proxy # So we can trust sth like ip from X-Forwarded-*
+        # 可信的 client ip, 算一次存在 `req.client-ip` ( see aux.client-ip )
+        app.use (req, res, next) -> aux.client-ip req; next!
+        @ipguard = ipguard @
 
         # CSP  - default in nginx but can be overwritten in api server.
         # CORS - only needed if we need this
@@ -354,6 +357,10 @@ backend.prototype = Object.create(Object.prototype) <<< do
 
         # CSRF Protection. must after session
         app.use @middleware.csrf = csurf!
+
+        # request context ( 目前是給 ipguard 取 ip 用 ). 放在 session / body-parser 之後:
+        # 它們的 callback 來自更早建立的 socket, 在那之前掛會讓 context 在途中斷掉.
+        app.use ipguard.context.middleware
 
         app.use \/api, @route.api
         # note that some route may be hardcoded directly by `auth(...)`.

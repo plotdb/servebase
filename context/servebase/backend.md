@@ -119,6 +119,8 @@ throw new lderror(message, id: error-id, status: http-status)
 
 #### 主要函數
 - `routecatch(router)` - 自動捕獲路由錯誤
+- `client-ip(req)` - 可信的 client ip, 存在 `req.client-ip`. 存取控制只能用這個 ( 見「IP 限制」 )
+- `ip(req)` - 盡量取得的 client ip, 會信 `cf-connecting-ip` 等可偽造的 header, 只給 log / 限流用
 - `escape-html(str)` - HTML escape
 - 其他工具函數
 
@@ -288,6 +290,39 @@ api.post '/api/submit',
   throttle.check(ip: {count: 10, duration: 60000})
   (req, res) -> ...
 ```
+
+## IP 限制 (ipguard)
+
+位於 backend/engine/ipguard.ls, engine 建好放在 `backend.ipguard`。
+
+### 設定
+```livescript
+policy:
+  ip:
+    admin: allow: <[203.0.113.0/24 2001:db8::/32 198.51.100.7]>
+    # deny: <[...]>   # 先看 deny 再看 allow; 有 allow 時不在清單內的都擋
+```
+沒設定的 policy 一律放行; 寫錯的 ip / cidr 讓啟動失敗。
+
+### 使用
+```livescript
+# 依路徑擋
+route.use backend.ipguard.middleware \admin
+# 在權限判斷裡擋 ( 拿不到 req 也行, 從 request context 取 ip ), 被擋時 reject lderror 1051
+backend.ipguard.check {policy: \admin}
+# 只要結果
+backend.ipguard.allowed {policy: \admin} .then (ok) -> ...
+```
+
+### 注意
+- ip 來自 `aux.client-ip`。在 Cloudflare 後面要先設好 nginx realip
+  ( config/base/nginx/cloudflare-notice.md ), 否則拿到的是 CF 節點 ip, 有設 policy 的地方全部被擋。
+- request context 在 session / csrf 之後才掛, 在那之前的 middleware 用 `check` 要自己傳 `ip`。
+  ws 握手不經過 express, 要用 `aux.client-ip(req)` 取 ip 後傳進去。
+- 取不到 ip 一律不通過。
+- 每個 request 都檢查 ( 用戶 ip 會變 )。
+- `check` 收 `user` / `scope`, 預留給之後的 per-user / per-org 規則; 規則會疊加 ( AND ),
+  下層只能比 global 更嚴。
 
 ## Log 系統
 

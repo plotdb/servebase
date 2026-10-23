@@ -23,7 +23,11 @@ Nothing in this config compensates for that.
    that add a second proxy block ( a registry backend, say ) repeat those two lines
    and inherit the same problem.
 
-3. **`limit_req` would be worse than useless.** The commented-out
+3. **`backend.ipguard` locks everyone out.** It uses `aux.client-ip`, which sees
+   the same CF node address, so every request to a guarded route fails with `1051`
+   ( closed, not bypassed ). Set up realip before configuring any `policy.ip`.
+
+4. **`limit_req` would be worse than useless.** The commented-out
    `limit_req zone=api burst=7 nodelay` would throttle per CF node, i.e. treat every
    visitor as one client. Do not enable it before this is fixed.
 
