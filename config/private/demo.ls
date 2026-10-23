@@ -86,6 +86,9 @@ module.exports = do
     # when true, all errors handled in `@servebase/backend/error-handler` will be logged with `debug` level
     all-error: false
   policy:
+    # ip policies. this allows connections from 192.168.1.* and 127.0.0.1 to admin related 
+    # use `route.use backend.ipguard.middleware(\admin)` to check. you can use different name other than `admin` by your need.
+    ip: admin: allow: <[192.168.1.0/8 127.0.0.1]>
     # login policy
     login:
       skip-verify: false # default false. when true, verification mail won't be sent when `signup`.
