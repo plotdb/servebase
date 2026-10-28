@@ -19,7 +19,8 @@
      Tokens are one-time, stored as sha256 in the new `activatetoken` table, and
      replaced when sent again. A pending account can't log in ( password or 3rd party )
      or sign up: these return lderror `1052` ( account not activated ), and authpanel
-     shows block `activate-required` to send the mail again. Forgot password on a
+     shows block `activate-required` to send the mail again
+     ( 3rd party login: the popup's `oauth-failed` page explains it for `code=1052` ). Forgot password on a
      pending account sends the activation mail instead. Admin api: `POST
      /api/admin/user/` without `password` creates a pending account, `POST
      /api/admin/user/:key/activate` resends. See `module/base/auth/README.md` ->

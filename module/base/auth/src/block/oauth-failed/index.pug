@@ -1,10 +1,18 @@
 .w-640.rwd.m-auto
   script(type="@plotdb/block"): include:lsc index.ls
   .w-100.d-flex.align-items-center.justify-content-center: div
-    h1.text-center.mb-4(t) title
-    p(t) desc
-    ul
-      li(t) opt1
-      li(t) opt2
-      li #[a(href="/auth/?passwd-reset",t) reset]
+    div(ld="reason",data-name="default")
+      h1.text-center.mb-4(t) title
+      p(t) desc
+      ul
+        li(t) opt1
+        li(t) opt2
+        li #[a(href="/auth/?passwd-reset",t) reset]
+    //- 1052: 管理員代建、還沒啟用的帳號. 忘記密碼頁對這種帳號會改寄啟用信
+    .d-none(ld="reason",data-name="pending")
+      h1.text-center.mb-4(t) pending.title
+      p(t) pending.desc
+      ul
+        li(t) pending.hint
+        li #[a(href="/auth/?passwd-reset",t) pending.resend]
     p(t) contact
