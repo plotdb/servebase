@@ -99,6 +99,8 @@ module.exports =
             if v != \login => return
             auth.ensure {lock: true} .then -> window.location.href = "/"
           .catch (e) ->
+            # 403: 連結無效或過期 ( 送出時多給的時間也過了 ), 請用戶再寄一次
+            if lderror.id(e) == 403 => return ldcvmgr.get \invalid
             console.log e
             error e
 

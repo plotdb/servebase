@@ -10,7 +10,7 @@
       return f(it);
     };
   })(function(backend){
-    var db, config, route, session, mdw, getmap;
+    var db, config, route, session, mdw, getmap, hashToken;
     db = backend.db, config = backend.config, route = backend.route, session = backend.session;
     mdw = {
       throttle: throttle.kit.login,
@@ -31,6 +31,9 @@
         domain: domain
       };
     };
+    hashToken = function(it){
+      return "sha256:" + crypto.createHash('sha256').update(it + "").digest('hex');
+    };
     return {
       verify: function(arg$){
         var req, user, obj;
@@ -45,7 +48,7 @@
             time = new Date();
             return obj.key = user.key, obj.hex = (user.key + "-") + crypto.randomBytes(30).toString('hex'), obj.time = time, obj;
           }).then(function(){
-            return db.query("insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]);
+            return db.query("insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, hashToken(obj.hex), obj.time]);
           }).then(function(){
             var email, ret;
             email = user.username;
@@ -99,7 +102,10 @@
           if (!(token = req.params.token)) {
             return lderror.reject(400);
           }
-          return db.query("select owner,time from mailverifytoken where token = $1", [token]).then(function(r){
+          if (/^sha256:/.test(token)) {
+            return res.redirect('/auth/?mail-expire');
+          }
+          return db.query("select owner,time from mailverifytoken where token = any($1)", [[hashToken(token), token]]).then(function(r){
             var tick, verified;
             r == null && (r = {});
             if (!(r.rows || (r.rows = [])).length) {

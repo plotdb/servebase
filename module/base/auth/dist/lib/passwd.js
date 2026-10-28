@@ -10,8 +10,35 @@
       return f(it);
     };
   })(function(backend){
-    var db, config, route, session;
+    var db, config, route, session, hashToken, findToken, expire, grace, expired;
     db = backend.db, config = backend.config, route = backend.route, session = backend.session;
+    hashToken = function(it){
+      return "sha256:" + crypto.createHash('sha256').update(it + "").digest('hex');
+    };
+    findToken = function(token){
+      token = (token || '') + "";
+      if (!token || /^sha256:/.test(token)) {
+        return Promise.resolve(null);
+      }
+      return db.query("select owner,time from pwresettoken where token = any($1)", [[hashToken(token), token]]).then(function(r){
+        r == null && (r = {});
+        return (r.rows || (r.rows = []))[0] || null;
+      });
+    };
+    expire = function(){
+      var tick;
+      tick = parseInt(((config.policy || {}).tokenExpire || {}).passwordReset);
+      if (isNaN(tick) || tick < 0) {
+        return 600;
+      } else {
+        return tick;
+      }
+    };
+    grace = 1800;
+    expired = function(obj, extra){
+      extra == null && (extra = 0);
+      return Date.now() - new Date(obj.time).getTime() > 1000 * (expire() + extra);
+    };
     return {
       route: function(){
         var mdw, getmap;
@@ -42,23 +69,24 @@
           };
           return db.userStore.hashing(password.plain, true, true).then(function(ret){
             password.hashed = ret;
-            return db.query(["select users.key from users,pwresettoken", "where pwresettoken.token=$1 and users.key=pwresettoken.owner"].join(" "), [token]);
-          }).then(function(r){
+            return findToken(token);
+          }).then(function(obj){
             var user;
-            r == null && (r = {});
-            if (!(r.rows || (r.rows = [])).length) {
+            if (!obj || expired(obj, grace)) {
               return lderror.reject(403);
             }
-            user = r.rows[0];
-            user.password = password.hashed;
+            user = {
+              key: obj.owner,
+              password: password.hashed
+            };
             return db.query("update users\n  set (password,method) = ($2,$3),\n  config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'\nwhere key = $1", [user.key, user.password, 'local']).then(function(){
               return db.userStore.passwordTrack({
                 user: user,
                 hash: password.hashed
               });
+            }).then(function(){
+              return db.query("delete from pwresettoken where owner = $1", [user.key]);
             });
-          }).then(function(){
-            return db.query("delete from pwresettoken where pwresettoken.token=$1", [token]);
           }).then(function(){
             return res.send();
           });
@@ -69,21 +97,16 @@
           if (!token) {
             return lderror.reject(400);
           }
-          return db.query("select owner,time from pwresettoken where token = $1", [token]).then(function(r){
-            var obj, tick;
-            r == null && (r = {});
-            if (!(r.rows || (r.rows = [])).length) {
+          return findToken(token).then(function(obj){
+            if (!obj) {
               return lderror.reject(403);
             }
-            obj = r.rows[0];
-            tick = parseInt(((config.policy || {}).tokenExpire || {}).passwordReset);
-            if (isNaN(tick) || tick < 0) {
-              tick = 600;
-            }
-            if (new Date().getTime() - new Date(obj.time).getTime() > 1000 * tick) {
+            if (expired(obj)) {
               return res.redirect('/auth/?passwd-expire');
             }
-            res.cookie("password-reset-token", token);
+            res.cookie("password-reset-token", token, {
+              maxAge: 1000 * (expire() + grace)
+            });
             return res.redirect("/auth/?passwd-change");
           });
         });
@@ -107,7 +130,7 @@
             obj.time = time;
             return db.query("delete from pwresettoken where owner=$1", [obj.key]);
           }).then(function(){
-            return db.query("insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]);
+            return db.query("insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, hashToken(obj.hex), obj.time]);
           }).then(function(){
             return backend.mailQueue.byTemplate('reset-password', obj.email, import$({
               token: obj.hex

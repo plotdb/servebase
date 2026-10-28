@@ -14,6 +14,9 @@ getmap = (req) ->
   else config.domain or aux.hostname(req)
   return {sitename, domain}
 
+# token 只存 hash ( `sha256:<hex>` ), 改成 hash 之前發出的明文 token 一樣查得到. 細節見 ./passwd
+hash-token = -> "sha256:" + crypto.createHash(\sha256).update("#it").digest(\hex)
+
 verify: ({req, user}) ->
   obj = {}
   (ret) <~ backend.mail-queue.in-blacklist user.username .then _
@@ -24,7 +27,7 @@ verify: ({req, user}) ->
       obj <<< {key: user.key, hex: "#{user.key}-" + (crypto.randomBytes(30).toString \hex), time: time }
       # dont delete other tokens so users can still verify with earlier tokens (if received later)
       #db.query "delete from mailverifytoken where owner=$1", [obj.key]
-    .then -> db.query "insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]
+    .then -> db.query "insert into mailverifytoken (owner,token,time) values ($1,$2,$3)", [obj.key, hash-token(obj.hex), obj.time]
     .then ->
       email = user.username
       # send mail without `.` (and `+...`), a quick hack to decrease disposable gmail usage, because:
@@ -57,7 +60,8 @@ route: ->
   route.app.get \/auth/mail/verify/:token, (req, res) ->
     lc = {}
     if !(token = req.params.token) => return lderror.reject 400
-    db.query "select owner,time from mailverifytoken where token = $1", [token]
+    if /^sha256:/.test(token) => return res.redirect \/auth/?mail-expire
+    db.query "select owner,time from mailverifytoken where token = any($1)", [[hash-token(token), token]]
       .then (r={})->
         if !r.[]rows.length => return lderror.reject 1013
         lc.obj = r.rows.0

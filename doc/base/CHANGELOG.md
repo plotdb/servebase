@@ -1,5 +1,15 @@
 ## master
 
+ - fixes:
+   - `@servebase/auth`: posting a new password ( `POST /api/auth/passwd/reset/:token` )
+     now checks if the token expired - before, only clicking the link did, so an unused
+     token from an old mail could reset the password at any time by posting directly.
+     Users who opened the link in time get extra 30 minutes to finish; an expired token
+     shows the "invalid link, send again" dialog instead of a generic error.
+   - `@servebase/auth`: password reset and email verification tokens are stored as
+     sha256 ( `sha256:<hex>` ) instead of plaintext. Tokens sent before this still work
+     until they expire, so nothing breaks on deploy; no migration needed.
+
  - features:
    - engine: `aux.client-ip(req)` - the client ip that access control can rely on,
      computed once and kept in `req.client-ip`. It reads only the socket and the

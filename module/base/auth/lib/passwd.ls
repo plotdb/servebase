@@ -4,6 +4,23 @@ require! <[@servebase/backend/throttle @servebase/backend/aux]>
 (backend) <- ((f) -> module.exports = -> f it) _
 {db,config,route,session} = backend
 
+# token 只存 hash ( `sha256:<hex>` ), 原文只在信裡.
+# 改成 hash 之前發出的 token 是明文, 一樣查得到; 這些在有效時間過後就失效, 之後可以拿掉明文的比對.
+# 帶 `sha256:` 前綴的輸入不收, 否則讀得到 db 的人可以直接拿 hash 當 token 用.
+hash-token = -> "sha256:" + crypto.createHash(\sha256).update("#it").digest(\hex)
+find-token = (token) ->
+  token = "#{token or ''}"
+  if !token or /^sha256:/.test(token) => return Promise.resolve null
+  db.query "select owner,time from pwresettoken where token = any($1)", [[hash-token(token), token]]
+    .then (r={}) -> r.[]rows.0 or null
+
+# 連結的有效時間 ( 秒 ). 點連結時檢查; 送出新密碼時多給 `grace`, 讓接近到期才點開的人還有時間填.
+expire = ->
+  tick = parseInt(((config.policy or {}).token-expire or {}).password-reset)
+  if isNaN(tick) or tick < 0 => 600 else tick
+grace = 1800
+expired = (obj, extra = 0) -> Date.now! - new Date(obj.time).getTime! > 1000 * (expire! + extra)
+
 route: ->
   mdw = throttle: throttle.kit.login, captcha: backend.middleware.captcha
   getmap = (req) ->
@@ -19,12 +36,10 @@ route: ->
     db.user-store.hashing password.plain, true, true
       .then (ret) ->
         password.hashed = ret
-        db.query(["select users.key from users,pwresettoken"
-        "where pwresettoken.token=$1 and users.key=pwresettoken.owner"].join(" "),[token])
-      .then (r={}) ->
-        if !r.[]rows.length => return lderror.reject 403
-        user = r.rows.0
-        user.password = password.hashed
+        find-token token
+      .then (obj) ->
+        if !obj or expired(obj, grace) => return lderror.reject 403
+        user = {key: obj.owner, password: password.hashed}
         db.query """
         update users
           set (password,method) = ($2,$3),
@@ -32,21 +47,17 @@ route: ->
         where key = $1
         """, [user.key, user.password, \local]
           .then -> db.user-store.password-track {user, hash: password.hashed}
-      .then -> db.query "delete from pwresettoken where pwresettoken.token=$1", [token]
+          .then -> db.query "delete from pwresettoken where owner = $1", [user.key]
       .then -> res.send!
 
   route.app.get \/auth/passwd/reset/:token, mdw.throttle, (req, res) ->
     token = req.params.token
     if !token => return lderror.reject 400
-    db.query "select owner,time from pwresettoken where token = $1", [token]
-      .then (r={})->
-        if !r.[]rows.length => return lderror.reject 403
-        obj = r.rows.0
-        tick = parseInt(((config.policy or {}).token-expire or {}).password-reset)
-        if isNaN(tick) or tick < 0 => tick = 600
-        if new Date!getTime! - new Date(obj.time).getTime! > 1000 * tick =>
-          return res.redirect \/auth/?passwd-expire
-        res.cookie "password-reset-token", token
+    find-token token
+      .then (obj) ->
+        if !obj => return lderror.reject 403
+        if expired(obj) => return res.redirect \/auth/?passwd-expire
+        res.cookie "password-reset-token", token, {max-age: 1000 * (expire! + grace)}
         res.redirect "/auth/?passwd-change"
 
   route.auth.post \/passwd/reset, mdw.throttle, mdw.captcha, (req, res) ->
@@ -61,7 +72,7 @@ route: ->
           key: r.rows.0.key, email: r.rows.0.username
           hex: "#{r.rows.0.key}" + (crypto.randomBytes(30).toString \hex), time: time
         db.query "delete from pwresettoken where owner=$1", [obj.key]
-      .then -> db.query "insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, obj.hex, obj.time]
+      .then -> db.query "insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, hash-token(obj.hex), obj.time]
       .then ->
         backend.mail-queue.by-template(
           \reset-password
