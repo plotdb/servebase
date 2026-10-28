@@ -34,6 +34,10 @@
             password = Math.random!toString(36).substring(2)
             ld$.fetch "/api/admin/user/#{ctx.key}/password", {method: \POST}, {json: {password}}
               .then -> alert "password changed to #password"
+          "resend-activation": ({ctx}) ->
+            ld$.fetch "/api/admin/user/#{ctx.key}/activate", {method: \POST}
+              .then -> alert "activation mail sent"
+              .catch (e) -> alert(if lderror.id(e) == 1011 => "account already activated" else "failed: #{lderror.id e}")
           "delete-user": ({ctx}) ->
             ld$.fetch "/api/admin/user/#{ctx.key}", {method: \DELETE}
               .then -> alert \delete.
@@ -60,6 +64,21 @@
         .then -> alert "user created ( key: #{it.key} )"
         .then ~>
           <[username displayname password]>.map ~> @view.admin.get("adduser.#{it}").value = ''
+    # 不給密碼: 建立 pending 帳號並寄出啟用信, 由用戶自己設定密碼
+    inviteuser: ~>
+      username = @view.admin.get('adduser.username').value
+      displayname = @view.admin.get('adduser.displayname').value
+      if !(username and displayname) => return
+      ld$.fetch "/api/admin/user/", {method: \POST}, {type: \json, json: {username, displayname}}
+        .then -> alert "user invited ( key: #{it.key} ), activation mail sent"
+        .then ~> <[username displayname password]>.map ~> @view.admin.get("adduser.#{it}").value = ''
+        .catch (e) ->
+          id = lderror.id e
+          alert(
+            if id == 1014 => "account exists"
+            else if id == 1052 => "already invited and not activated yet. use `Resend Activation` in user search"
+            else "failed: #id"
+          )
     deluser: ~>
       username = @view.admin.get('deluser.username').value
       if !username => return

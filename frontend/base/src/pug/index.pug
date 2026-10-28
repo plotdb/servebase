@@ -110,6 +110,7 @@ block body
                   .dropdown-item(ld="change-email") Change Email
                   .dropdown-item(ld="change-password") Change Password
                   .dropdown-item(ld="random-password") Random Password
+                  .dropdown-item(ld="resend-activation") Resend Activation
                   .dropdown-item(ld="force-logout") Force Logout
                   .dropdown-item(ld="delete-user") Delete User
           .pb-4
@@ -124,7 +125,9 @@ block body
             .form-group
               b password #[span.text-sm / left empty for auto generation]
               input.form-control(ld="adduser.password",type="password",aria-label="password")
-            .btn.btn-primary(ld="adduser") Add User
+            .d-flex.g-2
+              .btn.btn-primary(ld="adduser") Add User
+              .btn.btn-outline-primary(ld="inviteuser") Invite User #[span.text-sm ( no password, send activation mail )]
           div
             h5 Delete User
             hr
