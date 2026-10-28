@@ -10,11 +10,12 @@ require! <[@servebase/backend/aux ./passwd ./mail]>
 captcha = Object.fromEntries [[k,v] for k,v of config.captcha].map ->
   if it.0 == \enabled => [it.0, it.1] else [it.0, it.1{sitekey, enabled}]
 providers = config.auth.providers or config.auth
+# 第三方登入: 只認支援的 provider. 沒有 `providers` 時 `config.auth` 本身就是 provider 清單, 裡面還有其它設定 ( pepper, mfa ... ) ,
+# 不能每個 key 都當 provider, 不然面板會顯示「或使用下列登入」但下面沒有按鈕. 沒寫 `enabled` 視為啟用.
+oauth-names = <[google facebook line]>
+oauth-enabled = (name) -> !!providers[name] and (!(providers[name].enabled?) or !!providers[name].enabled)
 oauth = Object.fromEntries(
-  [[k,v] for k,v of providers]
-    # without `providers`, `config.auth` itself is the provider list - skip its non-provider entries.
-    .map -> return if it.0 in <[local pepper mfa]> => null else [it.0, {enabled: !(it.1.enabled?) or it.1.enabled }]
-    .filter -> it
+  oauth-names.filter(-> providers[it]).map -> [it, {enabled: oauth-enabled(it)}]
 )
 policy = {}
 if backend.config.{}policy.{}login.accept-signup? =>
@@ -253,6 +254,8 @@ inject-invite-token = (req, res, next) ->
 
 <[local google facebook line]>.for-each (name) ->
   if !providers[name] => return
+  # 關掉 ( enabled: false ) 的第三方登入不註冊路由, 避免直接打 /api/auth/<name> 還能登入
+  if name in oauth-names and !oauth-enabled(name) => return
   strategy[name](providers[name])
   route.auth
     ..post(

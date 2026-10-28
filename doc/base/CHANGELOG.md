@@ -172,6 +172,11 @@
      nothing in `config.ngx` changes yet - see the three tasks dated 20260912 under
      `context/servebase/tasks/todo/`.
  - fixes:
+   - `@servebase/auth`: without `config.auth.providers`, every other key in `config.auth`
+     ( e.g. `session` ) was taken as an enabled oauth provider, so the authpanel showed
+     "or login with" with no buttons under it. Only `google` / `facebook` / `line` count
+     now, and the block hides unless a provider that has a button is enabled. A provider
+     with `enabled: false` no longer registers its `/api/auth/<name>` routes either.
    - `@servebase/auth`: oauth login finishes in the page again without a reload - the
      popup has had no `opener` since it is cut on open ( and by the
      `Cross-Origin-Opener-Policy` in `config.ngx` ), so `oauth-done` / `mfa-required`

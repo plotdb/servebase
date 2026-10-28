@@ -17,7 +17,7 @@
       return f.call({}, it);
     };
   })(function(backend){
-    var db, app, config, route, session, captcha, k, v, providers, oauth, policy, ref$, ref1$, limitSessionAmount, loginDone, mfa, normalize, getUser, strategy, globalPayload, injectInviteToken, x$, this$ = this;
+    var db, app, config, route, session, captcha, k, v, providers, oauthNames, oauthEnabled, oauth, policy, ref$, ref1$, limitSessionAmount, loginDone, mfa, normalize, getUser, strategy, globalPayload, injectInviteToken, x$, this$ = this;
     db = backend.db, app = backend.app, config = backend.config, route = backend.route, session = backend.session;
     captcha = Object.fromEntries((function(){
       var ref$, results$ = [];
@@ -40,24 +40,18 @@
       }
     }));
     providers = config.auth.providers || config.auth;
-    oauth = Object.fromEntries((function(){
-      var ref$, results$ = [];
-      for (k in ref$ = providers) {
-        v = ref$[k];
-        results$.push([k, v]);
-      }
-      return results$;
-    }()).map(function(it){
-      var ref$;
-      return (ref$ = it[0]) === 'local' || ref$ === 'pepper' || ref$ === 'mfa'
-        ? null
-        : [
-          it[0], {
-            enabled: !(it[1].enabled != null) || it[1].enabled
-          }
-        ];
-    }).filter(function(it){
-      return it;
+    oauthNames = ['google', 'facebook', 'line'];
+    oauthEnabled = function(name){
+      return !!providers[name] && (!(providers[name].enabled != null) || !!providers[name].enabled);
+    };
+    oauth = Object.fromEntries(oauthNames.filter(function(it){
+      return providers[it];
+    }).map(function(it){
+      return [
+        it, {
+          enabled: oauthEnabled(it)
+        }
+      ];
     }));
     policy = {};
     if (((ref$ = (ref1$ = backend.config).policy || (ref1$.policy = {})).login || (ref$.login = {})).acceptSignup != null) {
@@ -362,6 +356,9 @@
       if (!providers[name]) {
         return;
       }
+      if (in$(name, oauthNames) && !oauthEnabled(name)) {
+        return;
+      }
       strategy[name](providers[name]);
       x$ = route.auth;
       x$.post("/" + name, injectInviteToken, passport.authenticate(name, {
@@ -632,6 +629,11 @@
     this.mfa.route();
     return this;
   });
+  function in$(x, xs){
+    var i = -1, l = xs.length >>> 0;
+    while (++i < l) if (x === xs[i]) return true;
+    return false;
+  }
   function import$(obj, src){
     var own = {}.hasOwnProperty;
     for (var key in src) if (own.call(src, key)) obj[key] = src[key];

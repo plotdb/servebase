@@ -99,18 +99,18 @@ baseImp = {
             },
             handler: {
               oauths: function(arg$){
-                var node, k, v;
+                var node, btns;
                 node = arg$.node;
-                return node.classList.toggle('d-none', !(function(){
-                  var ref$, results$ = [];
-                  for (k in ref$ = this.global.oauth) {
-                    v = ref$[k];
-                    results$.push(v);
-                  }
-                  return results$;
-                }.call(this$)).filter(function(it){
-                  return it.enabled;
+                btns = Array.from(node.querySelectorAll('[ld~=oauth]'));
+                return node.classList.toggle('d-none', !btns.filter(function(it){
+                  var ref$;
+                  return (((ref$ = this$.global).oauth || (ref$.oauth = {}))[it.getAttribute('data-name')] || {}).enabled;
                 }).length);
+              },
+              oauth: function(arg$){
+                var node, ref$;
+                node = arg$.node;
+                return node.classList.toggle('d-none', !(((ref$ = this$.global).oauth || (ref$.oauth = {}))[node.getAttribute('data-name')] || {}).enabled);
               },
               "signin-failed-hint": function(arg$){
                 var node;
@@ -121,11 +121,6 @@ baseImp = {
                 var node;
                 node = arg$.node;
                 return node.innerText = this$._failedHintText || '';
-              },
-              oauth: function(arg$){
-                var node;
-                node = arg$.node;
-                return node.classList.toggle('d-none', !(this$.global.oauth[node.getAttribute('data-name')] || {}).enabled);
               },
               submit: function(arg$){
                 var node;

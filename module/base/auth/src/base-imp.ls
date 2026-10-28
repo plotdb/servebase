@@ -46,12 +46,14 @@ base-imp =
           @ldld = new ldloader root: node
 
       handler:
+        # 只看面板上有按鈕的 provider, 沒有可用的按鈕就整塊 ( 含「或使用下列登入」 ) 隱藏
         oauths: ({node}) ~>
-          node.classList.toggle \d-none, ![v for k,v of @global.oauth].filter(->it.enabled).length
+          btns = Array.from(node.querySelectorAll '[ld~=oauth]')
+          node.classList.toggle \d-none, !btns.filter(~> (@global.{}oauth[it.getAttribute \data-name] or {}).enabled).length
+        oauth: ({node}) ~>
+          node.classList.toggle \d-none, !(@global.{}oauth[node.getAttribute \data-name] or {}).enabled
         "signin-failed-hint": ({node}) ~> node.classList.toggle \d-none, !@_failed-hint
         "signin-failed-hint-text": ({node}) ~> node.innerText = @_failed-hint-text or ''
-        oauth: ({node}) ~>
-          node.classList.toggle \d-none, !(@global.oauth[node.getAttribute \data-name] or {}).enabled
         submit: ({node}) ~>
           node.classList.toggle \disabled, !(@ready)
         "submit-text": ({node}) ~>
