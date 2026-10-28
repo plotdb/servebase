@@ -1,0 +1,16 @@
+.ldcv.autogap.scroll: .base.w-640.rwd: .inner
+  include @/ldview/index.pug
+  script(type="@plotdb/block"): include:lsc index.ls
+  h1.text-center(t) title
+  br
+  p
+    span(t) desc.0
+    strong.mx-1(ld="email")
+    span(t) desc.1
+  p.text-muted(t) hint
+  br
+  .d-flex.g-2
+    .btn.btn-lg.btn-outline-secondary.flex-grow-1.text-nowrap(data-ldcv-set="",t) close
+    .btn.btn-lg.btn-primary.ld-ext-right.flex-grow-1.text-nowrap(ld="resend")
+      span(t) resend
+      .ld.ldld.bare.em-1

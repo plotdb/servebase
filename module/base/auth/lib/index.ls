@@ -2,7 +2,7 @@ require! <[lderror jsonwebtoken @plotdb/express-session passport passport-local]
 require! <[passport-facebook]>
 require! <[passport-google-oauth20]>
 require! <[passport-line-auth]>
-require! <[@servebase/backend/aux ./passwd ./mail]>
+require! <[@servebase/backend/aux ./passwd ./mail ./activate]>
 
 (backend) <- ((f) -> module.exports = -> f.call {}, it) _
 {db,app,config,route,session} = backend
@@ -36,7 +36,8 @@ login-done = ({req, user}) ->
       if span > 0 => payload <<< {password-due: span, password-should-renew: \suggest}
       # TODO we may also do this before login and redirect user to a dedicate page,
       #      so reload to skip won't work to skip this force check
-      if user?config?authinfo?renewpw => payload.password-should-renew = \force
+      # `config.authinfo.renewpw` 是舊的位置 ( migrate/003.sql 已搬到 system ), 還沒 migrate 的資料庫也能用
+      if user?system?renewpw or user?config?authinfo?renewpw => payload.password-should-renew = \force
       payload
 
 @mfa = mfa = (require \./mfa) backend, {login: login-done}
@@ -97,8 +98,9 @@ get-user = ({username, password, method, detail, create, invite-token, cb, req})
         backend.log-security.info "login fail #method method #username eid #{e.id}/#{e.message}"
       # 1012: permission denied;  1004: quota exceeded(won't hit here?)
       # 1000: user not login; 1034: user not found; 1015: bad param; 1043: token required
+      # 1052: account not activated ( see ./activate )
       # TODO we may need to pass error code to frontend for better error message.
-      if lderror.id(e) in [1000,1004,1012,1015,1034,1040,1043] => return cb e, false
+      if lderror.id(e) in [1000,1004,1012,1015,1034,1040,1043,1052] => return cb e, false
       console.log e
       cb lderror(500)
 
@@ -325,7 +327,8 @@ route.auth
       .then (user) !->
         req.login user, (err) !-> if err => next(err) else res.send {}
       .catch (e) !->
-        if lderror.id(e) in [1004 1014 1040 1043] => return next(e)
+        # 1052: 管理員代建、還沒啟用的帳號. 前端提示用戶去收啟用信 ( 或重寄 )
+        if lderror.id(e) in [1004 1014 1040 1043 1052] => return next(e)
         console.error e
         next(lderror 403)
   ..post \/login, backend.middleware.captcha, (req, res, next) ->
@@ -395,8 +398,10 @@ app.post \/api/auth/reset, (req, res) ->
   <-! req.logout _
   res.send!
 
-@passwd = passwd backend
+@activate = activate backend
+@passwd = passwd backend, {activate: @activate}
 @mail = mail backend
+@activate.route!
 @passwd.route!
 @mail.route!
 @mfa.route!

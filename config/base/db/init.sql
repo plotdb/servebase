@@ -16,6 +16,8 @@ create table if not exists users (
   detail jsonb,
   plan jsonb,
   config jsonb,
+  -- 系統狀態 ( pending, renewpw ... ). 不像 config 會送到前端 ( global payload ), 但整列 users 會進 session, 不要放 secret.
+  system jsonb,
   staff int,
   deleted boolean
 );
@@ -59,6 +61,21 @@ create table if not exists pwresettoken (
 );
 
 create index if not exists idx_pwresettoken on pwresettoken (token);
+
+-- 啟用帳號 ( 管理員代建, users.system.pending ) 用的一次性 token. 只存 sha256, 原文只在信裡.
+--  - used: 用掉的時間; deleted: 重寄或帳號已用別的方式啟用時作廢.
+create table if not exists activatetoken (
+  key serial primary key,
+  owner int not null references users(key) on delete cascade,
+  hash text not null,
+  createdtime timestamp not null default now(),
+  ttl timestamp not null,
+  used timestamp,
+  deleted boolean
+);
+
+create index if not exists idx_activatetoken_hash on activatetoken (hash);
+create index if not exists idx_activatetoken_owner on activatetoken (owner);
 
 -- 2FA: 每個已啟用的第二因素一列. secret 不能放 users, 因為 users 整列會被寫進 session.
 --  - method: totp ( 之後可加 email / sms / webauthn ).

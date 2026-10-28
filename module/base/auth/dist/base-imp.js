@@ -387,6 +387,15 @@ baseImp = {
           if (id === 1029) {
             return Promise.reject(e);
           }
+          if (id === 1052) {
+            this$.info("default");
+            return core.ldcvmgr.get({
+              name: "@servebase/auth",
+              path: "activate-required"
+            }, {
+              username: body.username
+            });
+          }
           if (id === 1004) {
             return this$.info("login-exceeded");
           }

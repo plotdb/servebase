@@ -1,0 +1,13 @@
+from: '"#{sitename} Support" <contact@#{domain}>'
+subject: 'Activate your account on #{sitename}'
+content: |
+  An account has been created for you on #{sitename} using this email. To start using it, click the following link and set your password:
+
+  [https://#{domain}/auth/activate/#{token}](https://#{domain}/auth/activate/#{token})
+
+  This link can be used only once and will expire. If it has expired, you can request a new one from the "Forgot password" page using this email.
+
+  If you didn't expect this mail, please just ignore it.
+
+  Thanks,
+  #{sitename} team

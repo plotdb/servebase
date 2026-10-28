@@ -41,19 +41,31 @@ route.post \/user/delete, (req, res) ->
   if !is-email(username) => return lderror.reject 400
   backend.auth.user.delete {username} .then -> res.send {}
 
+# 沒給 password 時建立 pending 帳號並寄出啟用信, 由用戶自己設定密碼 ( see @servebase/auth activate )
 route.post \/user/, (req, res) ->
-  if <[username displayname password]>.filter(->!req.body[it]).length => return lderror.reject 400
+  if <[username displayname]>.filter(->!req.body[it]).length => return lderror.reject 400
   {username,displayname,password} = req.body
   if !is-email(username) => return lderror.reject 400
+  if !password =>
+    return backend.auth.activate.create {req, username, displayname, by: req.user.key}
+      .then -> res.send it
   if password.length < 8 => return lderror.reject 400
   # TODO verify password based on customized rules, if needed.
   detail = {username, displayname}
-  config = {authinfo: renewpw: true}
   method = \local
-  db.user-store.create {username, password, method, detail, config}
+  db.user-store.create {username, password, method, detail, config: {}, system: {renewpw: true}}
     .then ->
       delete it.password
       res.send it
+
+# 重寄啟用信 ( 只對 pending 帳號 )
+route.post \/user/:key/activate, aux.validate-key, (req, res) ->
+  db.query "select key,username,system from users where key = $1 and deleted is not true", [+req.params.key]
+    .then (r={}) ->
+      if !(u = r.[]rows.0) => return lderror.reject 404
+      if !u.{}system.pending => return lderror.reject 1011
+      backend.auth.activate.send {req, user: u}
+    .then -> res.send!
 
 route.post \/user/:key/password, aux.validate-key, (req, res) ->
   key = +req.params.key
@@ -63,7 +75,11 @@ route.post \/user/:key/password, aux.validate-key, (req, res) ->
     .then ({rows}) -> if !rows or !rows.0 => return lderror.reject 404
     .then -> db.user-store.hashing password, true, true
     .then (pw-hashed) ->
-      db.query "update users set (method,password) = ('local',$1) where key = $2", [pw-hashed, key]
+      # pending 帳號也一併啟用, 但管理員設的密碼不代表 email 驗證過
+      db.user-store.activate {key, hash: pw-hashed, verified: false}
+        .then (user) ->
+          if user => return
+          db.query "update users set (method,password) = ('local',$1) where key = $2", [pw-hashed, key]
     .then -> session.delete {user: key}
     .then -> res.send!
 

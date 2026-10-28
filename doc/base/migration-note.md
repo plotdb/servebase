@@ -13,3 +13,11 @@
      regardless of the root dependency - both have to be up to date.
  - API endpoints changed
    - global and auth api changed. corresponding frontend may need update, if not upgraded.
+ - users.system ( account activation )
+   - run `config/base/db/migrate/003.sql` before deploying: it adds `users.system` and
+     table `activatetoken`, and moves `config.authinfo.renewpw` to `system.renewpw`.
+     signup, password changes and admin user creation fail until the column exists.
+   - lderror 2.4.9 for `1052` ( account not activated ).
+   - projects with their own authpanel / admin pages: handle `1052` on login and signup
+     ( see block `activate-required` ), and code that reads `config.authinfo.renewpw`
+     should read `system.renewpw` too.

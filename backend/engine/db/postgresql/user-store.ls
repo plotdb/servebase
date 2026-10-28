@@ -61,6 +61,9 @@ user-store.prototype = Object.create(Object.prototype) <<< do
       .then (ret = {}) ~>
         if !(user = ret.[]rows.0) and !create => return lderror.reject 1034
         if !user => return @create {username, password, method, detail, invite-token}
+        # 管理員代建、還沒啟用的帳號沒有密碼, 第三方登入也不能用 ( 不能信任第三方的 email 驗證 ).
+        # 要先用信裡的連結設密碼 ( see @servebase/auth activate )
+        if user.{}system.pending => return lderror.reject 1052
         if !(method == \local or user.method == \local) =>
           delete user.password
           return user
@@ -78,13 +81,22 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         delete user.password
         return user
 
+  # `pending`: 管理員代建的帳戶, 由用戶點啟用信的連結設定密碼後才能使用 ( see `activate` ).
+  #  - 給 `{by}` ( 建立者的 user key ), 存成 `system.pending = {by, at}`.
+  #  - 沒有密碼, method 是 local, 不受 accept-signup / invite-token 限制.
   # `internal`: 系統內部功能建的帳戶 ( 如匿名帳戶 <uuid>@anonymous.invalid ).
   #  - username 必須是 `*.invalid`; 反過來 `*.invalid` 也只能由 internal 建立, 不開放一般註冊.
   #  - 不受 accept-signup / invite-token 限制, verified 預設有值.
   #  - method / username / displayname 有預設值 ( 匿名帳戶 ), 可自行指定.
   #  - 將來轉成一般帳戶時, 要清掉 verified 並重寄驗證信.
-  create: ({username, password, method, detail, config, invite-token, force, internal}) ->
+  create: ({username, password, method, detail, config, system, invite-token, force, internal, pending}) ->
     policy = @policy.login
+    system = system or {}
+    if pending =>
+      force = true
+      method = \local
+      password = null
+      system.pending = {by: pending.by or null, at: Date.now!}
     if internal =>
       force = true
       method = method or \anonymous
@@ -99,7 +111,7 @@ user-store.prototype = Object.create(Object.prototype) <<< do
     if !is-email(username) => return lderror.reject 1015
     if !!internal != /\.invalid$/.test(username) => return lderror.reject 1015
     Promise.resolve!
-      .then ~> if method == \local => @hashing(password) else password
+      .then ~> if method == \local and !pending => @hashing(password) else password
       .then (password) ~>
         displayname = if detail => detail.displayname or detail.username
         if !displayname => displayname = username.replace(/@[^@]+$/, "")
@@ -109,9 +121,10 @@ user-store.prototype = Object.create(Object.prototype) <<< do
         config.{}consent.cookie = new Date!getTime!
         user = { username, password, method, displayname, detail, config, createdtime: new Date! }
         if verified => user <<< {verified}
-        @db.query "select key from users where username = $1", [username]
+        @db.query "select key,system from users where username = $1", [username]
           .then (r={}) ~>
-            if r.[]rows.length => return lderror.reject 1014
+            # 已經有管理員代建、還沒啟用的帳號: 要走啟用流程, 不是註冊
+            if (u = r.[]rows.0) => return lderror.reject(if u.{}system.pending => 1052 else 1014)
             p = if force or policy.accept-signup != \invite => Promise.resolve null
             else @db.query """select * from invitetoken where token = $1 and deleted is not true""", [invite-token]
           .then (r) ~>
@@ -127,17 +140,39 @@ user-store.prototype = Object.create(Object.prototype) <<< do
             @db.query "update invitetoken set detail = $2 where key = $1", [token.key, token.detail]
           .then ~>
             @db.query """
-            insert into users (username,password,method,displayname,createdtime,detail,config,verified)
-            values ($1,$2,$3,$4,$5,$6,$7,$8)
+            insert into users (username,password,method,displayname,createdtime,detail,config,verified,system)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
             returning key
             """, [
               username, password, method, displayname,
-              new Date!toUTCString!, detail, config, verified
+              new Date!toUTCString!, detail, config, verified,
+              if Object.keys(system).length => system else null
             ]
           .then (r={}) ~>
             if !(r = r.[]rows.0) => return Promise.reject 500
             user <<< r{key}
+            if Object.keys(system).length => user <<< {system}
             @password-track {user, hash: password}
+          .then -> user
+
+  # 啟用 pending 帳戶: 清掉 system.pending, 作廢還沒用的啟用 token.
+  #  - `hash`: 有給就設成密碼 ( method 改為 local ).
+  #  - `verified`: 是否同時標記 email 已驗證. 用戶點啟用信設密碼才算; 管理員直接設密碼不算.
+  # 帳號不是 pending ( 已經啟用過 ) 時回傳 null, 否則回傳更新後的 user ( 不含密碼 ).
+  activate: ({key, hash, verified = true}) ->
+    @db.query """
+    update users set
+      system = system - 'pending',
+      verified = case when $2::boolean then coalesce(verified, $3::jsonb) else verified end,
+      password = coalesce($4::text, password),
+      method = case when $4::text is null then method else 'local' end
+    where key = $1 and system ? 'pending' and deleted is not true
+    returning *
+    """, [key, !!verified, JSON.stringify({date: Date.now!}), hash or null]
+      .then (r={}) ~>
+        if !(user = r.[]rows.0) => return null
+        delete user.password
+        @db.query "update activatetoken set deleted = true where owner = $1 and used is null", [key]
           .then -> user
 
   password-track: ({user, password, hash}) ->

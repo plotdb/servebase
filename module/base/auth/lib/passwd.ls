@@ -1,7 +1,7 @@
 require! <[crypto lderror]>
 require! <[@servebase/backend/throttle @servebase/backend/aux]>
 
-(backend) <- ((f) -> module.exports = -> f it) _
+(backend, opt = {}) <- ((f) -> module.exports = (b, o) -> f b, o) _
 {db,config,route,session} = backend
 
 # token 只存 hash ( `sha256:<hex>` ), 原文只在信裡.
@@ -43,7 +43,8 @@ route: ->
         db.query """
         update users
           set (password,method) = ($2,$3),
-          config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'
+          config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}',
+          system = system - 'renewpw'
         where key = $1
         """, [user.key, user.password, \local]
           .then -> db.user-store.password-track {user, hash: password.hashed}
@@ -63,23 +64,23 @@ route: ->
   route.auth.post \/passwd/reset, mdw.throttle, mdw.captcha, (req, res) ->
     email = "#{req.body.email}".trim!toLowerCase!
     if !email => return lderror.reject 400
-    obj = {}
-    db.query "select key,username from users where username = $1", [email]
+    db.query "select key,username,system from users where username = $1", [email]
       .then (r={}) ->
-        if r.[]rows.length == 0 => return lderror.reject 404
-        time = new Date!
-        obj <<<
-          key: r.rows.0.key, email: r.rows.0.username
-          hex: "#{r.rows.0.key}" + (crypto.randomBytes(30).toString \hex), time: time
+        if !(u = r.[]rows.0) => return lderror.reject 404
+        # 管理員代建、還沒啟用的帳號沒有密碼可以重設, 改寄啟用信. 回應跟重設密碼一樣, 用戶不用分辨兩者.
+        if u.{}system.pending =>
+          return opt.activate.send {req, user: u, cooldown: 60}
+            .catch (e) -> if lderror.id(e) != 998 => Promise.reject e
+        obj = key: u.key, email: u.username, hex: "#{u.key}" + (crypto.randomBytes(30).toString \hex), time: new Date!
         db.query "delete from pwresettoken where owner=$1", [obj.key]
-      .then -> db.query "insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, hash-token(obj.hex), obj.time]
-      .then ->
-        backend.mail-queue.by-template(
-          \reset-password
-          obj.email
-          ({token: obj.hex} <<< getmap(req))
-          {now: true, lng: backend.lngs(req).0}
-        )
+          .then -> db.query "insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, hash-token(obj.hex), obj.time]
+          .then ->
+            backend.mail-queue.by-template(
+              \reset-password
+              obj.email
+              ({token: obj.hex} <<< getmap(req))
+              {now: true, lng: backend.lngs(req).0}
+            )
       .then -> res.send ''
 
   route.auth.put \/passwd/, mdw.throttle, aux.signedin, (req, res, next) ->
@@ -106,7 +107,8 @@ route: ->
         db.query """
         update users
           set (password,method) = ($1,'local'),
-          config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'
+          config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}',
+          system = system - 'renewpw'
         where key = $2
         """, [password, req.user.key]
           .then -> db.user-store.password-track {user: req.user, hash: password}

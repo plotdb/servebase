@@ -174,6 +174,10 @@ base-imp =
           if id >= 500 and id < 599 => return lderror.reject 1007
           # session data corrupted
           if id == 1029 => return Promise.reject e
+          # 1052: 管理員代建、還沒啟用的帳號 ( 登入或註冊都會遇到 ). 提示去收啟用信
+          if id == 1052 =>
+            @info "default"
+            return core.ldcvmgr.get {name: "@servebase/auth", path: "activate-required"}, {username: body.username}
           # if we want to hint user the account existed.
           # we can handle error id 1014 here (apply existed resource)
           if id == 1004 => return @info "login-exceeded"

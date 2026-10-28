@@ -6,11 +6,12 @@
   throttle = require('@servebase/backend/throttle');
   aux = require('@servebase/backend/aux');
   (function(f){
-    return module.exports = function(it){
-      return f(it);
+    return module.exports = function(b, o){
+      return f(b, o);
     };
-  })(function(backend){
+  })(function(backend, opt){
     var db, config, route, session, hashToken, findToken, expire, grace, expired;
+    opt == null && (opt = {});
     db = backend.db, config = backend.config, route = backend.route, session = backend.session;
     hashToken = function(it){
       return "sha256:" + crypto.createHash('sha256').update(it + "").digest('hex');
@@ -79,7 +80,7 @@
               key: obj.owner,
               password: password.hashed
             };
-            return db.query("update users\n  set (password,method) = ($2,$3),\n  config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'\nwhere key = $1", [user.key, user.password, 'local']).then(function(){
+            return db.query("update users\n  set (password,method) = ($2,$3),\n  config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}',\n  system = system - 'renewpw'\nwhere key = $1", [user.key, user.password, 'local']).then(function(){
               return db.userStore.passwordTrack({
                 user: user,
                 hash: password.hashed
@@ -111,32 +112,43 @@
           });
         });
         route.auth.post('/passwd/reset', mdw.throttle, mdw.captcha, function(req, res){
-          var email, obj;
+          var email;
           email = (req.body.email + "").trim().toLowerCase();
           if (!email) {
             return lderror.reject(400);
           }
-          obj = {};
-          return db.query("select key,username from users where username = $1", [email]).then(function(r){
-            var time;
+          return db.query("select key,username,system from users where username = $1", [email]).then(function(r){
+            var u, obj;
             r == null && (r = {});
-            if ((r.rows || (r.rows = [])).length === 0) {
+            if (!(u = (r.rows || (r.rows = []))[0])) {
               return lderror.reject(404);
             }
-            time = new Date();
-            obj.key = r.rows[0].key;
-            obj.email = r.rows[0].username;
-            obj.hex = (r.rows[0].key + "") + crypto.randomBytes(30).toString('hex');
-            obj.time = time;
-            return db.query("delete from pwresettoken where owner=$1", [obj.key]);
-          }).then(function(){
-            return db.query("insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, hashToken(obj.hex), obj.time]);
-          }).then(function(){
-            return backend.mailQueue.byTemplate('reset-password', obj.email, import$({
-              token: obj.hex
-            }, getmap(req)), {
-              now: true,
-              lng: backend.lngs(req)[0]
+            if ((u.system || (u.system = {})).pending) {
+              return opt.activate.send({
+                req: req,
+                user: u,
+                cooldown: 60
+              })['catch'](function(e){
+                if (lderror.id(e) !== 998) {
+                  return Promise.reject(e);
+                }
+              });
+            }
+            obj = {
+              key: u.key,
+              email: u.username,
+              hex: (u.key + "") + crypto.randomBytes(30).toString('hex'),
+              time: new Date()
+            };
+            return db.query("delete from pwresettoken where owner=$1", [obj.key]).then(function(){
+              return db.query("insert into pwresettoken (owner,token,time) values ($1,$2,$3)", [obj.key, hashToken(obj.hex), obj.time]);
+            }).then(function(){
+              return backend.mailQueue.byTemplate('reset-password', obj.email, import$({
+                token: obj.hex
+              }, getmap(req)), {
+                now: true,
+                lng: backend.lngs(req)[0]
+              });
             });
           }).then(function(){
             return res.send('');
@@ -180,7 +192,7 @@
             return db.userStore.hashing(n);
           }).then(function(password){
             req.user.password = password;
-            return db.query("update users\n  set (password,method) = ($1,'local'),\n  config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}'\nwhere key = $2", [password, req.user.key]).then(function(){
+            return db.query("update users\n  set (password,method) = ($1,'local'),\n  config = coalesce(config, '{}'::jsonb) #- '{authinfo,renewpw}',\n  system = system - 'renewpw'\nwhere key = $2", [password, req.user.key]).then(function(){
               return db.userStore.passwordTrack({
                 user: req.user,
                 hash: password

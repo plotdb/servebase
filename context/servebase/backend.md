@@ -223,6 +223,21 @@ backend.auth.signup(email, password, user-data)
 backend.auth.require-login(req, res, next)
 ```
 
+### users.config 與 users.system
+- `config`: 應用程式的用戶設定, 會整包送到前端 ( global payload ), 不要放用戶不該看到的東西.
+- `system`: 系統狀態 ( `renewpw`, `pending` ... ), 不送到前端. 但整列 users 會進 session, 不要放 secret.
+
+### 管理員代建帳號 ( 啟用 )
+```livescript
+# 建 pending 帳號 ( 沒有密碼 ) 並寄啟用信; 角色等由呼叫端之後自己設
+backend.auth.activate.create {req, username, displayname, by: req.user.key}
+# 重寄 ( 舊的連結作廢 )
+backend.auth.activate.send {req, user}
+```
+- pending 帳號登入 ( 密碼 / 第三方 ) 或註冊都回 lderror 1052; 忘記密碼改寄啟用信.
+- 連結 GET 只檢查, POST 設密碼才用掉 token; 啟用同時標記 email 已驗證.
+- 詳見 `module/base/auth/README.md` -> Account Activation.
+
 ## 資料庫操作
 
 ### 查詢

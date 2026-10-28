@@ -11,6 +11,24 @@
      until they expire, so nothing breaks on deploy; no migration needed.
 
  - features:
+   - `@servebase/auth`: account activation - admin creates an account for someone
+     else, who then sets the password from a mail link. `backend.auth.activate.create`
+     makes a `pending` account ( `users.system.pending = {by, at}`, no password ) and
+     sends the `activate` mail; the link only checks the token, posting the password
+     consumes it ( so mail link scanners can't use it up ) and marks email as verified.
+     Tokens are one-time, stored as sha256 in the new `activatetoken` table, and
+     replaced when sent again. A pending account can't log in ( password or 3rd party )
+     or sign up: these return lderror `1052` ( account not activated ), and authpanel
+     shows block `activate-required` to send the mail again. Forgot password on a
+     pending account sends the activation mail instead. Admin api: `POST
+     /api/admin/user/` without `password` creates a pending account, `POST
+     /api/admin/user/:key/activate` resends. See `module/base/auth/README.md` ->
+     Account Activation.
+   - `users.system` ( jsonb ): system states kept apart from `config`, which is sent
+     to frontend. Not a place for secrets - the row is still copied into session.
+     `config.authinfo.renewpw` moved to `system.renewpw` ( the old place is still read ).
+     Needs `config/base/db/migrate/003.sql` on existing databases - signup and password
+     changes fail without the `system` column - and lderror 2.4.9 ( `1052` ).
    - engine: `aux.client-ip(req)` - the client ip that access control can rely on,
      computed once and kept in `req.client-ip`. It reads only the socket and the
      X-Forwarded-For added by the trusted local proxy ( nginx ), never headers such as

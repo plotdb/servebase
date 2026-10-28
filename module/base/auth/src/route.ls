@@ -4,6 +4,7 @@ route = (o = {}) ->
     mail-expire mail-verified
     oauth-done oauth-failed mfa-required
     passwd-change passwd-expire passwd-done passwd-reset
+    activate
   ]>
 
   if !(n = [k for k of httputil.qs!].filter(->it in supported-actions).0) => n = \auth

@@ -374,10 +374,37 @@ User object contains a configuration object `config` in db schema definition, wh
  - invitetoken: track if this account is created with invitetoken. it's an object with [token,timestamp] pairs, where:
    - token: invite token used on this account
    - timestamp: time when consuming this invite token
- - auth: information about authentication.
-   - renewpw: true if user should renew password immediately
  - custom: should be an object. add your own customized fields here.
 
 possibly custom and deprecated fields:
 
  - tos, legal, newsletter
+ - authinfo.renewpw: moved to `system.renewpw` ( `config/base/db/migrate/003.sql` ). still read as a fallback.
+
+`config` is sent to frontend as is ( global payload ), so don't put anything users shouldn't see there.
+
+
+### System
+
+`system` keeps system states, not sent to frontend. However the whole `users` row is copied into session, so it's not a place for secrets either ( see the `mfa` table ).
+
+ - renewpw: true if user should renew password immediately ( e.g., account created by admin with a given password ).
+ - pending: `{by, at}`, account created by admin ( `by`: creator's user key ) and not activated yet. see Account Activation.
+
+
+## Account Activation
+
+Admin can create an account for someone else and let them set the password by themselves:
+
+    backend.auth.activate.create {req, username, displayname, detail, by: req.user.key}
+      .then (user) -> # set up roles etc. here
+
+This creates a `pending` account without password, and sends an activation mail ( template `activate` ). The link ( `/auth/activate/:token` ) only checks the token and leads to the `activate` block; the token is consumed when the password is posted ( `POST /api/auth/activate/:token` ), so link scanners in mail services won't use it up. Activating also marks email as verified.
+
+ - tokens are one-time, stored as sha256 in table `activatetoken`. sending again ( `backend.auth.activate.send {req, user}` ) invalidates earlier ones.
+ - link lifetime: `config.policy.token-expire.activate` in seconds, 7 days by default.
+ - a pending account can't log in, by password or by 3rd party, nor sign up again: these return lderror `1052`. authpanel then shows block `activate-required`, which sends the mail again.
+ - forgot password on a pending account sends the activation mail instead ( at most once per minute ), with the same response, so users don't need to tell them apart.
+ - admin setting the password directly ( `/api/admin/user/:key/password` ) also activates the account, without marking email as verified.
+
+Needs `config/base/db/migrate/003.sql` on existing databases.
