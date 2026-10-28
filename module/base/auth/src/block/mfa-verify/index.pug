@@ -2,10 +2,10 @@
   include @/ldview/index.pug
   script(type="@plotdb/block"): include:lsc index.ls
   h2.mb-2.text-center(t="title")
-  .text-muted(ld="mode",data-mode="totp",t="totp.desc")
-  .text-muted(ld="mode",data-mode="recovery",t="recovery.desc")
+  .text-muted.text-center(ld="mode",data-mode="totp",t="totp.desc")
+  .text-muted.text-center(ld="mode",data-mode="recovery",t="recovery.desc")
   .form-group.my-4.pb-1
-    input.form-control.form-control-lg.text-center(ld="code",name="code",autocomplete="one-time-code")
+    input.form-control.form-control-lg.text-center(ld="code",name="code",autocomplete="one-time-code",style="font-family:monospace;letter-spacing:.5em")
     .invalid-feedback(ld="feedback",style="margin-bottom:-.75em")
   .text-center.text-sm.mb-4
     a.clickable(ld="switch",data-mode="recovery",t="recovery.use")
