@@ -22,9 +22,10 @@ module.exports =
       close: "關閉"
       resend: "重寄啟用信"
       sent: "啟用信已寄出"
+  interface: -> @ldcv
   init: ({root, t}) ->
+    # 不等 core.init: 要在第一次 ldcvmgr.get 帶資料進來之前就聽 `data`
     ({core}) <~ servebase.corectx _
-    <~ core.init!then _
     {captcha, error} = core
     lc = {}
     @ldcv = new ldcover root: root, zmgr: core.zmgr
